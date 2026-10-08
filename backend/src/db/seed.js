@@ -1,11 +1,13 @@
 const bcrypt = require('bcryptjs');
-const db = require('../config/db');
+const { pool } = require('../config/db');
 
 async function seed() {
-  console.log('[SEED] Seeding database with initial users and demo data...');
-  const client = await db.getClient();
+  console.log('[SEED] Connecting to PostgreSQL to seed user and demo data...');
+  let client;
 
   try {
+    client = await pool.connect();
+    console.log('[SEED] Connected. Inserting seed data into tables...');
     await client.query('BEGIN');
 
     const salt = await bcrypt.genSalt(10);
@@ -123,21 +125,23 @@ async function seed() {
     console.log('\n======================================================');
     console.log('✅ DATABASE SEEDING COMPLETED SUCCESSFULLY!');
     console.log('======================================================');
-    console.log('Seed Accounts Ready:');
+    console.log('Seed Accounts Ready in remote PostgreSQL:');
     console.log('1. Provider   : provider@foodrescue.org  | password: password123');
     console.log('2. NGO        : ngo@foodrescue.org       | password: password123');
     console.log('3. Volunteer  : volunteer@foodrescue.org | password: password123');
     console.log('4. Admin      : admin@foodrescue.org     | password: password123');
     console.log('======================================================\n');
   } catch (err) {
-    try { await client.query('ROLLBACK'); } catch (_) {}
-    console.error('[SEED] Error during seeding:', err.message);
+    if (client) {
+      try { await client.query('ROLLBACK'); } catch (_) {}
+    }
+    console.error('❌ [SEED] Failed to execute database seed:');
+    console.error('   Code:', err.code);
+    console.error('   Error:', err.message);
     throw err;
   } finally {
-    if (client.release) client.release();
-    if (db.pool && db.pool.end) {
-      try { await db.pool.end(); } catch (_) {}
-    }
+    if (client) client.release();
+    await pool.end();
   }
 }
 

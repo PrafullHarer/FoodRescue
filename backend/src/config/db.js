@@ -1,87 +1,31 @@
 const { Pool } = require('pg');
 const config = require('./index');
-const { executeMockQuery, mockDb } = require('./mockStore');
 
 const pool = new Pool({
   connectionString: config.db.connectionString,
-  connectionTimeoutMillis: 1000,
+  connectionTimeoutMillis: 10000,
 });
 
-let isPgConnected = null;
-
 pool.on('connect', () => {
-  isPgConnected = true;
-  console.log('[DB] Connected to PostgreSQL database.');
+  console.log('✅ [DB] Connected to remote PostgreSQL database:', config.db.connectionString.replace(/:[^:@]+@/, ':****@'));
 });
 
 pool.on('error', (err) => {
-  isPgConnected = false;
-  console.warn('[DB] PostgreSQL error:', err.message);
+  console.error('❌ [DB] PostgreSQL database client error:', err.message);
 });
 
 /**
- * Execute a parameterized query.
- * Falls back to mock store if PostgreSQL is unreachable.
+ * Execute a parameterized query directly on PostgreSQL.
+ * @param {string} text - SQL query
+ * @param {Array} params - Query parameters
+ * @returns {Promise<import('pg').QueryResult>}
  */
-const query = async (text, params = []) => {
-  if (isPgConnected === false) {
-    return executeMockQuery(text, params);
-  }
-
-  try {
-    const res = await pool.query(text, params);
-    isPgConnected = true;
-    return res;
-  } catch (err) {
-    if (
-      err.code === 'ECONNREFUSED' ||
-      err.code === 'ETIMEDOUT' ||
-      err.message?.includes('connect') ||
-      err.message?.includes('timeout')
-    ) {
-      if (isPgConnected !== false) {
-        console.warn('⚠️ [DB] PostgreSQL not detected locally. Operating seamlessly in memory / mock mode.');
-        isPgConnected = false;
-      }
-      return executeMockQuery(text, params);
-    }
-    throw err;
-  }
-};
+const query = (text, params) => pool.query(text, params);
 
 /**
- * Transaction client with mock fallback support.
+ * Acquire a dedicated client from PostgreSQL pool for transactions.
+ * @returns {Promise<import('pg').PoolClient>}
  */
-const getClient = async () => {
-  if (isPgConnected === false) {
-    return {
-      query: (text, params) => executeMockQuery(text, params),
-      release: () => {},
-    };
-  }
+const getClient = () => pool.connect();
 
-  try {
-    const client = await pool.connect();
-    isPgConnected = true;
-    return client;
-  } catch (err) {
-    if (
-      err.code === 'ECONNREFUSED' ||
-      err.code === 'ETIMEDOUT' ||
-      err.message?.includes('connect') ||
-      err.message?.includes('timeout')
-    ) {
-      if (isPgConnected !== false) {
-        console.warn('⚠️ [DB] PostgreSQL not detected. Operating in mock mode.');
-        isPgConnected = false;
-      }
-      return {
-        query: (text, params) => executeMockQuery(text, params),
-        release: () => {},
-      };
-    }
-    throw err;
-  }
-};
-
-module.exports = { pool, query, getClient, mockDb };
+module.exports = { pool, query, getClient };

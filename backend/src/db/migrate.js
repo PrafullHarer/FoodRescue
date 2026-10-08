@@ -3,19 +3,23 @@ const path = require('path');
 const { pool } = require('../config/db');
 
 async function migrate() {
-  console.log('[MIGRATION] Running schema migration...');
+  console.log('[MIGRATION] Connecting to PostgreSQL to run schema migration...');
   const schemaPath = path.resolve(__dirname, '../../../database/schema.sql');
   const sql = fs.readFileSync(schemaPath, 'utf8');
 
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
+    console.log('[MIGRATION] Connected. Executing schema.sql...');
     await client.query(sql);
-    console.log('[MIGRATION] Database schema migrated successfully.');
+    console.log('✅ [MIGRATION] Database schema migrated successfully.');
   } catch (err) {
-    console.error('[MIGRATION] Error migrating database schema:', err.message);
+    console.error('❌ [MIGRATION] Failed to execute database migration:');
+    console.error('   Code:', err.code);
+    console.error('   Error:', err.message);
     throw err;
   } finally {
-    client.release();
+    if (client) client.release();
     await pool.end();
   }
 }
