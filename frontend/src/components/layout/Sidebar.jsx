@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   LayoutDashboard, Package, Users, Truck, QrCode, Bell,
@@ -42,6 +42,7 @@ const roleNavItems = {
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -106,34 +107,40 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.to === '/dashboard'}
-            className={({ isActive }) =>
-              `sidebar-link relative ${isActive ? 'active' : ''} ${collapsed ? 'justify-center px-3' : ''}`
-            }
-            title={collapsed ? `${item.label} ${item.hasBadge && unreadCount > 0 ? `(${unreadCount})` : ''}` : undefined}
-          >
-            <div className="relative flex items-center">
-              <item.icon className="w-4 h-4 flex-shrink-0" />
-              {item.hasBadge && unreadCount > 0 && collapsed && (
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-white rounded-full ring-2 ring-[#0c0c0e]" />
-              )}
-            </div>
-            {!collapsed && (
-              <div className="flex items-center justify-between flex-1 min-w-0">
-                <span className="animate-fade-in text-sm font-medium">{item.label}</span>
-                {item.hasBadge && unreadCount > 0 && (
-                  <span className="px-1.5 py-0.5 text-[10px] font-bold bg-white text-black rounded-full shadow-sm animate-pulse">
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </span>
+        {navItems.map((item) => {
+          const isActive =
+            item.to === '/donations'
+              ? location.pathname === '/donations' || (location.pathname.startsWith('/donations/') && location.pathname !== '/donations/new')
+              : item.to === '/dashboard'
+              ? location.pathname === '/dashboard' || location.pathname === '/'
+              : location.pathname === item.to || (location.pathname.startsWith(item.to + '/') && item.to !== '/');
+
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              className={`sidebar-link relative ${isActive ? 'active' : ''} ${collapsed ? 'justify-center px-3' : ''}`}
+              title={collapsed ? `${item.label} ${item.hasBadge && unreadCount > 0 ? `(${unreadCount})` : ''}` : undefined}
+            >
+              <div className="relative flex items-center">
+                <item.icon className="w-4 h-4 flex-shrink-0" />
+                {item.hasBadge && unreadCount > 0 && collapsed && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-white rounded-full ring-2 ring-[#0c0c0e]" />
                 )}
               </div>
-            )}
-          </NavLink>
-        ))}
+              {!collapsed && (
+                <div className="flex items-center justify-between flex-1 min-w-0">
+                  <span className="animate-fade-in text-sm font-medium">{item.label}</span>
+                  {item.hasBadge && unreadCount > 0 && (
+                    <span className="px-1.5 py-0.5 text-[10px] font-bold bg-white text-black rounded-full shadow-sm animate-pulse">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </div>
+              )}
+            </Link>
+          );
+        })}
       </nav>
 
       {/* User section */}

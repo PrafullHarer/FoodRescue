@@ -97,6 +97,7 @@ const register = async (data) => {
  * Authenticate a user with email and password.
  */
 const login = async ({ email, password }) => {
+  
   const { rows } = await db.query(
     'SELECT id, email, password_hash, role, full_name, status FROM users WHERE email = $1',
     [email]
