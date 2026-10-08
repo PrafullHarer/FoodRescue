@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/client';
-import { Bell, CheckCheck, Clock, ShieldAlert, Package, CheckCircle2, Trash2 } from 'lucide-react';
+import { Bell, CheckCheck, Clock, ShieldAlert, Package, CheckCircle2, Inbox } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function NotificationsPage() {
@@ -48,59 +48,58 @@ export default function NotificationsPage() {
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto animate-fade-in">
+    <div className="space-y-6 max-w-5xl mx-auto animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#232328] pb-6">
         <div>
-          <h1 className="text-2xl font-bold text-surface-900 flex items-center gap-3">
-            <Bell className="w-7 h-7 text-primary-500" />
-            Notifications
-          </h1>
-          <p className="text-surface-500 text-sm mt-1">
-            Stay updated with claims, pickup schedules, and delivery milestones.
+          <h1 className="text-2xl font-bold text-white tracking-tight">Notifications</h1>
+          <p className="text-neutral-400 text-sm mt-1">
+            Real-time activity on donations, claim milestones, and rescue dispatches.
           </p>
         </div>
         {unreadCount > 0 && (
           <button
             onClick={handleMarkAllAsRead}
-            className="btn btn-secondary text-sm flex items-center gap-2 self-start"
+            className="btn btn-secondary text-xs flex items-center gap-2 self-start py-2.5 px-4"
           >
-            <CheckCheck className="w-4 h-4 text-primary-600" />
-            Mark all as read ({unreadCount})
+            <CheckCheck className="w-3.5 h-3.5 text-white" />
+            Mark all read ({unreadCount})
           </button>
         )}
       </div>
 
       {/* List */}
-      <div className="bg-white rounded-2xl border border-surface-200 shadow-sm divide-y divide-surface-100 overflow-hidden">
+      <div className="bg-[#121214] rounded-2xl border border-[#232328] overflow-hidden divide-y divide-[#232328]">
         {loading ? (
-          <div className="p-12 text-center text-surface-400">
-            <div className="w-8 h-8 border-3 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+          <div className="p-16 text-center text-neutral-500">
+            <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-3" />
             Loading notifications...
           </div>
         ) : notifications.length === 0 ? (
-          <div className="p-12 text-center text-surface-400">
-            <Bell className="w-12 h-12 mx-auto mb-3 text-surface-300 stroke-1" />
-            <p className="font-medium text-surface-700">No notifications yet</p>
-            <p className="text-sm text-surface-400 mt-1">When donations are claimed or dispatched, you'll see alerts here.</p>
+          <div className="p-16 text-center text-neutral-500">
+            <Inbox className="w-12 h-12 mx-auto mb-3 text-neutral-600 stroke-1" />
+            <p className="font-semibold text-white text-base">All caught up</p>
+            <p className="text-xs text-neutral-400 mt-1">When donations are claimed or dispatched, alerts will appear here.</p>
           </div>
         ) : (
           notifications.map((n) => (
             <div
               key={n.id}
-              className={`p-5 flex items-start gap-4 transition-colors hover:bg-surface-50/80 ${
-                !n.is_read ? 'bg-primary-50/30' : ''
+              className={`p-5 flex items-start gap-4 transition-colors hover:bg-[#18181b] ${
+                !n.is_read ? 'bg-[#18181c]/60' : ''
               }`}
             >
               <div
-                className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                  !n.is_read ? 'bg-primary-100 text-primary-600' : 'bg-surface-100 text-surface-500'
+                className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border ${
+                  !n.is_read
+                    ? 'bg-white text-black border-white'
+                    : 'bg-[#1c1c20] text-neutral-400 border-[#27272e]'
                 }`}
               >
                 {n.type === 'alert' ? (
-                  <ShieldAlert className="w-5 h-5 text-amber-500" />
+                  <ShieldAlert className="w-5 h-5" />
                 ) : n.type === 'claim' || n.type === 'delivery' ? (
-                  <Package className="w-5 h-5 text-emerald-500" />
+                  <Package className="w-5 h-5" />
                 ) : (
                   <Bell className="w-5 h-5" />
                 )}
@@ -108,21 +107,21 @@ export default function NotificationsPage() {
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <h4 className={`text-sm font-semibold ${!n.is_read ? 'text-surface-900' : 'text-surface-700'}`}>
+                  <h4 className={`text-sm font-semibold ${!n.is_read ? 'text-white' : 'text-neutral-300'}`}>
                     {n.title || 'Notification'}
                   </h4>
-                  <span className="text-xs text-surface-400 flex items-center gap-1 flex-shrink-0">
-                    <Clock className="w-3.5 h-3.5" />
+                  <span className="text-xs text-neutral-500 flex items-center gap-1 flex-shrink-0">
+                    <Clock className="w-3 h-3" />
                     {n.created_at ? new Date(n.created_at).toLocaleDateString() : 'Recent'}
                   </span>
                 </div>
-                <p className="text-sm text-surface-600 mt-1">{n.message || n.body}</p>
+                <p className="text-xs text-neutral-400 mt-1 leading-relaxed">{n.message || n.body}</p>
               </div>
 
               {!n.is_read && (
                 <button
                   onClick={() => handleMarkAsRead(n.id)}
-                  className="p-1.5 rounded-lg text-surface-400 hover:text-primary-600 hover:bg-primary-50 transition-colors"
+                  className="p-2 rounded-lg text-neutral-400 hover:text-white hover:bg-[#232328] transition-colors"
                   title="Mark as read"
                 >
                   <CheckCircle2 className="w-4 h-4" />

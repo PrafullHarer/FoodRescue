@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   LayoutDashboard, Package, Users, Truck, QrCode, Bell,
-  BarChart3, Shield, LogOut, Leaf, ChevronLeft, Menu
+  BarChart3, Shield, LogOut, ChevronLeft, Menu, Box
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -52,31 +52,31 @@ export default function Sidebar() {
 
   const roleLabel = {
     provider: 'Food Provider',
-    ngo: 'NGO',
+    ngo: 'NGO / Shelter',
     volunteer: 'Volunteer',
     admin: 'Administrator',
   };
 
   return (
     <aside
-      className={`fixed left-0 top-0 h-screen bg-white border-r border-surface-200 flex flex-col transition-all duration-300 z-40 ${
+      className={`fixed left-0 top-0 h-screen bg-[#0c0c0e] border-r border-[#232328] flex flex-col transition-all duration-300 z-40 ${
         collapsed ? 'w-20' : 'w-64'
       }`}
     >
       {/* Logo */}
-      <div className="flex items-center gap-3 px-5 py-6 border-b border-surface-100">
-        <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center flex-shrink-0">
-          <Leaf className="w-5 h-5 text-white" />
+      <div className="flex items-center gap-3 px-5 py-6 border-b border-[#232328]">
+        <div className="w-10 h-10 rounded-xl bg-white text-black flex items-center justify-center flex-shrink-0 font-bold shadow-md shadow-white/5">
+          <Box className="w-5 h-5 text-black stroke-[2.5]" />
         </div>
         {!collapsed && (
           <div className="animate-fade-in">
-            <h1 className="font-bold text-lg text-surface-900">FoodRescue</h1>
-            <p className="text-xs text-surface-400">{roleLabel[user?.role]}</p>
+            <h1 className="font-bold text-base text-white tracking-tight">FoodRescue</h1>
+            <p className="text-[11px] text-neutral-400 font-medium">{roleLabel[user?.role] || 'Member'}</p>
           </div>
         )}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="ml-auto p-1.5 rounded-lg hover:bg-surface-100 text-surface-400 transition-colors"
+          className="ml-auto p-1.5 rounded-lg hover:bg-[#1f1f24] text-neutral-400 hover:text-white transition-colors"
         >
           {collapsed ? <Menu className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
         </button>
@@ -94,29 +94,29 @@ export default function Sidebar() {
             }
             title={collapsed ? item.label : undefined}
           >
-            <item.icon className="w-5 h-5 flex-shrink-0" />
-            {!collapsed && <span className="animate-fade-in">{item.label}</span>}
+            <item.icon className="w-4 h-4 flex-shrink-0" />
+            {!collapsed && <span className="animate-fade-in text-sm font-medium">{item.label}</span>}
           </NavLink>
         ))}
       </nav>
 
       {/* User section */}
-      <div className="border-t border-surface-100 px-3 py-4">
+      <div className="border-t border-[#232328] px-3 py-4">
         {!collapsed && (
           <div className="px-3 mb-3 animate-fade-in">
-            <p className="font-semibold text-sm text-surface-800 truncate">{user?.full_name}</p>
-            <p className="text-xs text-surface-400 truncate">{user?.email}</p>
+            <p className="font-semibold text-xs text-white truncate">{user?.full_name}</p>
+            <p className="text-[11px] text-neutral-400 truncate">{user?.email}</p>
           </div>
         )}
         <button
           onClick={handleLogout}
-          className={`sidebar-link w-full text-red-500 hover:bg-red-50 hover:text-red-600 ${
+          className={`sidebar-link w-full text-neutral-400 hover:text-white hover:bg-[#1c1c20] ${
             collapsed ? 'justify-center px-3' : ''
           }`}
           title={collapsed ? 'Logout' : undefined}
         >
-          <LogOut className="w-5 h-5 flex-shrink-0" />
-          {!collapsed && <span>Logout</span>}
+          <LogOut className="w-4 h-4 flex-shrink-0" />
+          {!collapsed && <span className="text-xs font-medium">Sign Out</span>}
         </button>
       </div>
     </aside>

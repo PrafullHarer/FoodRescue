@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/client';
-import { Users, Search, Filter, ShieldCheck, UserX, UserCheck, Mail, Phone } from 'lucide-react';
+import { Users, Search, Filter, Mail, Phone } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function UsersPage() {
@@ -45,22 +45,19 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#232328] pb-6">
         <div>
-          <h1 className="text-2xl font-bold text-surface-900 flex items-center gap-3">
-            <Users className="w-7 h-7 text-primary-500" />
-            User Management
-          </h1>
-          <p className="text-surface-500 text-sm mt-1">
+          <h1 className="text-2xl font-bold text-white tracking-tight">User Management</h1>
+          <p className="text-neutral-400 text-sm mt-1">
             Directory of all registered donors, volunteers, NGOs, and platform admins.
           </p>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row items-center gap-4 bg-white p-4 rounded-2xl border border-surface-200 shadow-sm">
+      <div className="flex flex-col sm:flex-row items-center gap-4 bg-[#121214] p-4 rounded-2xl border border-[#232328]">
         <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 text-surface-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Search by name or email..."
@@ -71,11 +68,11 @@ export default function UsersPage() {
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Filter className="w-4 h-4 text-surface-400" />
+          <Filter className="w-4 h-4 text-neutral-500" />
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
-            className="input py-2 text-sm"
+            className="input py-2 text-xs"
           >
             <option value="all">All Roles</option>
             <option value="provider">Food Providers</option>
@@ -87,23 +84,23 @@ export default function UsersPage() {
       </div>
 
       {/* Users Table */}
-      <div className="bg-white rounded-2xl border border-surface-200 shadow-sm overflow-hidden">
+      <div className="bg-[#121214] rounded-2xl border border-[#232328] overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center text-surface-400">
-            <div className="w-8 h-8 border-3 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+          <div className="p-16 text-center text-neutral-500">
+            <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-3" />
             Loading users directory...
           </div>
         ) : filteredUsers.length === 0 ? (
-          <div className="p-12 text-center text-surface-400">
-            <Users className="w-12 h-12 mx-auto mb-3 text-surface-300 stroke-1" />
-            <p className="font-medium text-surface-700">No users found</p>
-            <p className="text-sm text-surface-400 mt-1">Try adjusting your filters or search terms.</p>
+          <div className="p-16 text-center text-neutral-500">
+            <Users className="w-12 h-12 mx-auto mb-3 text-neutral-600 stroke-1" />
+            <p className="font-semibold text-white text-base">No users found</p>
+            <p className="text-xs text-neutral-400 mt-1">Try adjusting your filters or search terms.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-surface-50 text-surface-500 uppercase text-[11px] font-semibold tracking-wider border-b border-surface-200">
+                <tr className="bg-[#0c0c0e] text-neutral-400 uppercase text-[10px] font-semibold tracking-wider border-b border-[#232328]">
                   <th className="py-3.5 px-6">User</th>
                   <th className="py-3.5 px-6">Role</th>
                   <th className="py-3.5 px-6">Status</th>
@@ -111,49 +108,45 @@ export default function UsersPage() {
                   <th className="py-3.5 px-6 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-surface-100 text-sm">
+              <tbody className="divide-y divide-[#232328] text-sm">
                 {filteredUsers.map((u) => (
-                  <tr key={u.id} className="hover:bg-surface-50/60 transition-colors">
+                  <tr key={u.id} className="hover:bg-[#18181b] transition-colors">
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-primary-100 text-primary-700 font-bold flex items-center justify-center flex-shrink-0">
+                        <div className="w-9 h-9 rounded-full bg-white text-black font-bold flex items-center justify-center flex-shrink-0 text-xs">
                           {(u.full_name || u.email || 'U')[0].toUpperCase()}
                         </div>
                         <div>
-                          <div className="font-semibold text-surface-900">{u.full_name || 'Anonymous User'}</div>
-                          <div className="text-xs text-surface-400 flex items-center gap-2 mt-0.5">
-                            <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {u.email}</span>
-                            {u.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {u.phone}</span>}
+                          <div className="font-semibold text-white">{u.full_name || 'Anonymous User'}</div>
+                          <div className="text-xs text-neutral-400 flex items-center gap-3 mt-0.5">
+                            <span className="flex items-center gap-1"><Mail className="w-3 h-3 text-neutral-500" /> {u.email}</span>
+                            {u.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3 text-neutral-500" /> {u.phone}</span>}
                           </div>
                         </div>
                       </div>
                     </td>
                     <td className="py-4 px-6">
-                      <span className={`badge uppercase text-[10px] font-bold ${
-                        u.role === 'admin' ? 'badge-danger' :
-                        u.role === 'provider' ? 'badge-primary' :
-                        u.role === 'ngo' ? 'badge-warning' : 'badge-neutral'
-                      }`}>
+                      <span className="badge badge-neutral uppercase text-[10px] font-bold">
                         {u.role}
                       </span>
                     </td>
                     <td className="py-4 px-6">
-                      <span className={`badge text-xs ${
-                        u.status === 'suspended' ? 'bg-red-50 text-red-700 border border-red-200' : 'badge-success'
+                      <span className={`badge uppercase text-[10px] font-bold ${
+                        u.status === 'suspended' ? 'badge-danger' : 'badge-primary'
                       }`}>
                         {u.status || 'active'}
                       </span>
                     </td>
-                    <td className="py-4 px-6 text-surface-500 text-xs">
+                    <td className="py-4 px-6 text-neutral-400 text-xs">
                       {u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A'}
                     </td>
                     <td className="py-4 px-6 text-right">
                       <button
                         onClick={() => handleStatusChange(u.id, u.status || 'active')}
-                        className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors ${
+                        className={`text-xs font-semibold px-3 py-1.5 rounded-xl border transition-colors ${
                           u.status === 'suspended'
-                            ? 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'
-                            : 'border-red-200 text-red-600 hover:bg-red-50'
+                            ? 'border-neutral-500 bg-white text-black hover:bg-neutral-200'
+                            : 'border-[#3f3f46] text-neutral-300 hover:text-white hover:border-neutral-400'
                         }`}
                       >
                         {u.status === 'suspended' ? 'Reactivate' : 'Suspend'}

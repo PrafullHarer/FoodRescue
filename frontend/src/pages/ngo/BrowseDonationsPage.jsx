@@ -31,65 +31,79 @@ export default function BrowseDonationsPage() {
 
   const filtered = donations.filter(d => d.title?.toLowerCase().includes(search.toLowerCase()));
 
-  const categoryEmoji = {
-    cooked_meals: '🍲', raw_ingredients: '🥬', packaged_food: '📦',
-    beverages: '🥤', bakery: '🍞', dairy: '🥛', fruits_vegetables: '🍎', other: '🍽️',
-  };
-
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-surface-900">Browse Available Donations</h1>
-        <p className="text-surface-500 mt-1">Find and claim surplus food near your organization</p>
+    <div className="space-y-6 animate-fade-in max-w-7xl mx-auto">
+      <div className="border-b border-[#232328] pb-6">
+        <h1 className="text-2xl font-bold text-white tracking-tight">Browse Available Surplus Food</h1>
+        <p className="text-neutral-400 text-sm mt-1">Discover, reserve, and claim surplus food for your shelter network.</p>
       </div>
 
       <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
-        <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-          className="input-field pl-10" placeholder="Search available donations..." />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="input pl-10"
+          placeholder="Search available food listings..."
+        />
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center h-40">
-          <div className="w-8 h-8 border-3 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+        <div className="flex items-center justify-center h-48">
+          <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16">
-          <Package className="w-12 h-12 mx-auto mb-4 text-surface-300" />
-          <p className="text-surface-500 font-medium">No available donations right now</p>
-          <p className="text-sm text-surface-400 mt-1">Check back soon — new food gets posted regularly</p>
+        <div className="text-center py-20 bg-[#121214] border border-[#232328] rounded-2xl p-8">
+          <Package className="w-12 h-12 mx-auto mb-3 text-neutral-600 stroke-1" />
+          <p className="text-white font-semibold text-base">No available donations right now</p>
+          <p className="text-xs text-neutral-400 mt-1">New surplus food is posted regularly by local donors.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filtered.map((d) => (
-            <div key={d.id} className="bg-white rounded-xl border border-surface-200 overflow-hidden hover:shadow-lg transition-all duration-200">
-              <div className="h-2 gradient-accent" />
-              <div className="p-5">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xl">{categoryEmoji[d.category] || '🍽️'}</span>
-                  <h3 className="font-semibold text-surface-800">{d.title}</h3>
+            <div
+              key={d.id}
+              className="bg-[#121214] rounded-2xl border border-[#232328] hover:border-neutral-500 transition-all p-5 flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <h3 className="font-bold text-white text-base leading-snug">{d.title}</h3>
+                  <span className="badge badge-neutral uppercase text-[10px] font-bold">
+                    {d.category?.replace('_', ' ') || 'Food'}
+                  </span>
                 </div>
                 {d.provider_name && (
-                  <p className="text-xs text-surface-400 mb-3">by {d.provider_name}</p>
+                  <p className="text-xs text-neutral-400 mb-2">by <span className="text-white font-medium">{d.provider_name}</span></p>
                 )}
-                <p className="text-sm text-surface-500 mb-4 line-clamp-2">{d.description || 'No description'}</p>
-                <div className="space-y-2 mb-4 text-xs text-surface-500">
-                  <div className="flex items-center gap-1.5">
-                    <Package className="w-3.5 h-3.5" /> {d.quantity} {d.unit}
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5" /> {d.pickup_address?.slice(0,40)}
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5" /> Expires: {new Date(d.expiry_time).toLocaleString()}
-                  </div>
+                <p className="text-xs text-neutral-400 mb-4 line-clamp-2 leading-relaxed">
+                  {d.description || 'Prepared surplus food ready for immediate distribution.'}
+                </p>
+              </div>
+
+              <div className="space-y-3 border-t border-[#232328] pt-3 text-xs text-neutral-400">
+                <div className="flex items-center justify-between font-semibold text-white">
+                  <span>{d.quantity} {d.unit}</span>
+                  <span className="text-neutral-500 font-normal">{d.weight_kg ? `${d.weight_kg} kg` : ''}</span>
                 </div>
-                <button onClick={() => handleClaim(d.id)} disabled={claiming === d.id}
-                  className="btn-primary w-full text-sm flex items-center justify-center gap-2 disabled:opacity-60">
+                <div className="flex items-center gap-1.5 text-neutral-500 truncate">
+                  <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span className="truncate">{d.pickup_address}</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-neutral-500">
+                  <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>Expires: {d.expiry_time ? new Date(d.expiry_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Soon'}</span>
+                </div>
+
+                <button
+                  onClick={() => handleClaim(d.id)}
+                  disabled={claiming === d.id}
+                  className="w-full bg-white hover:bg-neutral-200 text-black font-semibold py-2.5 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
                   {claiming === d.id ? (
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <div className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
                   ) : (
-                    <><CheckCircle2 className="w-4 h-4" /> Claim Donation</>
+                    <><CheckCircle2 className="w-3.5 h-3.5" /> Claim This Donation</>
                   )}
                 </button>
               </div>
