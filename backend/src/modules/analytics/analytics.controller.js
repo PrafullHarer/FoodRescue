@@ -5,7 +5,9 @@ const analyticsService = require('./analytics.service');
  */
 const getImpactMetrics = async (req, res, next) => {
   try {
-    const metrics = await analyticsService.getImpactMetrics();
+    const metrics = await analyticsService.getImpactMetrics({
+      timeRange: req.query.range || req.query.timeRange || 'all',
+    });
     res.json({ success: true, data: metrics });
   } catch (error) {
     next(error);
@@ -17,9 +19,9 @@ const getImpactMetrics = async (req, res, next) => {
  */
 const getDonationTrends = async (req, res, next) => {
   try {
+    const range = req.query.range || req.query.timeRange || 'all';
     const trends = await analyticsService.getDonationTrends({
-      period: req.query.period || 'daily',
-      days: req.query.days ? parseInt(req.query.days, 10) : 30,
+      range,
     });
     res.json({ success: true, data: trends });
   } catch (error) {
@@ -33,8 +35,6 @@ const getDonationTrends = async (req, res, next) => {
 const getLeaderboard = async (req, res, next) => {
   try {
     const leaderboard = await analyticsService.getLeaderboard({
-      period: req.query.period || 'all_time',
-      role: req.query.role || 'provider',
       limit: req.query.limit ? parseInt(req.query.limit, 10) : 10,
     });
     res.json({ success: true, data: leaderboard });
