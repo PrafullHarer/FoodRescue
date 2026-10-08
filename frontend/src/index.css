@@ -35,18 +35,21 @@
     box-sizing: border-box;
   }
 
-  body {
-    font-family: var(--font-sans);
-    background-color: #050505;
-    color: #ffffff;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-
   html {
     scroll-behavior: smooth;
     background-color: #050505;
     color-scheme: dark;
+    font-size: 17.5px; /* Increased global base font size from 16px */
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: #050505;
+    color: #ffffff;
+    font-size: 1rem;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   /* Custom dark scrollbars */

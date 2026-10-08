@@ -129,6 +129,9 @@ export default function LoginPage() {
               <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
               <input
                 type="email"
+                id="login-email"
+                name="email"
+                autoComplete="username"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 className="w-full bg-[#0c0c0e] border border-[#232328] focus:border-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-400 text-white placeholder-neutral-500 rounded-xl px-4 py-3 pl-10 text-sm transition-all"
@@ -158,6 +161,9 @@ export default function LoginPage() {
               <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
               <input
                 type={showPass ? 'text' : 'password'}
+                id="login-password"
+                name="password"
+                autoComplete="current-password"
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
                 className="w-full bg-[#0c0c0e] border border-[#232328] focus:border-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-400 text-white placeholder-neutral-500 rounded-xl px-4 py-3 pl-10 pr-10 text-sm transition-all"
