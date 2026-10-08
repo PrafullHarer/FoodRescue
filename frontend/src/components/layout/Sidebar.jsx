@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   LayoutDashboard, Package, Users, Truck, QrCode, Bell,
@@ -41,6 +41,7 @@ const roleNavItems = {
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
 
   const navItems = roleNavItems[user?.role] || [];
@@ -84,20 +85,28 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.to === '/dashboard'}
-            className={({ isActive }) =>
-              `sidebar-link ${isActive ? 'active' : ''} ${collapsed ? 'justify-center px-3' : ''}`
-            }
-            title={collapsed ? item.label : undefined}
-          >
-            <item.icon className="w-4 h-4 flex-shrink-0" />
-            {!collapsed && <span className="animate-fade-in text-sm font-medium">{item.label}</span>}
-          </NavLink>
-        ))}
+        {navItems.map((item) => {
+          const isActive =
+            item.to === '/donations'
+              ? location.pathname === '/donations' || (location.pathname.startsWith('/donations/') && location.pathname !== '/donations/new')
+              : item.to === '/dashboard'
+              ? location.pathname === '/dashboard' || location.pathname === '/'
+              : location.pathname === item.to || (location.pathname.startsWith(item.to + '/') && item.to !== '/');
+
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              className={
+                `sidebar-link ${isActive ? 'active' : ''} ${collapsed ? 'justify-center px-3' : ''}`
+              }
+              title={collapsed ? item.label : undefined}
+            >
+              <item.icon className="w-4 h-4 flex-shrink-0" />
+              {!collapsed && <span className="animate-fade-in text-sm font-medium">{item.label}</span>}
+            </Link>
+          );
+        })}
       </nav>
 
       {/* User section */}

@@ -1,12 +1,19 @@
 const { Pool } = require('pg');
 const config = require('./index');
 
+if (!config.db.connectionString) {
+  console.error('❌ [DB] FATAL ERROR: DATABASE_URL is not set in environment variables! Ensure backend/.env file exists with valid DATABASE_URL.');
+}
+
 const pool = new Pool({
   connectionString: config.db.connectionString,
   max: 10,
   idleTimeoutMillis: 60000,
   connectionTimeoutMillis: 10000,
   keepAlive: true,
+  ssl: config.db.connectionString && config.db.connectionString.includes('neon.tech')
+    ? { rejectUnauthorized: false }
+    : undefined,
 });
 
 let hasLoggedConnection = false;
