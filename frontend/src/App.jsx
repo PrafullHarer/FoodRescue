@@ -120,7 +120,7 @@ export default function App() {
             <Route
               path="/qr-scan"
               element={
-                <ProtectedRoute allowedRoles={['volunteer', 'admin']}>
+                <ProtectedRoute allowedRoles={['volunteer', 'ngo', 'provider', 'admin']}>
                   <QRScanPage />
                 </ProtectedRoute>
               }

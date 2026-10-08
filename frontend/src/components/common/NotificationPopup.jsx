@@ -7,7 +7,27 @@ import {
   Package, Clock, ExternalLink
 } from 'lucide-react';
 
-const POLL_INTERVAL = 4000; // 4 seconds for responsive real-time updates
+const POLL_INTERVAL = 35000; // 35 seconds (reduced API calls, checks when active)
+
+const getSeenIds = (userId) => {
+  if (!userId) return new Set();
+  try {
+    const raw = localStorage.getItem(`foodrescue_seen_popups_${userId}`);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+};
+
+const saveSeenIds = (userId, seenSet) => {
+  if (!userId) return;
+  try {
+    const arr = Array.from(seenSet).slice(-100);
+    localStorage.setItem(`foodrescue_seen_popups_${userId}`, JSON.stringify(arr));
+  } catch {
+    // ignore
+  }
+};
 
 /**
  * Bottom-right notification popup for users (NGOs, Providers, Volunteers).
@@ -17,15 +37,19 @@ export default function NotificationPopup() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [popups, setPopups] = useState([]);
-  const shownIdsRef = useRef(new Set());
   const intervalRef = useRef(null);
 
-  const dismissPopup = useCallback((popupId) => {
+  const dismissPopup = useCallback((popupId, originalId) => {
     setPopups(prev => prev.filter(p => p._popupId !== popupId));
-  }, []);
+    if (user?.id && originalId) {
+      const seen = getSeenIds(user.id);
+      seen.add(originalId);
+      saveSeenIds(user.id, seen);
+    }
+  }, [user?.id]);
 
   const fetchNewNotifications = useCallback(async () => {
-    if (!user) return;
+    if (!user || (typeof document !== 'undefined' && document.hidden)) return;
     try {
       const { data } = await api.get('/notifications', {
         params: { unread: 'true', limit: 10 },
@@ -34,14 +58,17 @@ export default function NotificationPopup() {
       const notifications = data?.data?.notifications || [];
       if (notifications.length === 0) return;
 
-      // Find any unread notification that hasn't been shown yet in this session
+      const seenSet = getSeenIds(user.id);
+
+      // Find any unread notification that hasn't been shown yet
       const freshNotifications = notifications.filter(
-        n => !shownIdsRef.current.has(n.id)
+        n => !seenSet.has(n.id)
       );
 
       if (freshNotifications.length > 0) {
-        // Record them as shown
-        freshNotifications.forEach(n => shownIdsRef.current.add(n.id));
+        // Record them as shown persistently in localStorage
+        freshNotifications.forEach(n => seenSet.add(n.id));
+        saveSeenIds(user.id, seenSet);
 
         // Add up to 3 to popup queue
         setPopups(prev => {
@@ -63,7 +90,7 @@ export default function NotificationPopup() {
 
     const timers = popups.map(p =>
       setTimeout(() => {
-        dismissPopup(p._popupId);
+        dismissPopup(p._popupId, p.id);
       }, 8000)
     );
 
@@ -102,7 +129,7 @@ export default function NotificationPopup() {
       }
     }
 
-    dismissPopup(popup._popupId);
+    dismissPopup(popup._popupId, popup.id);
 
     const donationId = notifData?.donation_id || notifData?.donationId || popup.donation_id;
     const isValidUUID = donationId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(donationId);
@@ -158,7 +185,7 @@ export default function NotificationPopup() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    dismissPopup(popup._popupId);
+                    dismissPopup(popup._popupId, popup.id);
                   }}
                   className="p-1 rounded-lg text-neutral-500 hover:text-white hover:bg-[#1f1f24] transition-colors flex-shrink-0"
                 >

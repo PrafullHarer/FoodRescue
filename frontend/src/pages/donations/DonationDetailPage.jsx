@@ -15,6 +15,7 @@ export default function DonationDetailPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [donation, setDonation] = useState(null);
+  const [qrData, setQrData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -22,8 +23,12 @@ export default function DonationDetailPage() {
   const fetchDonation = async () => {
     try {
       setLoading(true);
-      const res = await api.get(`/donations/${id}`);
+      const [res, qrRes] = await Promise.all([
+        api.get(`/donations/${id}`),
+        api.get(`/qr-codes/donation/${id}`).catch(() => ({ data: { data: null } })),
+      ]);
       setDonation(res.data.data);
+      setQrData(qrRes.data?.data || null);
     } catch (err) {
       toast.error('Failed to load donation details');
       console.error(err);
@@ -198,20 +203,69 @@ export default function DonationDetailPage() {
               </button>
             )}
 
-            {isVolunteer && (
-              <Link
-                to="/qr-scan"
-                className="btn btn-secondary text-xs flex items-center gap-2"
+            {/* Volunteer Actions */}
+            {isVolunteer && !hasVolunteer && donation.status === 'claimed' && (
+              <button
+                onClick={async () => {
+                  try {
+                    setClaiming(true);
+                    await api.post(`/volunteers/claim-mission/${id}`);
+                    toast.success('Pickup mission claimed successfully! Show QR to donor on pickup.');
+                    fetchDonation();
+                  } catch (err) {
+                    toast.error(err.response?.data?.message || 'Failed to claim pickup mission');
+                  } finally {
+                    setClaiming(false);
+                  }
+                }}
+                disabled={claiming}
+                className="btn btn-primary text-xs flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 text-black font-bold shadow-lg shadow-amber-500/20"
               >
-                <QrCode className="w-3.5 h-3.5 text-white" />
-                Scan Handover QR
+                {claiming ? (
+                  <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Truck className="w-4 h-4 text-black" />
+                    Claim This Pickup Mission
+                  </>
+                )}
+              </button>
+            )}
+
+            {isVolunteer && hasVolunteer && ['volunteer_assigned', 'accepted'].includes(donation.status) && (
+              <Link
+                to={`/qr-scan?code=${qrData?.pickup?.code || ''}`}
+                className="btn btn-primary text-xs flex items-center gap-2"
+              >
+                <QrCode className="w-4 h-4" />
+                Scan Donor Pickup QR
+              </Link>
+            )}
+
+            {isVolunteer && hasVolunteer && ['collected', 'in_transit'].includes(donation.status) && (
+              <Link
+                to="/deliveries"
+                className="btn btn-primary text-xs flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
+              >
+                <QrCode className="w-4 h-4" />
+                View Shelter Dropoff QR
+              </Link>
+            )}
+
+            {isNgo && ['collected', 'volunteer_assigned'].includes(donation.status) && (
+              <Link
+                to={`/qr-scan?code=${qrData?.delivery?.code || ''}`}
+                className="btn btn-primary text-xs flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                Scan Dropoff QR & Confirm Receipt
               </Link>
             )}
 
             {isNgo && !isAvailable && (
               <button
                 onClick={() => setShowReviewModal(true)}
-                className="btn btn-primary text-xs flex items-center gap-1.5"
+                className="btn btn-secondary text-xs flex items-center gap-1.5"
               >
                 <ThumbsUp className="w-3.5 h-3.5" /> Rate & Review
               </button>
@@ -229,6 +283,108 @@ export default function DonationDetailPage() {
           </button>
         </div>
       </div>
+
+      {/* QR Section: Food Provider Only Sees 1 Pickup QR Code */}
+      {isOwner && qrData?.pickup && (
+        <div className="bg-[#121214] rounded-[24px] border border-[#232328] p-6 sm:p-8 space-y-5 shadow-2xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#232328] pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white text-black flex items-center justify-center flex-shrink-0">
+                <QrCode className="w-5 h-5 stroke-[2.5]" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-base">Food Pickup Verification QR Code</h3>
+                <p className="text-xs text-neutral-400">
+                  {hasVolunteer
+                    ? `Show this QR code to volunteer ${donation.volunteer_name || ''} when they arrive to inspect and collect the food.`
+                    : 'A volunteer will scan this QR code upon arrival to verify food quality and begin delivery.'}
+                </p>
+              </div>
+            </div>
+
+            <span className={`badge uppercase text-[10px] font-bold ${
+              qrData.pickup.is_scanned ? 'badge-primary' : 'badge-warning'
+            }`}>
+              {qrData.pickup.is_scanned ? '✓ Pickup Completed' : 'Awaiting Volunteer Scan'}
+            </span>
+          </div>
+
+          <div className="max-w-md mx-auto p-6 bg-[#0c0c0e] rounded-2xl border border-[#232328] flex flex-col items-center text-center space-y-4 shadow-lg">
+            {qrData.pickup.qr_image ? (
+              <div className="p-4 bg-white rounded-2xl shadow-xl border border-neutral-300">
+                <img
+                  src={qrData.pickup.qr_image}
+                  alt="Pickup Verification QR Code"
+                  className="w-52 h-52 object-contain"
+                />
+              </div>
+            ) : (
+              <div className="w-48 h-48 bg-[#18181b] rounded-2xl flex items-center justify-center border border-[#282830]">
+                <QrCode className="w-16 h-16 text-neutral-600" />
+              </div>
+            )}
+
+            <div className="w-full">
+              <span className="text-[10px] uppercase font-bold text-neutral-500 block mb-1">
+                Alphanumeric Verification Token
+              </span>
+              <div className="p-2.5 bg-[#18181b] rounded-xl border border-[#282830] font-mono text-sm font-bold text-white tracking-widest">
+                {qrData.pickup.code}
+              </div>
+            </div>
+
+            <p className="text-xs text-neutral-400 max-w-xs leading-relaxed">
+              The assigned volunteer will scan this code to perform the quality checklist and begin the delivery run to the shelter.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Volunteer View: Dropoff QR (Shown to Volunteer when food is in transit) */}
+      {isVolunteer && ['collected', 'in_transit'].includes(donation.status) && qrData?.delivery && (
+        <div className="bg-[#121214] rounded-[24px] border border-[#232328] p-6 sm:p-8 space-y-5 shadow-2xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#232328] pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center flex-shrink-0">
+                <QrCode className="w-5 h-5 stroke-[2.5]" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-base">Shelter Dropoff QR Code</h3>
+                <p className="text-xs text-neutral-400">
+                  Show this QR code to the NGO shelter upon arrival to verify delivery and complete the mission.
+                </p>
+              </div>
+            </div>
+
+            <span className={`badge uppercase text-[10px] font-bold ${
+              qrData.delivery.is_scanned ? 'badge-primary' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+            }`}>
+              {qrData.delivery.is_scanned ? '✓ Delivery Completed' : 'Ready for Shelter Scan'}
+            </span>
+          </div>
+
+          <div className="max-w-md mx-auto p-6 bg-[#0c0c0e] rounded-2xl border border-[#232328] flex flex-col items-center text-center space-y-4 shadow-lg">
+            {qrData.delivery.qr_image && (
+              <div className="p-4 bg-white rounded-2xl shadow-xl border border-neutral-300">
+                <img
+                  src={qrData.delivery.qr_image}
+                  alt="Shelter Dropoff QR Code"
+                  className="w-52 h-52 object-contain"
+                />
+              </div>
+            )}
+
+            <div className="w-full">
+              <span className="text-[10px] uppercase font-bold text-neutral-500 block mb-1">
+                Dropoff Verification Token
+              </span>
+              <div className="p-2.5 bg-[#18181b] rounded-xl border border-[#282830] font-mono text-sm font-bold text-white tracking-widest">
+                {qrData.delivery.code}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 2 Cards: Food Provider Details & Volunteer Pickup Details */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

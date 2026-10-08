@@ -19,6 +19,7 @@ const roleNavItems = {
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/browse', icon: Package, label: 'Browse Donations' },
     { to: '/claims', icon: Package, label: 'My Claims' },
+    { to: '/qr-scan', icon: QrCode, label: 'Verify Dropoff QR' },
     { to: '/notifications', icon: Bell, label: 'Notifications', hasBadge: true },
     { to: '/analytics', icon: BarChart3, label: 'Impact' },
   ],
@@ -50,6 +51,7 @@ export default function Sidebar() {
     if (!user) return;
 
     const fetchUnreadCount = async () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       try {
         const res = await api.get('/notifications', {
           params: { unread: 'true', limit: 100 },
@@ -62,9 +64,9 @@ export default function Sidebar() {
     };
 
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 5000);
+    const interval = setInterval(fetchUnreadCount, 45000); // 45 seconds
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, location.pathname]);
 
   const navItems = roleNavItems[user?.role] || [];
 

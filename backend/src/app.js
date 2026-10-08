@@ -35,7 +35,7 @@ app.use(express.urlencoded({ extended: true }));
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,                  // limit each IP to 100 requests per window
+  max: config.nodeEnv === 'production' ? 1000 : 10000, // accommodate polling and active UI
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -91,4 +91,18 @@ app.listen(PORT, () => {
   startExpiryChecker();
 });
 
+// ─── Process Error Handlers ─────────────────────────────────
+process.on('uncaughtException', (err) => {
+  if (err?.code === 'ECONNRESET' || err?.code === 'EPIPE') {
+    console.warn('⚠️ [PROCESS] Transient network socket error caught:', err.message);
+  } else {
+    console.error('❌ [PROCESS] Uncaught Exception:', err);
+  }
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.warn('⚠️ [PROCESS] Unhandled Promise Rejection:', reason?.message || reason);
+});
+
 module.exports = app;
+

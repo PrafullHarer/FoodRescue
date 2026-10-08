@@ -366,7 +366,46 @@ const claimDonation = async (donationId, ngoId) => {
       [donationId, ngoId]
     );
 
+    // Create pending delivery if one does not exist
+    const existingDelivery = await client.query(
+      'SELECT id FROM deliveries WHERE donation_id = $1',
+      [donationId]
+    );
+
+    let deliveryId = null;
+    if (existingDelivery.rows.length === 0) {
+      const delRes = await client.query(
+        `INSERT INTO deliveries (donation_id, ngo_id, status)
+         VALUES ($1, $2, 'pending')
+         RETURNING id`,
+        [donationId, ngoId]
+      );
+      deliveryId = delRes.rows[0].id;
+    } else {
+      deliveryId = existingDelivery.rows[0].id;
+      await client.query(
+        `UPDATE deliveries SET ngo_id = $1 WHERE id = $2`,
+        [ngoId, deliveryId]
+      );
+    }
+
     await client.query('COMMIT');
+
+    // Generate initial QR codes for pickup & delivery
+    try {
+      const qrcodeService = require('../qrcodes/qrcode.service');
+      await qrcodeService.generateQRCodes(deliveryId);
+    } catch (qrErr) {
+      console.error('[QR] Failed to pre-generate QR codes on claim:', qrErr.message);
+    }
+
+    // Broadcast notification to volunteers about available pickup mission
+    try {
+      const notifService = require('../notifications/notification.service');
+      notifService.notifyVolunteersOfPickupMission(donation, deliveryId).catch(() => {});
+    } catch (notifErr) {
+      console.error('[NOTIFY] Failed to notify volunteers:', notifErr.message);
+    }
 
     return claimResult.rows[0];
   } catch (error) {

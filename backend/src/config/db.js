@@ -8,7 +8,7 @@ if (!config.db.connectionString) {
 const pool = new Pool({
   connectionString: config.db.connectionString,
   max: 10,
-  idleTimeoutMillis: 60000,
+  idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
   keepAlive: true,
   ssl: config.db.connectionString && config.db.connectionString.includes('neon.tech')
@@ -18,15 +18,18 @@ const pool = new Pool({
 
 let hasLoggedConnection = false;
 
-pool.on('connect', () => {
+pool.on('connect', (client) => {
   if (!hasLoggedConnection) {
     console.log('✅ [DB] Connection pool established with PostgreSQL database');
     hasLoggedConnection = true;
   }
+  client.on('error', (err) => {
+    console.warn('⚠️ [DB] Client socket error caught:', err.message);
+  });
 });
 
 pool.on('error', (err) => {
-  console.error('❌ [DB] PostgreSQL pool idle client error:', err.message);
+  console.warn('⚠️ [DB] PostgreSQL pool idle client error caught:', err.message);
 });
 
 /**
@@ -43,6 +46,10 @@ const query = (text, params) => pool.query(text, params);
  * NOTE: Always release client in a finally block!
  * @returns {Promise<import('pg').PoolClient>}
  */
-const getClient = () => pool.connect();
+const getClient = async () => {
+  const client = await pool.connect();
+  return client;
+};
 
 module.exports = { pool, query, getClient };
+

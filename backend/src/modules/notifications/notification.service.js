@@ -275,15 +275,60 @@ const markDonationNotificationsReadOnClaim = async (donationId) => {
   }
 };
 
+/**
+ * Notify all active volunteers when a claimed donation needs a pickup mission.
+ */
+const notifyVolunteersOfPickupMission = async (donation, deliveryId) => {
+  try {
+    const { rows: volunteerUsers } = await db.query(
+      `SELECT u.id AS user_id
+       FROM volunteers v
+       JOIN users u ON u.id = v.user_id
+       WHERE (u.status IS NULL OR u.status = 'active')`
+    );
+
+    if (volunteerUsers.length === 0) return;
+
+    const title = '🚚 Volunteer Pickup Mission Available!';
+    const body = `"${donation.title}" has been claimed by a shelter. Claim the pickup route to deliver ${donation.quantity} ${donation.unit || 'servings'} of food!`;
+    const data = JSON.stringify({
+      type: 'delivery_available',
+      donation_id: donation.id,
+      delivery_id: deliveryId,
+    });
+
+    const valuePlaceholders = volunteerUsers.map((_, i) => {
+      const base = i * 5;
+      return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5})`;
+    }).join(', ');
+
+    const values = volunteerUsers.flatMap(v => [
+      v.user_id, 'in_app', title, body, data,
+    ]);
+
+    await db.query(
+      `INSERT INTO notifications (user_id, type, title, body, data)
+       VALUES ${valuePlaceholders}`,
+      values
+    );
+
+    console.log(`[NOTIFY] Sent pickup mission notification to ${volunteerUsers.length} volunteer(s) for "${donation.title}"`);
+  } catch (error) {
+    console.error('[NOTIFY] Failed to notify volunteers:', error.message);
+  }
+};
+
 module.exports = {
   createNotification,
   sendPushNotification,
   sendEmail,
   notifyStatusChange,
   notifyNgosOfNewDonation,
+  notifyVolunteersOfPickupMission,
   markDonationNotificationsReadOnClaim,
   getUserNotifications,
   markAsRead,
   markAllAsRead,
   registerDeviceToken,
 };
+

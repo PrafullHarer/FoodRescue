@@ -55,9 +55,36 @@ const getMyDeliveries = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /api/volunteers/available-missions
+ */
+const getAvailableMissions = async (req, res, next) => {
+  try {
+    const missions = await volunteerService.getAvailableMissions(req.user.id);
+    res.json({ success: true, data: missions });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/volunteers/claim-mission/:deliveryId
+ */
+const claimMission = async (req, res, next) => {
+  try {
+    const delivery = await volunteerService.claimMission(req.params.deliveryId, req.user.id);
+    res.json({ success: true, message: 'Pickup mission claimed successfully!', data: delivery });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getRankedVolunteers,
   updateAvailability,
   updateLocation,
   getMyDeliveries,
+  getAvailableMissions,
+  claimMission,
 };
+

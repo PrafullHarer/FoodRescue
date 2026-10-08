@@ -376,7 +376,16 @@ export default function ClaimsPage() {
                     </div>
                   )}
 
-                  <div className="flex items-center gap-2 self-end sm:self-auto">
+                  <div className="flex items-center gap-2.5 self-end sm:self-auto flex-wrap">
+                    {['collected', 'volunteer_assigned'].includes(d.status) && (
+                      <Link
+                        to="/qr-scan"
+                        className="btn btn-primary text-xs flex items-center gap-1.5 py-2 px-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/10"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5" /> Scan Dropoff QR
+                      </Link>
+                    )}
+
                     {review ? (
                       <button
                         onClick={() => setSelectedDonationForReview(d)}
@@ -387,9 +396,9 @@ export default function ClaimsPage() {
                     ) : (
                       <button
                         onClick={() => setSelectedDonationForReview(d)}
-                        className="btn btn-primary text-xs flex items-center gap-1.5 py-2 px-4"
+                        className="btn btn-secondary text-xs flex items-center gap-1.5 py-2 px-4"
                       >
-                        <ThumbsUp className="w-3.5 h-3.5" /> Rate & Review Claim
+                        <ThumbsUp className="w-3.5 h-3.5" /> Rate & Review
                       </button>
                     )}
                   </div>
