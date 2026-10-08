@@ -114,11 +114,23 @@ const notifyStatusChange = async (donationId, newStatus) => {
   const msg = messages[newStatus];
   if (!msg) return;
 
-  // Notify provider
+  // Notify provider via in-app notification
+  await createNotification({
+    userId: d.provider_user_id,
+    title: msg.title,
+    body: msg.body,
+    type: 'in_app',
+    data: {
+      donation_id: donationId,
+      status: newStatus,
+    },
+  });
+
+  // Also try push notification if configured
   await sendPushNotification(d.provider_user_id, msg.title, msg.body, {
     donation_id: donationId,
     status: newStatus,
-  });
+  }).catch(() => {});
 };
 
 /**
@@ -195,11 +207,81 @@ const registerDeviceToken = async (userId, token, platform) => {
   return rows[0];
 };
 
+/**
+ * Notify all active NGOs about a new donation.
+ * Creates an in-app notification for every NGO user so they can claim it.
+ */
+const notifyNgosOfNewDonation = async (donation) => {
+  try {
+    // Find all active NGO users
+    const { rows: ngoUsers } = await db.query(
+      `SELECT id AS user_id
+       FROM users
+       WHERE role = 'ngo' AND (status IS NULL OR status = 'active')`
+    );
+
+    if (ngoUsers.length === 0) {
+      console.log('[NOTIFY] No active NGO users found to notify.');
+      return;
+    }
+
+    const title = '🍽️ New Donation Available!';
+    const body = `"${donation.title}" — ${donation.quantity} ${donation.unit || 'servings'} of ${(donation.category || 'food').replace(/_/g, ' ')} just posted. Claim it before it's gone!`;
+    const data = JSON.stringify({
+      type: 'new_donation',
+      donation_id: donation.id,
+      category: donation.category,
+    });
+
+    // Bulk insert notifications for all NGOs
+    const valuePlaceholders = ngoUsers.map((_, i) => {
+      const base = i * 5;
+      return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5})`;
+    }).join(', ');
+
+    const values = ngoUsers.flatMap(ngo => [
+      ngo.user_id, 'in_app', title, body, data,
+    ]);
+
+    await db.query(
+      `INSERT INTO notifications (user_id, type, title, body, data)
+       VALUES ${valuePlaceholders}`,
+      values
+    );
+
+    console.log(`[NOTIFY] Sent new-donation notification to ${ngoUsers.length} NGO(s) for "${donation.title}"`);
+  } catch (error) {
+    console.error('[NOTIFY] Failed to notify NGOs:', error.message);
+  }
+};
+
+/**
+ * Automatically mark donation notifications as read for all NGOs once the donation is claimed.
+ * If other NGOs received the alert, it automatically moves to their read section.
+ */
+const markDonationNotificationsReadOnClaim = async (donationId) => {
+  try {
+    await db.query(
+      `UPDATE notifications
+       SET is_read = TRUE,
+           read_at = NOW()
+       WHERE (data->>'donation_id' = $1 OR data::text LIKE '%"' || $1 || '"%')
+         AND is_read = FALSE`,
+      [donationId]
+    );
+    console.log(`[NOTIFY] Auto-marked new_donation notifications as read for claimed donation ${donationId}`);
+  } catch (error) {
+    console.error('[NOTIFY] Failed to auto-mark donation notifications read:', error.message);
+  }
+};
+
 module.exports = {
   createNotification,
   sendPushNotification,
   sendEmail,
   notifyStatusChange,
+  notifyNgosOfNewDonation,
+  markDonationNotificationsReadOnClaim,
   getUserNotifications,
   markAsRead,
   markAllAsRead,

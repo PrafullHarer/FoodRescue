@@ -4,9 +4,11 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../api/client';
 import {
   ArrowLeft, Package, Clock, MapPin, CheckCircle2,
-  AlertTriangle, QrCode, Share2, Check
+  AlertTriangle, QrCode, Share2, Check, Phone, Mail,
+  User, Truck, ShieldCheck, Star, Sparkles, ThumbsUp
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import ReviewModal from '../../components/common/ReviewModal';
 
 export default function DonationDetailPage() {
   const { id } = useParams();
@@ -15,6 +17,7 @@ export default function DonationDetailPage() {
   const [donation, setDonation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
 
   const fetchDonation = async () => {
     try {
@@ -52,7 +55,7 @@ export default function DonationDetailPage() {
       await api.post(`/donations/${id}/cancel`);
       toast.success('Donation cancelled');
       navigate('/donations');
-    } catch (err) {
+    } catch {
       toast.error('Failed to cancel donation');
     }
   };
@@ -77,9 +80,12 @@ export default function DonationDetailPage() {
   }
 
   const isAvailable = donation.status === 'posted' || donation.status === 'available';
-  const isOwner = user?.id === donation.donor_id || user?.id === donation.provider_id;
+  const isOwner = user?.id === donation.donor_id || user?.id === donation.provider_id || user?.id === donation.provider_user_id;
   const isNgo = user?.role === 'ngo';
   const isVolunteer = user?.role === 'volunteer';
+
+  const hasVolunteer = Boolean(donation.volunteer_name || donation.volunteer_id);
+  const reviews = donation.reviews || [];
 
   const steps = [
     { title: 'Listed', done: true },
@@ -89,7 +95,7 @@ export default function DonationDetailPage() {
   ];
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in pb-12">
+    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in pb-16">
       {/* Top navigation */}
       <button
         onClick={() => navigate(-1)}
@@ -104,13 +110,13 @@ export default function DonationDetailPage() {
           <div>
             <div className="flex items-center gap-2 flex-wrap mb-2">
               <span className="badge badge-neutral uppercase text-[10px] font-bold">
-                {donation.category?.replace('_', ' ') || 'Food Parcel'}
+                {donation.category?.replace(/_/g, ' ') || 'Food Parcel'}
               </span>
               <span className={`badge uppercase text-[10px] font-bold ${
                 donation.status === 'delivered' || donation.status === 'completed' ? 'badge-primary' :
                 donation.status === 'claimed' ? 'badge-warning' : 'badge-neutral'
               }`}>
-                {donation.status}
+                {donation.status?.replace(/_/g, ' ')}
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{donation.title}</h1>
@@ -201,6 +207,15 @@ export default function DonationDetailPage() {
                 Scan Handover QR
               </Link>
             )}
+
+            {isNgo && !isAvailable && (
+              <button
+                onClick={() => setShowReviewModal(true)}
+                className="btn btn-primary text-xs flex items-center gap-1.5"
+              >
+                <ThumbsUp className="w-3.5 h-3.5" /> Rate & Review
+              </button>
+            )}
           </div>
 
           <button
@@ -214,6 +229,206 @@ export default function DonationDetailPage() {
           </button>
         </div>
       </div>
+
+      {/* 2 Cards: Food Provider Details & Volunteer Pickup Details */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Food Provider Card */}
+        <div className="bg-[#121214] rounded-[24px] border border-[#232328] p-6 space-y-4 shadow-xl">
+          <div className="flex items-center justify-between border-b border-[#232328] pb-3">
+            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              <User className="w-4 h-4 text-white" /> Food Provider Profile
+            </h3>
+            {donation.provider_is_verified && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                <ShieldCheck className="w-3 h-3" /> Verified Provider
+              </span>
+            )}
+          </div>
+
+          <div className="space-y-2.5 text-xs">
+            <div>
+              <span className="text-neutral-500 uppercase text-[10px] font-bold block">Business / Organization</span>
+              <p className="text-white font-bold text-sm mt-0.5">{donation.provider_name || 'Donor Provider'}</p>
+            </div>
+
+            {donation.provider_contact && (
+              <div>
+                <span className="text-neutral-500 uppercase text-[10px] font-bold block">Contact Person</span>
+                <p className="text-neutral-300 font-medium">{donation.provider_contact}</p>
+              </div>
+            )}
+
+            {donation.provider_phone && (
+              <div className="flex items-center gap-2">
+                <Phone className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
+                <a href={`tel:${donation.provider_phone}`} className="text-neutral-300 hover:text-white underline underline-offset-2">
+                  {donation.provider_phone}
+                </a>
+              </div>
+            )}
+
+            {donation.provider_email && (
+              <div className="flex items-center gap-2">
+                <Mail className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
+                <a href={`mailto:${donation.provider_email}`} className="text-neutral-300 hover:text-white truncate">
+                  {donation.provider_email}
+                </a>
+              </div>
+            )}
+
+            {donation.provider_total_donations !== undefined && (
+              <div className="flex items-center gap-2 text-neutral-400 pt-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
+                <span>{donation.provider_total_donations} lifetime donations listed</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Assigned Volunteer Card */}
+        <div className="bg-[#121214] rounded-[24px] border border-[#232328] p-6 space-y-4 shadow-xl">
+          <div className="flex items-center justify-between border-b border-[#232328] pb-3">
+            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              <Truck className="w-4 h-4 text-white" /> Pickup Volunteer
+            </h3>
+            {hasVolunteer && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                Assigned
+              </span>
+            )}
+          </div>
+
+          {hasVolunteer ? (
+            <div className="space-y-2.5 text-xs">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-neutral-500 uppercase text-[10px] font-bold block">Volunteer Name</span>
+                  <p className="text-white font-bold text-sm mt-0.5">{donation.volunteer_name || 'Assigned Volunteer'}</p>
+                </div>
+                {donation.volunteer_rating > 0 && (
+                  <span className="flex items-center gap-1 text-xs font-bold text-amber-400 bg-amber-400/10 px-2 py-1 rounded-lg border border-amber-400/20">
+                    <Star className="w-3.5 h-3.5 fill-amber-400" />
+                    {Number(donation.volunteer_rating).toFixed(1)}
+                  </span>
+                )}
+              </div>
+
+              {donation.volunteer_phone && (
+                <div className="flex items-center gap-2">
+                  <Phone className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
+                  <a href={`tel:${donation.volunteer_phone}`} className="text-neutral-300 hover:text-white underline underline-offset-2">
+                    {donation.volunteer_phone}
+                  </a>
+                </div>
+              )}
+
+              {donation.volunteer_vehicle_type && (
+                <div className="flex items-center gap-2">
+                  <Truck className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
+                  <span className="text-neutral-300">Vehicle: <strong className="text-white capitalize">{donation.volunteer_vehicle_type}</strong></span>
+                </div>
+              )}
+
+              {donation.delivery_status && (
+                <div className="pt-2">
+                  <span className="text-[10px] uppercase font-bold text-neutral-500 block mb-1">Live Delivery Status</span>
+                  <span className="px-2.5 py-1 rounded-lg bg-[#1a1a1f] border border-[#2a2a32] text-xs font-semibold text-white capitalize">
+                    {donation.delivery_status.replace(/_/g, ' ')}
+                  </span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="py-8 text-center space-y-2">
+              <Truck className="w-8 h-8 text-neutral-600 mx-auto stroke-1" />
+              <p className="text-xs font-semibold text-white">No Volunteer Assigned</p>
+              <p className="text-[11px] text-neutral-400 max-w-xs mx-auto">
+                Once a volunteer accepts the pickup route, their vehicle, contact, and live status will appear here.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Reviews Section */}
+      <div className="bg-[#121214] rounded-[24px] border border-[#232328] p-6 sm:p-8 space-y-6 shadow-xl">
+        <div className="flex items-center justify-between border-b border-[#232328] pb-4">
+          <div className="flex items-center gap-2">
+            <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
+            <h3 className="text-base font-bold text-white tracking-tight">Claim Feedback & Reviews</h3>
+            <span className="text-xs text-neutral-400">({reviews.length})</span>
+          </div>
+
+          {isNgo && (
+            <button
+              onClick={() => setShowReviewModal(true)}
+              className="px-3.5 py-1.5 rounded-xl bg-white text-black hover:bg-neutral-200 text-xs font-bold transition-all flex items-center gap-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5" /> Write Review
+            </button>
+          )}
+        </div>
+
+        {reviews.length === 0 ? (
+          <div className="py-8 text-center space-y-2">
+            <Star className="w-8 h-8 text-neutral-600 mx-auto stroke-1" />
+            <p className="text-xs font-semibold text-white">No reviews yet for this listing</p>
+            <p className="text-[11px] text-neutral-400">
+              When an organization completes this claim, their ratings and reviews will be displayed here.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4 divide-y divide-[#232328]">
+            {reviews.map((rev) => (
+              <div key={rev.id} className="pt-4 first:pt-0 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-white">{rev.reviewer_name || 'NGO Reviewer'}</span>
+                    <span className="text-[10px] text-neutral-500 uppercase px-1.5 py-0.2 rounded bg-[#1c1c20] border border-[#27272e]">
+                      {rev.reviewer_role || 'NGO'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <Star
+                        key={s}
+                        className={`w-3.5 h-3.5 ${
+                          s <= rev.rating ? 'fill-amber-400 text-amber-400' : 'text-neutral-700'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {rev.comment && (
+                  <p className="text-xs text-neutral-300 leading-relaxed">{rev.comment}</p>
+                )}
+
+                {rev.tags && rev.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {rev.tags.map((t, idx) => (
+                      <span key={idx} className="px-2 py-0.5 rounded-md bg-[#18181c] border border-[#27272e] text-[10px] text-neutral-400 font-medium">
+                        ✓ {t}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Review Modal */}
+      {showReviewModal && (
+        <ReviewModal
+          isOpen={showReviewModal}
+          onClose={() => setShowReviewModal(false)}
+          donation={donation}
+          onReviewSubmitted={() => fetchDonation()}
+        />
+      )}
     </div>
   );
 }
+

@@ -4,28 +4,29 @@ import {
   LayoutDashboard, Package, Users, Truck, QrCode, Bell,
   BarChart3, Shield, LogOut, ChevronLeft, Menu, Box
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import api from '../../api/client';
 
 const roleNavItems = {
   provider: [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/donations', icon: Package, label: 'My Donations' },
     { to: '/donations/new', icon: Package, label: 'Post Donation' },
-    { to: '/notifications', icon: Bell, label: 'Notifications' },
+    { to: '/notifications', icon: Bell, label: 'Notifications', hasBadge: true },
     { to: '/analytics', icon: BarChart3, label: 'Impact' },
   ],
   ngo: [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/browse', icon: Package, label: 'Browse Donations' },
     { to: '/claims', icon: Package, label: 'My Claims' },
-    { to: '/notifications', icon: Bell, label: 'Notifications' },
+    { to: '/notifications', icon: Bell, label: 'Notifications', hasBadge: true },
     { to: '/analytics', icon: BarChart3, label: 'Impact' },
   ],
   volunteer: [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/deliveries', icon: Truck, label: 'My Deliveries' },
     { to: '/qr-scan', icon: QrCode, label: 'Scan QR' },
-    { to: '/notifications', icon: Bell, label: 'Notifications' },
+    { to: '/notifications', icon: Bell, label: 'Notifications', hasBadge: true },
     { to: '/analytics', icon: BarChart3, label: 'Impact' },
   ],
   admin: [
@@ -42,6 +43,27 @@ export default function Sidebar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchUnreadCount = async () => {
+      try {
+        const res = await api.get('/notifications', {
+          params: { unread: 'true', limit: 100 },
+        });
+        const total = res.data?.data?.pagination?.total || (res.data?.data?.notifications || []).length;
+        setUnreadCount(total);
+      } catch {
+        // ignore
+      }
+    };
+
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 5000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   const navItems = roleNavItems[user?.role] || [];
 
@@ -90,12 +112,26 @@ export default function Sidebar() {
             to={item.to}
             end={item.to === '/dashboard'}
             className={({ isActive }) =>
-              `sidebar-link ${isActive ? 'active' : ''} ${collapsed ? 'justify-center px-3' : ''}`
+              `sidebar-link relative ${isActive ? 'active' : ''} ${collapsed ? 'justify-center px-3' : ''}`
             }
-            title={collapsed ? item.label : undefined}
+            title={collapsed ? `${item.label} ${item.hasBadge && unreadCount > 0 ? `(${unreadCount})` : ''}` : undefined}
           >
-            <item.icon className="w-4 h-4 flex-shrink-0" />
-            {!collapsed && <span className="animate-fade-in text-sm font-medium">{item.label}</span>}
+            <div className="relative flex items-center">
+              <item.icon className="w-4 h-4 flex-shrink-0" />
+              {item.hasBadge && unreadCount > 0 && collapsed && (
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-white rounded-full ring-2 ring-[#0c0c0e]" />
+              )}
+            </div>
+            {!collapsed && (
+              <div className="flex items-center justify-between flex-1 min-w-0">
+                <span className="animate-fade-in text-sm font-medium">{item.label}</span>
+                {item.hasBadge && unreadCount > 0 && (
+                  <span className="px-1.5 py-0.5 text-[10px] font-bold bg-white text-black rounded-full shadow-sm animate-pulse">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </div>
+            )}
           </NavLink>
         ))}
       </nav>

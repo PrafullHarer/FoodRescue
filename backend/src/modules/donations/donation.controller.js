@@ -1,4 +1,5 @@
 const donationService = require('./donation.service');
+const notificationService = require('../notifications/notification.service');
 const db = require('../../config/db');
 
 /**
@@ -21,6 +22,9 @@ const createDonation = async (req, res, next) => {
     }
 
     const donation = await donationService.createDonation(rows[0].id, req.body);
+
+    // Fire-and-forget: notify all NGOs about the new donation
+    notificationService.notifyNgosOfNewDonation(donation).catch(() => {});
 
     res.status(201).json({
       success: true,
@@ -110,6 +114,12 @@ const claimDonation = async (req, res, next) => {
 
     const claim = await donationService.claimDonation(req.params.id, rows[0].id);
 
+    // Notify provider that donation was claimed
+    notificationService.notifyStatusChange(req.params.id, 'claimed').catch(() => {});
+
+    // Auto-mark notifications as read for all NGOs since this donation is now claimed
+    notificationService.markDonationNotificationsReadOnClaim(req.params.id).catch(() => {});
+
     res.status(201).json({
       success: true,
       message: 'Donation claimed successfully.',
@@ -138,6 +148,9 @@ const cancelDonation = async (req, res, next) => {
     }
 
     const donation = await donationService.cancelDonation(req.params.id, rows[0].id);
+
+    // Notify provider/NGO of cancellation
+    notificationService.notifyStatusChange(req.params.id, 'cancelled').catch(() => {});
 
     res.json({
       success: true,

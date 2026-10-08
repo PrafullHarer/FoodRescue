@@ -48,11 +48,48 @@ const getDonations = async ({ page = 1, limit = 20, status, category, providerId
   const params = [];
   const conditions = [];
 
-  let selectFields = 'fd.*, fp.business_name AS provider_name, u.full_name AS provider_contact';
+  let selectFields = `
+    fd.*,
+    fp.business_name AS provider_name,
+    fp.business_type AS provider_business_type,
+    fp.address AS provider_address,
+    fp.is_verified AS provider_is_verified,
+    fp.total_donations AS provider_total_donations,
+    fp.operating_hours AS provider_operating_hours,
+    u.full_name AS provider_contact,
+    u.phone AS provider_phone,
+    u.email AS provider_email,
+    u.avatar_url AS provider_avatar,
+    del.id AS delivery_id,
+    del.status AS delivery_status,
+    del.pickup_time AS delivery_pickup_time,
+    del.delivery_time AS delivery_completed_time,
+    del.notes AS delivery_notes,
+    del.distance_km AS delivery_distance_km,
+    v_user.full_name AS volunteer_name,
+    v_user.phone AS volunteer_phone,
+    v_user.email AS volunteer_email,
+    v.vehicle_type AS volunteer_vehicle_type,
+    v.rating AS volunteer_rating,
+    v.total_deliveries AS volunteer_total_deliveries,
+    c.id AS claim_id,
+    c.status AS claim_status,
+    c.claimed_at AS claim_time,
+    ngo.organization_name AS ngo_name,
+    ngo_u.phone AS ngo_phone,
+    ngo_u.email AS ngo_email
+  `;
+
   let fromClause = `
     FROM food_donations fd
     JOIN food_providers fp ON fp.id = fd.provider_id
     JOIN users u ON u.id = fp.user_id
+    LEFT JOIN deliveries del ON del.donation_id = fd.id
+    LEFT JOIN volunteers v ON v.id = del.volunteer_id
+    LEFT JOIN users v_user ON v_user.id = v.user_id
+    LEFT JOIN donation_claims c ON c.donation_id = fd.id AND c.status = 'accepted'
+    LEFT JOIN ngos ngo ON ngo.id = c.ngo_id
+    LEFT JOIN users ngo_u ON ngo_u.id = ngo.user_id
   `;
 
   if (status) {
@@ -90,7 +127,7 @@ const getDonations = async ({ page = 1, limit = 20, status, category, providerId
 
   // Count
   const countResult = await db.query(
-    `SELECT COUNT(*) ${fromClause} ${whereClause}`,
+    `SELECT COUNT(DISTINCT fd.id) ${fromClause} ${whereClause}`,
     params
   );
   const total = parseInt(countResult.rows[0].count, 10);
@@ -116,14 +153,57 @@ const getDonations = async ({ page = 1, limit = 20, status, category, providerId
 };
 
 /**
- * Get a single donation by ID.
+ * Get a single donation by ID with comprehensive Provider, Volunteer, Delivery and Review details.
  */
 const getDonationById = async (donationId) => {
   const { rows } = await db.query(
-    `SELECT fd.*, fp.business_name AS provider_name, u.full_name AS provider_contact
+    `SELECT
+      fd.*,
+      fp.business_name AS provider_name,
+      fp.business_type AS provider_business_type,
+      fp.address AS provider_address,
+      fp.is_verified AS provider_is_verified,
+      fp.total_donations AS provider_total_donations,
+      fp.operating_hours AS provider_operating_hours,
+      u.id AS provider_user_id,
+      u.full_name AS provider_contact,
+      u.phone AS provider_phone,
+      u.email AS provider_email,
+      u.avatar_url AS provider_avatar,
+      del.id AS delivery_id,
+      del.status AS delivery_status,
+      del.pickup_time AS delivery_pickup_time,
+      del.delivery_time AS delivery_completed_time,
+      del.notes AS delivery_notes,
+      del.distance_km AS delivery_distance_km,
+      v.id AS volunteer_id,
+      v_user.id AS volunteer_user_id,
+      v_user.full_name AS volunteer_name,
+      v_user.phone AS volunteer_phone,
+      v_user.email AS volunteer_email,
+      v_user.avatar_url AS volunteer_avatar,
+      v.vehicle_type AS volunteer_vehicle_type,
+      v.rating AS volunteer_rating,
+      v.total_deliveries AS volunteer_total_deliveries,
+      v.availability AS volunteer_availability,
+      c.id AS claim_id,
+      c.status AS claim_status,
+      c.claimed_at AS claim_time,
+      ngo.id AS ngo_id,
+      ngo.organization_name AS ngo_name,
+      ngo.address AS ngo_address,
+      ngo_u.full_name AS ngo_contact,
+      ngo_u.phone AS ngo_phone,
+      ngo_u.email AS ngo_email
      FROM food_donations fd
      JOIN food_providers fp ON fp.id = fd.provider_id
      JOIN users u ON u.id = fp.user_id
+     LEFT JOIN deliveries del ON del.donation_id = fd.id
+     LEFT JOIN volunteers v ON v.id = del.volunteer_id
+     LEFT JOIN users v_user ON v_user.id = v.user_id
+     LEFT JOIN donation_claims c ON c.donation_id = fd.id AND c.status = 'accepted'
+     LEFT JOIN ngos ngo ON ngo.id = c.ngo_id
+     LEFT JOIN users ngo_u ON ngo_u.id = ngo.user_id
      WHERE fd.id = $1`,
     [donationId]
   );
@@ -134,7 +214,21 @@ const getDonationById = async (donationId) => {
     throw err;
   }
 
-  return rows[0];
+  const donation = rows[0];
+
+  // Fetch reviews for this donation
+  const { rows: reviews } = await db.query(
+    `SELECT r.*, u.full_name AS reviewer_name, u.role AS reviewer_role
+     FROM reviews r
+     JOIN users u ON u.id = r.reviewer_id
+     WHERE r.donation_id = $1
+     ORDER BY r.created_at DESC`,
+    [donationId]
+  );
+
+  donation.reviews = reviews;
+
+  return donation;
 };
 
 /**

@@ -18,6 +18,7 @@ const qrcodeRoutes = require('./modules/qrcodes/qrcode.routes');
 const notificationRoutes = require('./modules/notifications/notification.routes');
 const analyticsRoutes = require('./modules/analytics/analytics.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
+const reviewRoutes = require('./modules/reviews/review.routes');
 
 // Import background jobs
 const { startExpiryChecker } = require('./jobs/expiry-checker.cron');
@@ -65,6 +66,7 @@ app.use('/api/qr-codes', qrcodeRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 // ─── 404 Handler ─────────────────────────────────────────────
 app.use((req, res) => {
