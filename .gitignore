@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build
+dist/
+build/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Expo
+mobile/.expo/
+mobile/ios/
+mobile/android/
+
+# Python
+ai-service/__pycache__/
+ai-service/*.pyc
+ai-service/venv/
