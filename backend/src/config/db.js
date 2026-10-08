@@ -3,19 +3,28 @@ const config = require('./index');
 
 const pool = new Pool({
   connectionString: config.db.connectionString,
+  max: 10,
+  idleTimeoutMillis: 60000,
   connectionTimeoutMillis: 10000,
+  keepAlive: true,
 });
 
+let hasLoggedConnection = false;
+
 pool.on('connect', () => {
-  console.log('✅ [DB] Connected to remote PostgreSQL database:', config.db.connectionString.replace(/:[^:@]+@/, ':****@'));
+  if (!hasLoggedConnection) {
+    console.log('✅ [DB] Connection pool established with PostgreSQL database');
+    hasLoggedConnection = true;
+  }
 });
 
 pool.on('error', (err) => {
-  console.error('❌ [DB] PostgreSQL database client error:', err.message);
+  console.error('❌ [DB] PostgreSQL pool idle client error:', err.message);
 });
 
 /**
- * Execute a parameterized query directly on PostgreSQL.
+ * Execute a parameterized query reusing a client from the central connection pool.
+ * Automatically releases the client back to the pool immediately upon query completion.
  * @param {string} text - SQL query
  * @param {Array} params - Query parameters
  * @returns {Promise<import('pg').QueryResult>}
@@ -23,7 +32,8 @@ pool.on('error', (err) => {
 const query = (text, params) => pool.query(text, params);
 
 /**
- * Acquire a dedicated client from PostgreSQL pool for transactions.
+ * Acquire a dedicated client from the pool for manual transactions.
+ * NOTE: Always release client in a finally block!
  * @returns {Promise<import('pg').PoolClient>}
  */
 const getClient = () => pool.connect();
