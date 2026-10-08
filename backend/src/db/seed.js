@@ -1,9 +1,9 @@
 const bcrypt = require('bcryptjs');
-const { pool } = require('../config/db');
+const db = require('../config/db');
 
 async function seed() {
   console.log('[SEED] Seeding database with initial users and demo data...');
-  const client = await pool.connect();
+  const client = await db.getClient();
 
   try {
     await client.query('BEGIN');
@@ -19,7 +19,7 @@ async function seed() {
        RETURNING id, email, role`,
       ['admin@foodrescue.org', passwordHash]
     );
-    const adminId = adminRes.rows[0].id;
+    const adminId = adminRes.rows[0]?.id;
 
     // 2. Provider User
     const providerRes = await client.query(
@@ -29,7 +29,7 @@ async function seed() {
        RETURNING id, email, role`,
       ['provider@foodrescue.org', passwordHash]
     );
-    const providerUserId = providerRes.rows[0].id;
+    const providerUserId = providerRes.rows[0]?.id;
 
     // Provider profile
     const fpRes = await client.query(
@@ -42,7 +42,7 @@ async function seed() {
     let providerId = fpRes.rows[0]?.id;
     if (!providerId) {
       const existingFp = await client.query('SELECT id FROM food_providers WHERE user_id = $1', [providerUserId]);
-      providerId = existingFp.rows[0].id;
+      providerId = existingFp.rows[0]?.id;
     }
 
     // 3. NGO User
@@ -53,7 +53,7 @@ async function seed() {
        RETURNING id, email, role`,
       ['ngo@foodrescue.org', passwordHash]
     );
-    const ngoUserId = ngoRes.rows[0].id;
+    const ngoUserId = ngoRes.rows[0]?.id;
 
     // NGO profile
     const ngoProfRes = await client.query(
@@ -66,7 +66,7 @@ async function seed() {
     let ngoId = ngoProfRes.rows[0]?.id;
     if (!ngoId) {
       const existingNgo = await client.query('SELECT id FROM ngos WHERE user_id = $1', [ngoUserId]);
-      ngoId = existingNgo.rows[0].id;
+      ngoId = existingNgo.rows[0]?.id;
     }
 
     // 4. Volunteer User
@@ -77,7 +77,7 @@ async function seed() {
        RETURNING id, email, role`,
       ['volunteer@foodrescue.org', passwordHash]
     );
-    const volUserId = volRes.rows[0].id;
+    const volUserId = volRes.rows[0]?.id;
 
     // Volunteer profile
     await client.query(
@@ -130,17 +130,19 @@ async function seed() {
     console.log('4. Admin      : admin@foodrescue.org     | password: password123');
     console.log('======================================================\n');
   } catch (err) {
-    await client.query('ROLLBACK');
+    try { await client.query('ROLLBACK'); } catch (_) {}
     console.error('[SEED] Error during seeding:', err.message);
     throw err;
   } finally {
-    client.release();
-    await pool.end();
+    if (client.release) client.release();
+    if (db.pool && db.pool.end) {
+      try { await db.pool.end(); } catch (_) {}
+    }
   }
 }
 
 if (require.main === module) {
-  seed().catch(() => process.exit(1));
+  seed().then(() => process.exit(0)).catch(() => process.exit(1));
 }
 
 module.exports = seed;
