@@ -1,9 +1,6 @@
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 
-// Pre-hashed 'password123' with 10 salt rounds
-const PASSWORD_HASH = '$2a$10$wE9fLgX5yqE1QZ6F7yT5OeX7mK0Y.vL1P4o2y.v2a0.Z7yT5OeX7m'; // We'll compute dynamically
-
 const providerUserId = '11111111-1111-1111-1111-111111111111';
 const providerProfileId = '22222222-2222-2222-2222-222222222222';
 const ngoUserId = '33333333-3333-3333-3333-333333333333';
@@ -226,6 +223,17 @@ function executeMockQuery(text, params = []) {
   const sql = text.trim();
   const lower = sql.toLowerCase();
 
+  // 0. COUNT queries
+  if (lower.startsWith('select count(*)')) {
+    let count = 0;
+    if (lower.includes('from users')) count = mockDb.users.length;
+    else if (lower.includes('from food_donations')) count = mockDb.food_donations.length;
+    else if (lower.includes('from complaints')) count = mockDb.complaints.length;
+    else if (lower.includes('from audit_logs')) count = mockDb.audit_logs.length;
+    else if (lower.includes('from deliveries')) count = mockDb.deliveries.length;
+    return { rows: [{ count: String(count) }] };
+  }
+
   // 1. SELECT from users
   if (lower.startsWith('select') && lower.includes('from users')) {
     if (lower.includes('where email = $1')) {
@@ -258,7 +266,24 @@ function executeMockQuery(text, params = []) {
     return { rows: [newUser] };
   }
 
-  // 3. SELECT from food_providers
+  // 3. Food Providers
+  if (lower.startsWith('insert into food_providers')) {
+    const newFp = {
+      id: uuidv4(),
+      user_id: params[0],
+      business_name: params[1] || 'Provider Business',
+      business_type: params[2] || 'restaurant',
+      address: params[3] || 'Local Address',
+      latitude: params[4] || 28.6139,
+      longitude: params[5] || 77.2090,
+      is_verified: true,
+      total_donations: 0,
+      created_at: new Date().toISOString(),
+    };
+    mockDb.food_providers.push(newFp);
+    return { rows: [newFp] };
+  }
+
   if (lower.startsWith('select') && lower.includes('from food_providers')) {
     if (lower.includes('where user_id = $1')) {
       const found = mockDb.food_providers.find(p => p.user_id === params[0]);
@@ -271,7 +296,25 @@ function executeMockQuery(text, params = []) {
     return { rows: [...mockDb.food_providers] };
   }
 
-  // 4. SELECT from ngos
+  // 4. NGOs
+  if (lower.startsWith('insert into ngos')) {
+    const newNgo = {
+      id: uuidv4(),
+      user_id: params[0],
+      organization_name: params[1] || 'NGO Organization',
+      registration_no: params[2] || 'NGO-PENDING',
+      address: params[3] || 'Shelter Address',
+      latitude: params[4] || 28.6139,
+      longitude: params[5] || 77.2090,
+      capacity: params[6] || 200,
+      is_verified: true,
+      total_received: 0,
+      created_at: new Date().toISOString(),
+    };
+    mockDb.ngos.push(newNgo);
+    return { rows: [newNgo] };
+  }
+
   if (lower.startsWith('select') && lower.includes('from ngos')) {
     if (lower.includes('where user_id = $1')) {
       const found = mockDb.ngos.find(n => n.user_id === params[0]);
@@ -284,7 +327,22 @@ function executeMockQuery(text, params = []) {
     return { rows: [...mockDb.ngos] };
   }
 
-  // 5. SELECT from volunteers
+  // 5. Volunteers
+  if (lower.startsWith('insert into volunteers')) {
+    const newVol = {
+      id: uuidv4(),
+      user_id: params[0],
+      availability: 'available',
+      vehicle_type: params[1] || 'car',
+      max_distance_km: params[2] || 15,
+      total_deliveries: 0,
+      rating: 5.0,
+      created_at: new Date().toISOString(),
+    };
+    mockDb.volunteers.push(newVol);
+    return { rows: [newVol] };
+  }
+
   if (lower.startsWith('select') && lower.includes('from volunteers')) {
     if (lower.includes('where user_id = $1')) {
       const found = mockDb.volunteers.find(v => v.user_id === params[0]);
@@ -406,7 +464,30 @@ function executeMockQuery(text, params = []) {
     return { rows: mockDb.notifications };
   }
 
-  // 9. Generic Fallback
+  // 9. Complaints and Audit Logs
+  if (lower.startsWith('select') && lower.includes('from complaints')) {
+    return { rows: [...mockDb.complaints] };
+  }
+
+  if (lower.startsWith('select') && lower.includes('from audit_logs')) {
+    return { rows: [...mockDb.audit_logs] };
+  }
+
+  if (lower.startsWith('insert into audit_logs')) {
+    const newLog = {
+      id: uuidv4(),
+      actor_id: params[0],
+      action: params[1] || 'ADMIN_ACTION',
+      entity_type: params[2] || 'general',
+      entity_id: params[3] || null,
+      details: params[4] ? JSON.stringify(params[4]) : '',
+      created_at: new Date().toISOString(),
+    };
+    mockDb.audit_logs.unshift(newLog);
+    return { rows: [newLog] };
+  }
+
+  // Generic Fallback
   return { rows: [] };
 }
 
