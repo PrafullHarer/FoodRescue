@@ -5,6 +5,9 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import DashboardLayout from './components/layout/DashboardLayout';
 
+// Landing Page
+import LandingPage from './pages/landing/LandingPage';
+
 // Auth Pages
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
@@ -64,7 +67,8 @@ export default function App() {
             }}
           />
           <Routes>
-            {/* Public Auth Routes */}
+            {/* Public Landing & Auth Routes */}
+            <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
 
@@ -77,7 +81,6 @@ export default function App() {
               }
             >
               {/* Core / Dashboard */}
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<DashboardPage />} />
 
               {/* Donations (Provider & General) */}
