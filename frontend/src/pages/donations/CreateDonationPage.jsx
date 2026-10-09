@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/client';
-import { Package, MapPin, Clock, ArrowLeft, Save } from 'lucide-react';
+import { Package, MapPin, Clock, ArrowLeft, Save, Calendar as CalendarIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { CalendarRange } from '../../components/common/DonationCalendarRange';
 
 const categories = [
   { value: 'cooked_meals', label: 'Cooked Meals' },
@@ -18,15 +19,53 @@ const categories = [
 export default function CreateDonationPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+
+  const now = new Date();
+  const defaultStart = new Date(now.getTime() + 30 * 60000).toISOString().slice(0, 16);
+  const defaultEnd = new Date(now.getTime() + 24 * 3600000).toISOString().slice(0, 16);
+  const defaultExpiry = new Date(now.getTime() + 36 * 3600000).toISOString().slice(0, 16);
+
+  const [dateRange, setDateRange] = useState({
+    from: now,
+    to: new Date(now.getTime() + 24 * 3600000),
+  });
+
   const [form, setForm] = useState({
     title: '', description: '', category: 'cooked_meals',
     quantity: '', unit: 'servings', weight_kg: '',
     pickup_address: '', latitude: 28.6139, longitude: 77.209,
-    pickup_window_start: '', pickup_window_end: '',
-    expiry_time: '', special_instructions: '',
+    pickup_window_start: defaultStart, pickup_window_end: defaultEnd,
+    expiry_time: defaultExpiry, special_instructions: '',
   });
 
-  const update = (field, value) => setForm({ ...form, [field]: value });
+  const update = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
+
+  const handleDateRangeChange = (range) => {
+    setDateRange(range);
+    if (range?.from) {
+      const startIso = new Date(range.from);
+      startIso.setHours(9, 0, 0, 0);
+      update('pickup_window_start', startIso.toISOString().slice(0, 16));
+
+      if (range.to) {
+        const endIso = new Date(range.to);
+        endIso.setHours(20, 0, 0, 0);
+        update('pickup_window_end', endIso.toISOString().slice(0, 16));
+
+        const expiryIso = new Date(range.to);
+        expiryIso.setHours(23, 59, 0, 0);
+        update('expiry_time', expiryIso.toISOString().slice(0, 16));
+      } else {
+        const endIso = new Date(range.from);
+        endIso.setHours(20, 0, 0, 0);
+        update('pickup_window_end', endIso.toISOString().slice(0, 16));
+
+        const expiryIso = new Date(range.from);
+        expiryIso.setHours(23, 59, 0, 0);
+        update('expiry_time', expiryIso.toISOString().slice(0, 16));
+      }
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -49,11 +88,6 @@ export default function CreateDonationPage() {
       setLoading(false);
     }
   };
-
-  const now = new Date();
-  const defaultStart = new Date(now.getTime() + 30 * 60000).toISOString().slice(0, 16);
-  const defaultEnd = new Date(now.getTime() + 4 * 3600000).toISOString().slice(0, 16);
-  const defaultExpiry = new Date(now.getTime() + 8 * 3600000).toISOString().slice(0, 16);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-slide-up">
@@ -174,11 +208,19 @@ export default function CreateDonationPage() {
             </div>
           </div>
 
-          {/* Timing */}
+          {/* Timing & Calendar Range Picker */}
           <div className="space-y-4 border-t border-[#232328] pt-6">
             <h3 className="font-bold text-neutral-300 text-xs uppercase tracking-wider flex items-center gap-1.5">
               <Clock className="w-4 h-4 text-white" /> Window & Expiry Timing
             </h3>
+
+            {/* Interactive Calendar Date Range Component */}
+            <CalendarRange
+              dateRange={dateRange}
+              onDateRangeChange={handleDateRangeChange}
+              className="my-2"
+            />
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-medium text-neutral-300 block mb-1.5">Pickup Window Start</label>
