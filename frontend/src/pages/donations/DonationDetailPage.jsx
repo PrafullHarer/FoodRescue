@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ReviewModal from '../../components/common/ReviewModal';
+import StaticRouteMap from '../../components/common/StaticRouteMap';
 
 export default function DonationDetailPage() {
   const { id } = useParams();
@@ -179,6 +180,16 @@ export default function DonationDetailPage() {
             </p>
           </div>
         </div>
+
+        {/* Location & Navigation Map */}
+        {((donation.latitude && donation.longitude) || donation.pickup_address) && (
+          <StaticRouteMap
+            pickupLat={donation.latitude}
+            pickupLng={donation.longitude}
+            pickupAddress={donation.pickup_address || donation.address}
+            title="Pickup & Navigation Map"
+          />
+        )}
 
         {/* Action buttons */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2">

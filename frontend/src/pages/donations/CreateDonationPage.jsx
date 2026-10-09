@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/client';
 import DateTimePicker from '../../components/common/DateTimePicker';
+import MapAddressPickerModal from '../../components/common/MapAddressPickerModal';
 import {
   Package, MapPin, Clock, ArrowLeft, Save, Sparkles,
   Utensils, CheckCircle2, AlertCircle, Info, ShieldCheck,
-  Flame, Leaf, Apple, Milk, Wheat, Heart
+  Flame, Leaf, Apple, Milk, Wheat, Heart, Navigation, Compass
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -27,10 +28,17 @@ export default function CreateDonationPage() {
   const [loading, setLoading] = useState(false);
   const [selectedTags, setSelectedTags] = useState(['Vegetarian']);
 
-  const now = new Date();
-  const defaultStart = new Date(now.getTime() + 30 * 60000).toISOString().slice(0, 16);
-  const defaultEnd = new Date(now.getTime() + 4 * 3600000).toISOString().slice(0, 16);
-  const defaultExpiry = new Date(now.getTime() + 8 * 3600000).toISOString().slice(0, 16);
+  const [mapPickerOpen, setMapPickerOpen] = useState(false);
+
+  const handleLocationSelected = ({ address, latitude, longitude }) => {
+    setForm((prev) => ({
+      ...prev,
+      pickup_address: address,
+      latitude,
+      longitude,
+    }));
+    toast.success('Pickup coordinates pinned on map!');
+  };
 
   const [form, setForm] = useState({
     title: '',
@@ -273,10 +281,20 @@ export default function CreateDonationPage() {
 
           {/* ─── SECTION 2: PICKUP LOCATION ───────────────────────── */}
           <div className="space-y-4 border-t border-[#232328] pt-6">
-            <h3 className="font-bold text-neutral-300 text-xs uppercase tracking-wider flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-white text-black text-[11px] font-bold flex items-center justify-center">2</span>
-              Pickup Address
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-neutral-300 text-xs uppercase tracking-wider flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-white text-black text-[11px] font-bold flex items-center justify-center">2</span>
+                Pickup Location & Map Pin
+              </h3>
+              <button
+                type="button"
+                onClick={() => setMapPickerOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white text-black font-bold text-xs hover:bg-neutral-200 transition-all shadow-sm"
+              >
+                <Compass className="w-3.5 h-3.5" />
+                <span>Pick on Interactive Map</span>
+              </button>
+            </div>
 
             <div>
               <label className="text-xs font-semibold text-neutral-300 block mb-1.5">
@@ -293,6 +311,24 @@ export default function CreateDonationPage() {
                 />
                 <MapPin className="w-4 h-4 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2" />
               </div>
+            </div>
+
+            {/* Selected Coordinates Status Pill */}
+            <div className="flex items-center justify-between p-3 bg-[#0c0c0e] rounded-xl border border-[#232328] text-xs">
+              <div className="flex items-center gap-2 text-neutral-400">
+                <Navigation className="w-3.5 h-3.5 text-white flex-shrink-0" />
+                <span>GPS Coordinates for Volunteers & NGOs:</span>
+                <span className="font-mono text-white bg-[#18181b] px-2 py-0.5 rounded border border-[#282830]">
+                  {form.latitude?.toFixed(4)}, {form.longitude?.toFixed(4)}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMapPickerOpen(true)}
+                className="text-[11px] font-semibold text-white hover:underline"
+              >
+                Change Pin
+              </button>
             </div>
           </div>
 
@@ -388,6 +424,17 @@ export default function CreateDonationPage() {
           </div>
         </form>
       </div>
+
+      {/* Interactive Map Picker Modal */}
+      <MapAddressPickerModal
+        isOpen={mapPickerOpen}
+        onClose={() => setMapPickerOpen(false)}
+        onSelectLocation={handleLocationSelected}
+        initialAddress={form.pickup_address}
+        initialLat={form.latitude || 28.6139}
+        initialLng={form.longitude || 77.2090}
+        title="Pin Pickup Location on Map"
+      />
     </div>
   );
 }

@@ -4,9 +4,10 @@ import api from '../../api/client';
 import {
   Truck, CheckCircle2, Clock, MapPin, ArrowRight, QrCode,
   ShieldCheck, AlertCircle, Sparkles, User, Phone, Mail,
-  Check, RefreshCw, ChevronRight, Eye
+  Check, RefreshCw, ChevronRight, Eye, Map, X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import StaticRouteMap from '../../components/common/StaticRouteMap';
 
 export default function DeliveriesPage() {
   const [activeTab, setActiveTab] = useState('my'); // 'my' | 'available'
@@ -15,6 +16,7 @@ export default function DeliveriesPage() {
   const [loading, setLoading] = useState(true);
   const [claimingId, setClaimingId] = useState(null);
   const [selectedQrDelivery, setSelectedQrDelivery] = useState(null);
+  const [selectedMapMission, setSelectedMapMission] = useState(null);
 
   const [hasSetInitialTab, setHasSetInitialTab] = useState(false);
 
@@ -208,6 +210,22 @@ export default function DeliveriesPage() {
                         </button>
                       )}
 
+                      <button
+                        onClick={() => setSelectedMapMission({
+                          pickupLat: d.pickup_latitude || d.latitude,
+                          pickupLng: d.pickup_longitude || d.longitude,
+                          pickupAddress: d.pickup_address,
+                          dropoffLat: d.dropoff_latitude,
+                          dropoffLng: d.dropoff_longitude,
+                          dropoffAddress: d.ngo_address,
+                          title: `Route: ${d.provider_name || 'Donor'} → ${d.ngo_name || 'Shelter'}`,
+                        })}
+                        className="p-2.5 rounded-xl border border-[#2a2a32] bg-[#18181b] text-neutral-400 hover:text-white transition-colors"
+                        title="View Route Map & GPS"
+                      >
+                        <Map className="w-4 h-4 text-amber-400" />
+                      </button>
+
                       <Link
                         to={`/donations/${d.donation_id}`}
                         className="p-2.5 rounded-xl border border-[#2a2a32] bg-[#18181b] text-neutral-400 hover:text-white transition-colors"
@@ -346,19 +364,37 @@ export default function DeliveriesPage() {
                     )}
                   </div>
 
-                  <button
-                    onClick={() => handleClaimMission(m.id)}
-                    disabled={claimingId === m.id}
-                    className="btn btn-primary text-xs flex items-center gap-2 self-start sm:self-auto flex-shrink-0"
-                  >
-                    {claimingId === m.id ? (
-                      <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        <Truck className="w-4 h-4" /> Claim Pickup Route
-                      </>
-                    )}
-                  </button>
+                  <div className="flex items-center gap-2 self-start sm:self-auto flex-shrink-0">
+                    <button
+                      onClick={() => setSelectedMapMission({
+                        pickupLat: m.pickup_latitude || m.latitude,
+                        pickupLng: m.pickup_longitude || m.longitude,
+                        pickupAddress: m.pickup_address,
+                        dropoffLat: m.dropoff_latitude,
+                        dropoffLng: m.dropoff_longitude,
+                        dropoffAddress: m.ngo_address,
+                        title: `Route: ${m.provider_name || 'Donor'} → ${m.ngo_name || 'Shelter'}`,
+                      })}
+                      className="p-2.5 rounded-xl border border-[#2a2a32] bg-[#18181b] text-neutral-400 hover:text-white transition-colors"
+                      title="Preview Route Map"
+                    >
+                      <Map className="w-4 h-4 text-amber-400" />
+                    </button>
+
+                    <button
+                      onClick={() => handleClaimMission(m.id)}
+                      disabled={claimingId === m.id}
+                      className="btn btn-primary text-xs flex items-center gap-2"
+                    >
+                      {claimingId === m.id ? (
+                        <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <Truck className="w-4 h-4" /> Claim Pickup Route
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
@@ -428,6 +464,51 @@ export default function DeliveriesPage() {
             >
               Close QR Code
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Route Map Preview Modal */}
+      {selectedMapMission && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+          <div className="bg-[#141416] border border-[#282830] rounded-[28px] max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-5 animate-scale-up">
+            <div className="flex items-center justify-between border-b border-[#232328] pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center">
+                  <Map className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-base">{selectedMapMission.title || 'Mission Route Map'}</h3>
+                  <p className="text-xs text-neutral-400">Live Leaflet route and GPS navigation shortcuts</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedMapMission(null)}
+                className="p-2 rounded-xl text-neutral-400 hover:text-white bg-[#18181b] border border-[#282830]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <StaticRouteMap
+              pickupLat={selectedMapMission.pickupLat}
+              pickupLng={selectedMapMission.pickupLng}
+              pickupAddress={selectedMapMission.pickupAddress}
+              dropoffLat={selectedMapMission.dropoffLat}
+              dropoffLng={selectedMapMission.dropoffLng}
+              dropoffAddress={selectedMapMission.dropoffAddress}
+              title="Interactive Pickup & Dropoff Route"
+              className="h-[380px]"
+            />
+
+            <div className="flex justify-end">
+              <button
+                onClick={() => setSelectedMapMission(null)}
+                className="btn btn-secondary text-xs px-6 py-2.5"
+              >
+                Close Map
+              </button>
+            </div>
           </div>
         </div>
       )}
