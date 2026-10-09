@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import DashboardLayout from './components/layout/DashboardLayout';
 
@@ -34,141 +35,143 @@ import AuditLogsPage from './pages/admin/AuditLogsPage';
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: '#1e293b',
-              color: '#fff',
-              fontSize: '14px',
-              borderRadius: '12px',
-              padding: '12px 16px',
-            },
-            success: {
-              iconTheme: {
-                primary: '#22c55e',
-                secondary: '#fff',
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: '#1e293b',
+                color: '#fff',
+                fontSize: '14px',
+                borderRadius: '12px',
+                padding: '12px 16px',
               },
-            },
-            error: {
-              iconTheme: {
-                primary: '#ef4444',
-                secondary: '#fff',
+              success: {
+                iconTheme: {
+                  primary: '#22c55e',
+                  secondary: '#fff',
+                },
               },
-            },
-          }}
-        />
-        <Routes>
-          {/* Public Auth Routes */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+              error: {
+                iconTheme: {
+                  primary: '#ef4444',
+                  secondary: '#fff',
+                },
+              },
+            }}
+          />
+          <Routes>
+            {/* Public Auth Routes */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
 
-          {/* Protected Dashboard Routes */}
-          <Route
-            element={
-              <ProtectedRoute>
-                <DashboardLayout />
-              </ProtectedRoute>
-            }
-          >
-            {/* Core / Dashboard */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
+            {/* Protected Dashboard Routes */}
+            <Route
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }
+            >
+              {/* Core / Dashboard */}
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard" element={<DashboardPage />} />
 
-            {/* Donations (Provider & General) */}
-            <Route path="/donations" element={<DonationsPage />} />
-            <Route
-              path="/donations/new"
-              element={
-                <ProtectedRoute allowedRoles={['provider', 'admin']}>
-                  <CreateDonationPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/donations/:id" element={<DonationDetailPage />} />
+              {/* Donations (Provider & General) */}
+              <Route path="/donations" element={<DonationsPage />} />
+              <Route
+                path="/donations/new"
+                element={
+                  <ProtectedRoute allowedRoles={['provider', 'admin']}>
+                    <CreateDonationPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/donations/:id" element={<DonationDetailPage />} />
 
-            {/* NGO Routes */}
-            <Route
-              path="/browse"
-              element={
-                <ProtectedRoute allowedRoles={['ngo', 'admin']}>
-                  <BrowseDonationsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/claims"
-              element={
-                <ProtectedRoute allowedRoles={['ngo', 'admin']}>
-                  <ClaimsPage />
-                </ProtectedRoute>
-              }
-            />
+              {/* NGO Routes */}
+              <Route
+                path="/browse"
+                element={
+                  <ProtectedRoute allowedRoles={['ngo', 'admin']}>
+                    <BrowseDonationsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/claims"
+                element={
+                  <ProtectedRoute allowedRoles={['ngo', 'admin']}>
+                    <ClaimsPage />
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* Volunteer Routes */}
-            <Route
-              path="/deliveries"
-              element={
-                <ProtectedRoute allowedRoles={['volunteer', 'admin']}>
-                  <DeliveriesPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/qr-scan"
-              element={
-                <ProtectedRoute allowedRoles={['volunteer', 'ngo', 'provider', 'admin']}>
-                  <QRScanPage />
-                </ProtectedRoute>
-              }
-            />
+              {/* Volunteer Routes */}
+              <Route
+                path="/deliveries"
+                element={
+                  <ProtectedRoute allowedRoles={['volunteer', 'admin']}>
+                    <DeliveriesPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/qr-scan"
+                element={
+                  <ProtectedRoute allowedRoles={['volunteer', 'ngo', 'provider', 'admin']}>
+                    <QRScanPage />
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* Notifications & Analytics */}
-            <Route path="/notifications" element={<NotificationsPage />} />
-            <Route path="/analytics" element={<AnalyticsPage />} />
+              {/* Notifications & Analytics */}
+              <Route path="/notifications" element={<NotificationsPage />} />
+              <Route path="/analytics" element={<AnalyticsPage />} />
 
-            {/* Admin Routes */}
-            <Route
-              path="/admin/verifications"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <VerificationsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/users"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <UsersPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/complaints"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <ComplaintsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/audit-logs"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AuditLogsPage />
-                </ProtectedRoute>
-              }
-            />
-          </Route>
+              {/* Admin Routes */}
+              <Route
+                path="/admin/verifications"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <VerificationsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/users"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <UsersPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/complaints"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <ComplaintsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/audit-logs"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AuditLogsPage />
+                  </ProtectedRoute>
+                }
+              />
+            </Route>
 
-          {/* Catch-all redirect */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+            {/* Catch-all redirect */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

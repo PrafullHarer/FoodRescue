@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import MapAddressPickerModal from '../../components/common/MapAddressPickerModal';
+import ThemeToggle from '../../components/common/ThemeToggle';
 
 const roleOptions = [
   {
@@ -157,9 +158,12 @@ export default function RegisterPage() {
             </p>
           </div>
 
-          <div className="flex-shrink-0 flex items-center gap-2 self-end md:self-center">
-            <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-            <span className="text-xs text-neutral-400 font-medium">Create Account</span>
+          <div className="flex-shrink-0 flex items-center gap-3 self-end md:self-center">
+            <ThemeToggle variant="icon" />
+            <div className="hidden sm:flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+              <span className="text-xs text-neutral-400 font-medium">Create Account</span>
+            </div>
           </div>
         </div>
 
