@@ -54,27 +54,27 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-8 animate-fade-in max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#232328] pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#232328] pb-5 sm:pb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Impact & Analytics</h1>
-          <p className="text-neutral-400 text-sm mt-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Impact & Analytics</h1>
+          <p className="text-neutral-400 text-xs sm:text-sm mt-1">
             Real-time environmental and humanitarian metrics from our PostgreSQL database.
           </p>
         </div>
 
-        <div className="flex items-center gap-3 self-start">
+        <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
           {loading && (
             <div className="flex items-center gap-1.5 text-xs text-neutral-400">
               <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
               <span>Updating...</span>
             </div>
           )}
-          <div className="flex bg-[#121214] p-1 rounded-xl border border-[#232328]">
+          <div className="flex bg-[#121214] p-1 rounded-xl border border-[#232328] ml-auto sm:ml-0">
             {['month', 'year', 'all'].map((range) => (
               <button
                 key={range}
                 onClick={() => setTimeRange(range)}
-                className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg capitalize transition-all ${
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg capitalize transition-all ${
                   timeRange === range
                     ? 'bg-white text-black font-bold shadow-sm'
                     : 'text-neutral-400 hover:text-white'
@@ -87,112 +87,114 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Hero Impact Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-        <div className="stat-card">
-          <div className="flex justify-between items-start">
+      {/* Hero Impact Cards (2-column on mobile, 4-column on desktop) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+        <div className="stat-card p-3.5 sm:p-5">
+          <div className="flex justify-between items-start mb-2">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">Meals Served</p>
-              <h3 className="text-3xl font-extrabold text-white mt-2 tracking-tight">
+              <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-neutral-400">Meals Served</p>
+              <h3 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white mt-1 sm:mt-2 tracking-tight">
                 {(metrics.meals_saved || 0).toLocaleString()}
               </h3>
-              <p className="text-xs text-neutral-400 font-medium flex items-center gap-1 mt-2">
-                <ArrowUpRight className="w-3.5 h-3.5 text-white" /> Nourishing local shelters
-              </p>
             </div>
-            <div className="w-11 h-11 rounded-xl bg-[#1c1c20] border border-[#27272e] text-white flex items-center justify-center">
-              <HeartHandshake className="w-5 h-5" />
+            <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-[#1c1c20] border border-[#27272e] text-white flex items-center justify-center flex-shrink-0">
+              <HeartHandshake className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
+          <p className="text-[10px] sm:text-xs text-neutral-400 font-medium flex items-center gap-1 mt-1 truncate">
+            <ArrowUpRight className="w-3 h-3 text-white flex-shrink-0" /> Nourishing local shelters
+          </p>
         </div>
 
-        <div className="stat-card">
-          <div className="flex justify-between items-start">
+        <div className="stat-card p-3.5 sm:p-5">
+          <div className="flex justify-between items-start mb-2">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">Food Rescued</p>
-              <h3 className="text-3xl font-extrabold text-white mt-2 tracking-tight">
-                {(metrics.kg_rescued || 0).toLocaleString()} <span className="text-sm font-medium text-neutral-400">kg</span>
+              <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-neutral-400">Food Rescued</p>
+              <h3 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white mt-1 sm:mt-2 tracking-tight">
+                {(metrics.kg_rescued || 0).toLocaleString()} <span className="text-xs sm:text-sm font-medium text-neutral-400">kg</span>
               </h3>
-              <p className="text-xs text-neutral-400 font-medium flex items-center gap-1 mt-2">
-                <Scale className="w-3.5 h-3.5 text-white" /> Diverted from landfills
-              </p>
             </div>
-            <div className="w-11 h-11 rounded-xl bg-[#1c1c20] border border-[#27272e] text-white flex items-center justify-center">
-              <Leaf className="w-5 h-5" />
+            <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-[#1c1c20] border border-[#27272e] text-white flex items-center justify-center flex-shrink-0">
+              <Leaf className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
+          <p className="text-[10px] sm:text-xs text-neutral-400 font-medium flex items-center gap-1 mt-1 truncate">
+            <Scale className="w-3 h-3 text-white flex-shrink-0" /> Diverted from landfills
+          </p>
         </div>
 
-        <div className="stat-card">
-          <div className="flex justify-between items-start">
+        <div className="stat-card p-3.5 sm:p-5">
+          <div className="flex justify-between items-start mb-2">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">CO₂ Avoided</p>
-              <h3 className="text-3xl font-extrabold text-white mt-2 tracking-tight">
-                {(metrics.co2_prevented_kg || 0).toLocaleString()} <span className="text-sm font-medium text-neutral-400">kg</span>
+              <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-neutral-400">CO₂ Avoided</p>
+              <h3 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white mt-1 sm:mt-2 tracking-tight">
+                {(metrics.co2_prevented_kg || 0).toLocaleString()} <span className="text-xs sm:text-sm font-medium text-neutral-400">kg</span>
               </h3>
-              <p className="text-xs text-neutral-400 font-medium flex items-center gap-1 mt-2">
-                <Flame className="w-3.5 h-3.5 text-white" /> Direct climate positive
-              </p>
             </div>
-            <div className="w-11 h-11 rounded-xl bg-[#1c1c20] border border-[#27272e] text-white flex items-center justify-center">
-              <TrendingUp className="w-5 h-5" />
+            <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-[#1c1c20] border border-[#27272e] text-white flex items-center justify-center flex-shrink-0">
+              <Flame className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
+          <p className="text-[10px] sm:text-xs text-neutral-400 font-medium flex items-center gap-1 mt-1 truncate">
+            <TrendingUp className="w-3 h-3 text-white flex-shrink-0" /> Direct climate positive
+          </p>
         </div>
 
-        <div className="stat-card">
-          <div className="flex justify-between items-start">
+        <div className="stat-card p-3.5 sm:p-5">
+          <div className="flex justify-between items-start mb-2">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">Completed Rescues</p>
-              <h3 className="text-3xl font-extrabold text-white mt-2 tracking-tight">
+              <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-neutral-400">Completed</p>
+              <h3 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white mt-1 sm:mt-2 tracking-tight">
                 {(metrics.donations_completed || 0).toLocaleString()}
               </h3>
-              <p className="text-xs text-neutral-400 font-medium flex items-center gap-1 mt-2">
-                <Users className="w-3.5 h-3.5 text-white" /> Across registered partners
-              </p>
             </div>
-            <div className="w-11 h-11 rounded-xl bg-[#1c1c20] border border-[#27272e] text-white flex items-center justify-center">
-              <Award className="w-5 h-5" />
+            <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-[#1c1c20] border border-[#27272e] text-white flex items-center justify-center flex-shrink-0">
+              <Award className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
+          <p className="text-[10px] sm:text-xs text-neutral-400 font-medium flex items-center gap-1 mt-1 truncate">
+            <Users className="w-3 h-3 text-white flex-shrink-0" /> Across partners
+          </p>
         </div>
       </div>
 
       {/* Monthly Trends Chart */}
-      <div className="bg-[#121214] p-6 rounded-2xl border border-[#232328]">
-        <div className="flex items-center justify-between mb-6">
+      <div className="bg-[#121214] p-4 sm:p-6 rounded-2xl border border-[#232328]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 sm:mb-6">
           <div>
-            <h3 className="text-lg font-bold text-white">Food Rescue Volume Trends</h3>
+            <h3 className="text-base sm:text-lg font-bold text-white">Food Rescue Volume Trends</h3>
             <p className="text-xs text-neutral-400 mt-0.5">
               {timeRange === 'month'
-                ? 'Day-wise breakdown of rescued surplus weight from database'
-                : 'Monthly breakdown of rescued surplus weight from database'}
+                ? 'Day-wise breakdown of rescued surplus weight'
+                : 'Monthly breakdown of rescued surplus weight'}
             </p>
           </div>
-          <span className="badge badge-neutral uppercase text-[10px] font-bold">
+          <span className="badge badge-neutral uppercase text-[10px] font-bold self-start sm:self-auto">
             {timeRange === 'month' ? 'Daily View' : 'Monthly View'}
           </span>
         </div>
 
         {displayTrends.length > 0 ? (
-          <div className="h-64 flex items-end gap-6 pt-8 pb-4 border-b border-[#232328] px-4">
-            {displayTrends.map((item, idx) => {
-              const heightPercent = Math.max(12, Math.round(((item.kg || item.meals || 0) / maxKg) * 100));
-              return (
-                <div key={idx} className="flex-1 flex flex-col items-center gap-2 group h-full justify-end">
-                  <div className="text-xs font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                    {item.kg ? `${item.kg} kg` : `${item.meals} meals`}
+          <div className="overflow-x-auto pb-2 -mx-4 sm:mx-0 px-4 sm:px-0">
+            <div className="h-60 sm:h-64 min-w-[360px] sm:min-w-full flex items-end gap-3 sm:gap-6 pt-8 pb-4 border-b border-[#232328] px-2 sm:px-4">
+              {displayTrends.map((item, idx) => {
+                const heightPercent = Math.max(12, Math.round(((item.kg || item.meals || 0) / maxKg) * 100));
+                return (
+                  <div key={idx} className="flex-1 flex flex-col items-center gap-2 group h-full justify-end min-w-[36px]">
+                    <div className="text-[11px] font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                      {item.kg ? `${item.kg}kg` : `${item.meals}m`}
+                    </div>
+                    <div className="w-full bg-[#1c1c20] rounded-t-xl overflow-hidden h-full flex items-end">
+                      <div
+                        style={{ height: `${heightPercent}%` }}
+                        className="w-full bg-white rounded-t-xl group-hover:bg-neutral-200 transition-all duration-500"
+                      ></div>
+                    </div>
+                    <span className="text-[11px] font-medium text-neutral-400 truncate max-w-[48px] text-center">{item.month}</span>
                   </div>
-                  <div className="w-full bg-[#1c1c20] rounded-t-xl overflow-hidden h-full flex items-end">
-                    <div
-                      style={{ height: `${heightPercent}%` }}
-                      className="w-full bg-white rounded-t-xl group-hover:bg-neutral-200 transition-all duration-500"
-                    ></div>
-                  </div>
-                  <span className="text-xs font-medium text-neutral-400">{item.month}</span>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         ) : (
           <div className="h-32 flex items-center justify-center text-neutral-400 text-sm border-b border-[#232328]">
@@ -203,52 +205,78 @@ export default function AnalyticsPage() {
 
       {/* Leaderboard */}
       <div className="bg-[#121214] rounded-2xl border border-[#232328] overflow-hidden">
-        <div className="p-6 border-b border-[#232328] flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <Award className="w-5 h-5 text-white" />
-              Community Champions Leaderboard
-            </h3>
-            <p className="text-xs text-neutral-400 mt-0.5">Recognizing top contributors in food waste reduction</p>
-          </div>
+        <div className="p-4 sm:p-6 border-b border-[#232328]">
+          <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+            <Award className="w-5 h-5 text-white flex-shrink-0" />
+            Community Champions Leaderboard
+          </h3>
+          <p className="text-xs text-neutral-400 mt-0.5">Recognizing top contributors in food waste reduction</p>
         </div>
 
-        <div className="overflow-x-auto">
-          {displayLeaderboard.length > 0 ? (
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-[#0c0c0e] text-neutral-400 uppercase text-[10px] font-semibold tracking-wider border-b border-[#232328]">
-                  <th className="py-3 px-6">Rank</th>
-                  <th className="py-3 px-6">Organization / Contributor</th>
-                  <th className="py-3 px-6">Role</th>
-                  <th className="py-3 px-6">Total Impact</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#232328] text-sm">
-                {displayLeaderboard.map((item, index) => (
-                  <tr key={index} className="hover:bg-[#18181b] transition-colors">
-                    <td className="py-4 px-6 font-bold text-white">
-                      {index === 0 ? '🥇 #1' : index === 1 ? '🥈 #2' : index === 2 ? '🥉 #3' : `#${index + 1}`}
-                    </td>
-                    <td className="py-4 px-6 font-semibold text-white">
-                      {item.name || item.full_name}
-                    </td>
-                    <td className="py-4 px-6">
-                      <span className="badge badge-neutral text-[10px] uppercase font-bold">{item.type || item.role}</span>
-                    </td>
-                    <td className="py-4 px-6 text-white font-bold text-xs">
-                      {item.kg ? `${item.kg.toLocaleString()} kg rescued` : `${(item.meals || item.donations || 0).toLocaleString()} meals`}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <div className="p-8 text-center text-neutral-400 text-sm">
-              No leaderboard entries found.
+        {displayLeaderboard.length > 0 ? (
+          <>
+            {/* Mobile Card View (< md) */}
+            <div className="divide-y divide-[#232328] md:hidden">
+              {displayLeaderboard.map((item, index) => (
+                <div key={index} className="p-4 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="font-bold text-sm text-white w-6 flex-shrink-0">
+                      {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm text-white truncate">{item.name || item.full_name}</p>
+                      <span className="badge badge-neutral text-[9px] uppercase font-bold mt-0.5">
+                        {item.type || item.role}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <span className="text-xs font-bold text-white block">
+                      {item.kg ? `${item.kg.toLocaleString()} kg` : `${(item.meals || item.donations || 0).toLocaleString()} meals`}
+                    </span>
+                    <span className="text-[10px] text-neutral-500">Rescued</span>
+                  </div>
+                </div>
+              ))}
             </div>
-          )}
-        </div>
+
+            {/* Desktop Table (>= md) */}
+            <div className="hidden md:block table-responsive">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-[#0c0c0e] text-neutral-400 uppercase text-[10px] font-semibold tracking-wider border-b border-[#232328]">
+                    <th className="py-3.5 px-6">Rank</th>
+                    <th className="py-3.5 px-6">Organization / Contributor</th>
+                    <th className="py-3.5 px-6">Role</th>
+                    <th className="py-3.5 px-6 text-right">Total Impact</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#232328] text-sm">
+                  {displayLeaderboard.map((item, index) => (
+                    <tr key={index} className="hover:bg-[#18181b] transition-colors">
+                      <td className="py-4 px-6 font-bold text-white">
+                        {index === 0 ? '🥇 #1' : index === 1 ? '🥈 #2' : index === 2 ? '🥉 #3' : `#${index + 1}`}
+                      </td>
+                      <td className="py-4 px-6 font-semibold text-white">
+                        {item.name || item.full_name}
+                      </td>
+                      <td className="py-4 px-6">
+                        <span className="badge badge-neutral text-[10px] uppercase font-bold">{item.type || item.role}</span>
+                      </td>
+                      <td className="py-4 px-6 text-white font-bold text-xs text-right">
+                        {item.kg ? `${item.kg.toLocaleString()} kg rescued` : `${(item.meals || item.donations || 0).toLocaleString()} meals`}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        ) : (
+          <div className="p-8 text-center text-neutral-400 text-sm">
+            No leaderboard entries found.
+          </div>
+        )}
       </div>
     </div>
   );

@@ -96,10 +96,10 @@ export default function ClaimsPage() {
   return (
     <div className="space-y-6 animate-fade-in max-w-5xl mx-auto pb-12">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#232328] pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#232328] pb-5 sm:pb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Reserved Food Claims</h1>
-          <p className="text-neutral-400 text-sm mt-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Reserved Food Claims</h1>
+          <p className="text-neutral-400 text-xs sm:text-sm mt-1">
             Manage claimed supplies, view food provider and assigned volunteer pickup details, and submit reviews.
           </p>
         </div>
@@ -114,10 +114,10 @@ export default function ClaimsPage() {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex items-center gap-2 border-b border-[#232328] pb-3">
+      <div className="flex items-center gap-2 border-b border-[#232328] pb-3 overflow-x-auto whitespace-nowrap -mx-4 sm:mx-0 px-4 sm:px-0">
         <button
           onClick={() => setFilter('all')}
-          className={`px-4 py-2 rounded-xl text-xs font-medium transition-all ${
+          className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-medium transition-all ${
             filter === 'all'
               ? 'bg-white text-black shadow-sm'
               : 'text-neutral-400 hover:text-white hover:bg-[#18181c]'
@@ -127,7 +127,7 @@ export default function ClaimsPage() {
         </button>
         <button
           onClick={() => setFilter('active')}
-          className={`px-4 py-2 rounded-xl text-xs font-medium transition-all ${
+          className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-medium transition-all ${
             filter === 'active'
               ? 'bg-white text-black shadow-sm'
               : 'text-neutral-400 hover:text-white hover:bg-[#18181c]'
@@ -137,7 +137,7 @@ export default function ClaimsPage() {
         </button>
         <button
           onClick={() => setFilter('completed')}
-          className={`px-4 py-2 rounded-xl text-xs font-medium transition-all ${
+          className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-medium transition-all ${
             filter === 'completed'
               ? 'bg-white text-black shadow-sm'
               : 'text-neutral-400 hover:text-white hover:bg-[#18181c]'

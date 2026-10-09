@@ -125,12 +125,11 @@ const getDonations = async ({ page = 1, limit = 20, status, category, providerId
 
   const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
 
-  // Count
-  const countResult = await db.query(
-    `SELECT COUNT(DISTINCT fd.id) ${fromClause} ${whereClause}`,
+  // Run lean count and data query concurrently to eliminate multi-second latency
+  const countPromise = db.query(
+    `SELECT COUNT(*) FROM food_donations fd ${whereClause}`,
     params
   );
-  const total = parseInt(countResult.rows[0].count, 10);
 
   // Paginated results
   const dataParams = [...params];
@@ -141,14 +140,18 @@ const getDonations = async ({ page = 1, limit = 20, status, category, providerId
 
   const orderBy = lat && lng ? 'ORDER BY distance_km ASC' : 'ORDER BY fd.created_at DESC';
 
-  const { rows } = await db.query(
+  const dataPromise = db.query(
     `SELECT ${selectFields} ${fromClause} ${whereClause} ${orderBy} LIMIT ${limitPlaceholder} OFFSET ${offsetPlaceholder}`,
     dataParams
   );
 
+  const [countResult, dataResult] = await Promise.all([countPromise, dataPromise]);
+  const total = parseInt(countResult.rows[0]?.count || 0, 10);
+  const rows = dataResult.rows;
+
   return {
     donations: rows,
-    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) || 1 },
   };
 };
 

@@ -7,7 +7,7 @@ import {
   Package, Clock, ExternalLink
 } from 'lucide-react';
 
-const POLL_INTERVAL = 35000; // 35 seconds (reduced API calls, checks when active)
+const POLL_INTERVAL = 45000; // 45 seconds (checks only when tab is active)
 
 const getSeenIds = (userId) => {
   if (!userId) return new Set();
@@ -52,7 +52,7 @@ export default function NotificationPopup() {
     if (!user || (typeof document !== 'undefined' && document.hidden)) return;
     try {
       const { data } = await api.get('/notifications', {
-        params: { unread: 'true', limit: 10 },
+        params: { unread: 'true', limit: 5 },
       });
 
       const notifications = data?.data?.notifications || [];
@@ -149,19 +149,17 @@ export default function NotificationPopup() {
     }
   };
 
-  if (popups.length === 0) return null;
-
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col-reverse gap-3 max-w-sm w-full pointer-events-none">
+    <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 z-50 flex flex-col-reverse gap-3 sm:max-w-sm pointer-events-none">
       {popups.map((popup, index) => (
         <div
           key={popup._popupId}
-          className="pointer-events-auto animate-slide-in-right"
+          className="pointer-events-auto animate-slide-in-right w-full"
           style={{
             animationDelay: `${index * 100}ms`,
           }}
         >
-          <div className="bg-[#141416] border border-[#2a2a30] rounded-2xl shadow-2xl shadow-black/60 overflow-hidden backdrop-blur-xl">
+          <div className="bg-[#141416]/95 border border-[#2a2a30] rounded-2xl shadow-2xl shadow-black/80 overflow-hidden backdrop-blur-xl">
             {/* Accent bar */}
             <div className="h-[3px] bg-gradient-to-r from-white via-neutral-400 to-transparent" />
 

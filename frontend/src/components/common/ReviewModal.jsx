@@ -70,10 +70,10 @@ export default function ReviewModal({ isOpen, onClose, donation, onReviewSubmitt
   const activeRating = hoverRating || rating;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-      <div className="bg-[#121214] border border-[#27272e] rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl shadow-black/80 animate-slide-up">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3.5 sm:p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+      <div className="bg-[#121214] border border-[#27272e] rounded-2xl sm:rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl shadow-black/80 animate-slide-up">
         {/* Header */}
-        <div className="p-6 border-b border-[#232328] flex items-center justify-between">
+        <div className="p-4 sm:p-6 border-b border-[#232328] flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-white text-black flex items-center justify-center shadow-md">
               <Star className="w-5 h-5 fill-black stroke-black" />

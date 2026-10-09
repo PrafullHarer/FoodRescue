@@ -2,10 +2,38 @@ const jwt = require('jsonwebtoken');
 const config = require('../config');
 const db = require('../config/db');
 
+// In-memory user cache to avoid round-trip DB queries on every authenticated request (60s TTL)
+const userCache = new Map();
+const CACHE_TTL_MS = 60 * 1000;
+
+function getCachedUser(userId) {
+  const cached = userCache.get(userId);
+  if (!cached) return null;
+  if (Date.now() - cached.cachedAt > CACHE_TTL_MS) {
+    userCache.delete(userId);
+    return null;
+  }
+  return cached.user;
+}
+
+function setCachedUser(userId, user) {
+  // Prevent unbounded memory growth
+  if (userCache.size > 1000) {
+    userCache.clear();
+  }
+  userCache.set(userId, { user, cachedAt: Date.now() });
+}
+
+/**
+ * Invalidate user from cache when status changes.
+ */
+function invalidateUserCache(userId) {
+  if (userId) userCache.delete(userId);
+}
+
 /**
  * Authentication middleware.
- * Verifies the JWT access token from the Authorization header.
- * Attaches `req.user` with { id, email, role } on success.
+ * Verifies the JWT access token and attaches req.user with cached database validation.
  */
 const authenticate = async (req, res, next) => {
   try {
@@ -19,23 +47,28 @@ const authenticate = async (req, res, next) => {
     }
 
     const token = authHeader.split(' ')[1];
-
     const decoded = jwt.verify(token, config.jwt.secret);
 
-    // Verify user still exists and is active
-    const { rows } = await db.query(
-      'SELECT id, email, role, status FROM users WHERE id = $1',
-      [decoded.id]
-    );
+    // 1. Check in-memory cache first
+    let user = getCachedUser(decoded.id);
 
-    if (rows.length === 0) {
-      return res.status(401).json({
-        success: false,
-        message: 'User not found. Token is invalid.',
-      });
+    // 2. Query DB only on cache miss
+    if (!user) {
+      const { rows } = await db.query(
+        'SELECT id, email, role, status FROM users WHERE id = $1',
+        [decoded.id]
+      );
+
+      if (rows.length === 0) {
+        return res.status(401).json({
+          success: false,
+          message: 'User not found. Token is invalid.',
+        });
+      }
+
+      user = rows[0];
+      setCachedUser(decoded.id, user);
     }
-
-    const user = rows[0];
 
     if (user.status === 'blocked' || user.status === 'suspended') {
       return res.status(403).json({
@@ -68,5 +101,7 @@ const authenticate = async (req, res, next) => {
     next(error);
   }
 };
+
+authenticate.invalidateUserCache = invalidateUserCache;
 
 module.exports = authenticate;

@@ -130,11 +130,11 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#050505] flex items-center justify-center p-4 sm:p-8 font-sans">
-      <div className="w-full max-w-5xl bg-[#121214] border border-[#232328] rounded-[28px] p-6 sm:p-10 shadow-2xl shadow-black/80 space-y-8 animate-fade-in relative">
+    <div className="min-h-screen w-full bg-[#050505] flex items-center justify-center p-3 sm:p-6 lg:p-8 font-sans">
+      <div className="w-full max-w-5xl bg-[#121214] border border-[#232328] rounded-2xl sm:rounded-[28px] p-4 sm:p-8 lg:p-10 shadow-2xl shadow-black/80 space-y-6 sm:space-y-8 animate-fade-in relative">
         
         {/* Integrated Top Bar with Back Link, Centered Header & Logo, and Status Indicator */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#232328] pb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-[#232328] pb-5 sm:pb-6">
           <div className="flex-shrink-0">
             <Link
               to="/login"

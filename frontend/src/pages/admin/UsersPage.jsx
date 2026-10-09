@@ -44,18 +44,18 @@ export default function UsersPage() {
   });
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#232328] pb-6">
+    <div className="space-y-6 max-w-7xl mx-auto animate-fade-in pb-12">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#232328] pb-5 sm:pb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">User Management</h1>
-          <p className="text-neutral-400 text-sm mt-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">User Management</h1>
+          <p className="text-neutral-400 text-xs sm:text-sm mt-1">
             Directory of all registered donors, volunteers, NGOs, and platform admins.
           </p>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row items-center gap-4 bg-[#121214] p-4 rounded-2xl border border-[#232328]">
+      <div className="flex flex-col sm:flex-row items-center gap-3 bg-[#121214] p-3.5 sm:p-4 rounded-2xl border border-[#232328]">
         <div className="relative flex-1 w-full">
           <Search className="w-4 h-4 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -63,16 +63,16 @@ export default function UsersPage() {
             placeholder="Search by name or email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="input pl-9"
+            className="input pl-9 text-xs sm:text-sm"
           />
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Filter className="w-4 h-4 text-neutral-500" />
+          <Filter className="w-4 h-4 text-neutral-500 flex-shrink-0" />
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
-            className="input py-2 text-xs"
+            className="input py-2 text-xs w-full sm:w-auto min-w-[140px]"
           >
             <option value="all">All Roles</option>
             <option value="provider">Food Providers</option>
@@ -83,80 +83,123 @@ export default function UsersPage() {
         </div>
       </div>
 
-      {/* Users Table */}
+      {/* Users List Container */}
       <div className="bg-[#121214] rounded-2xl border border-[#232328] overflow-hidden">
         {loading ? (
-          <div className="p-16 text-center text-neutral-500">
+          <div className="p-12 sm:p-16 text-center text-neutral-500">
             <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-3" />
             Loading users directory...
           </div>
         ) : filteredUsers.length === 0 ? (
-          <div className="p-16 text-center text-neutral-500">
+          <div className="p-12 sm:p-16 text-center text-neutral-500">
             <Users className="w-12 h-12 mx-auto mb-3 text-neutral-600 stroke-1" />
             <p className="font-semibold text-white text-base">No users found</p>
             <p className="text-xs text-neutral-400 mt-1">Try adjusting your filters or search terms.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-[#0c0c0e] text-neutral-400 uppercase text-[10px] font-semibold tracking-wider border-b border-[#232328]">
-                  <th className="py-3.5 px-6">User</th>
-                  <th className="py-3.5 px-6">Role</th>
-                  <th className="py-3.5 px-6">Status</th>
-                  <th className="py-3.5 px-6">Joined</th>
-                  <th className="py-3.5 px-6 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#232328] text-sm">
-                {filteredUsers.map((u) => (
-                  <tr key={u.id} className="hover:bg-[#18181b] transition-colors">
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-white text-black font-bold flex items-center justify-center flex-shrink-0 text-xs">
-                          {(u.full_name || u.email || 'U')[0].toUpperCase()}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-white">{u.full_name || 'Anonymous User'}</div>
-                          <div className="text-xs text-neutral-400 flex items-center gap-3 mt-0.5">
-                            <span className="flex items-center gap-1"><Mail className="w-3 h-3 text-neutral-500" /> {u.email}</span>
-                            {u.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3 text-neutral-500" /> {u.phone}</span>}
+          <>
+            {/* Mobile Cards (< md) */}
+            <div className="divide-y divide-[#232328] md:hidden">
+              {filteredUsers.map((u) => (
+                <div key={u.id} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-full bg-white text-black font-bold flex items-center justify-center flex-shrink-0 text-xs">
+                        {(u.full_name || u.email || 'U')[0].toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm text-white truncate">{u.full_name || 'Anonymous User'}</p>
+                        <p className="text-xs text-neutral-400 truncate">{u.email}</p>
+                      </div>
+                    </div>
+                    <span className={`badge uppercase text-[9px] font-bold flex-shrink-0 ${
+                      u.status === 'suspended' ? 'badge-danger' : 'badge-primary'
+                    }`}>
+                      {u.status || 'active'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-[#1c1c22]">
+                    <span className="badge badge-neutral uppercase text-[9px] font-bold">
+                      {u.role}
+                    </span>
+                    <button
+                      onClick={() => handleStatusChange(u.id, u.status || 'active')}
+                      className={`text-xs font-semibold px-3 py-1 rounded-lg border transition-colors ${
+                        u.status === 'suspended'
+                          ? 'border-neutral-500 bg-white text-black hover:bg-neutral-200'
+                          : 'border-[#3f3f46] text-neutral-300 hover:text-white'
+                      }`}
+                    >
+                      {u.status === 'suspended' ? 'Reactivate' : 'Suspend'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table (>= md) */}
+            <div className="hidden md:block table-responsive">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-[#0c0c0e] text-neutral-400 uppercase text-[10px] font-semibold tracking-wider border-b border-[#232328]">
+                    <th className="py-3.5 px-6">User</th>
+                    <th className="py-3.5 px-6">Role</th>
+                    <th className="py-3.5 px-6">Status</th>
+                    <th className="py-3.5 px-6">Joined</th>
+                    <th className="py-3.5 px-6 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#232328] text-sm">
+                  {filteredUsers.map((u) => (
+                    <tr key={u.id} className="hover:bg-[#18181b] transition-colors">
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-white text-black font-bold flex items-center justify-center flex-shrink-0 text-xs">
+                            {(u.full_name || u.email || 'U')[0].toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="font-semibold text-white">{u.full_name || 'Anonymous User'}</div>
+                            <div className="text-xs text-neutral-400 flex items-center gap-3 mt-0.5">
+                              <span className="flex items-center gap-1"><Mail className="w-3 h-3 text-neutral-500" /> {u.email}</span>
+                              {u.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3 text-neutral-500" /> {u.phone}</span>}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <span className="badge badge-neutral uppercase text-[10px] font-bold">
-                        {u.role}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6">
-                      <span className={`badge uppercase text-[10px] font-bold ${
-                        u.status === 'suspended' ? 'badge-danger' : 'badge-primary'
-                      }`}>
-                        {u.status || 'active'}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6 text-neutral-400 text-xs">
-                      {u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A'}
-                    </td>
-                    <td className="py-4 px-6 text-right">
-                      <button
-                        onClick={() => handleStatusChange(u.id, u.status || 'active')}
-                        className={`text-xs font-semibold px-3 py-1.5 rounded-xl border transition-colors ${
-                          u.status === 'suspended'
-                            ? 'border-neutral-500 bg-white text-black hover:bg-neutral-200'
-                            : 'border-[#3f3f46] text-neutral-300 hover:text-white hover:border-neutral-400'
-                        }`}
-                      >
-                        {u.status === 'suspended' ? 'Reactivate' : 'Suspend'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      </td>
+                      <td className="py-4 px-6">
+                        <span className="badge badge-neutral uppercase text-[10px] font-bold">
+                          {u.role}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6">
+                        <span className={`badge uppercase text-[10px] font-bold ${
+                          u.status === 'suspended' ? 'badge-danger' : 'badge-primary'
+                        }`}>
+                          {u.status || 'active'}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6 text-neutral-400 text-xs">
+                        {u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A'}
+                      </td>
+                      <td className="py-4 px-6 text-right">
+                        <button
+                          onClick={() => handleStatusChange(u.id, u.status || 'active')}
+                          className={`text-xs font-semibold px-3 py-1.5 rounded-xl border transition-colors ${
+                            u.status === 'suspended'
+                              ? 'border-neutral-500 bg-white text-black hover:bg-neutral-200'
+                              : 'border-[#3f3f46] text-neutral-300 hover:text-white hover:border-neutral-400'
+                          }`}
+                        >
+                          {u.status === 'suspended' ? 'Reactivate' : 'Suspend'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>

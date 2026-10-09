@@ -42,34 +42,34 @@ export default function ComplaintsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto animate-fade-in">
-      <div className="border-b border-[#232328] pb-6">
-        <h1 className="text-2xl font-bold text-white tracking-tight">Complaints & Disputes</h1>
-        <p className="text-neutral-400 text-sm mt-1">
+    <div className="space-y-6 max-w-6xl mx-auto animate-fade-in pb-12">
+      <div className="border-b border-[#232328] pb-5 sm:pb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Complaints & Disputes</h1>
+        <p className="text-neutral-400 text-xs sm:text-sm mt-1">
           Review community disputes regarding food quality, late pickups, or missed delivery handoffs.
         </p>
       </div>
 
       <div className="bg-[#121214] rounded-2xl border border-[#232328] overflow-hidden divide-y divide-[#232328]">
         {loading ? (
-          <div className="p-16 text-center text-neutral-500">
+          <div className="p-12 sm:p-16 text-center text-neutral-500">
             <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-3" />
             Loading complaints queue...
           </div>
         ) : complaints.length === 0 ? (
-          <div className="p-16 text-center text-neutral-500">
+          <div className="p-12 sm:p-16 text-center text-neutral-500">
             <ShieldCheck className="w-12 h-12 mx-auto mb-3 text-neutral-600 stroke-1" />
             <p className="font-semibold text-white text-base">No unresolved complaints</p>
             <p className="text-xs text-neutral-400 mt-1">Platform operations are running smoothly without active dispute tickets.</p>
           </div>
         ) : (
           complaints.map((c) => (
-            <div key={c.id} className="p-6 space-y-3 hover:bg-[#18181b]/50 transition-colors">
-              <div className="flex items-start justify-between gap-4">
+            <div key={c.id} className="p-4 sm:p-6 space-y-3 hover:bg-[#18181b]/50 transition-colors">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-white text-base">{c.subject || 'Dispute Ticket'}</span>
-                    <span className={`badge uppercase text-[10px] font-bold ${
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-white text-sm sm:text-base">{c.subject || 'Dispute Ticket'}</span>
+                    <span className={`badge uppercase text-[9px] sm:text-[10px] font-bold ${
                       c.status === 'resolved' ? 'badge-primary' : 'badge-danger'
                     }`}>
                       {c.status || 'open'}
@@ -82,13 +82,13 @@ export default function ComplaintsPage() {
                 </div>
               </div>
 
-              <div className="p-4 bg-[#0c0c0e] rounded-xl text-neutral-300 text-xs border border-[#232328] leading-relaxed">
+              <div className="p-3.5 sm:p-4 bg-[#0c0c0e] rounded-xl text-neutral-300 text-xs border border-[#232328] leading-relaxed">
                 {c.description || c.message || 'No description provided'}
               </div>
 
               {c.status !== 'resolved' ? (
                 resolvingId === c.id ? (
-                  <div className="mt-3 p-4 bg-[#0c0c0e] rounded-xl border border-[#232328] space-y-3">
+                  <div className="mt-3 p-3.5 sm:p-4 bg-[#0c0c0e] rounded-xl border border-[#232328] space-y-3">
                     <textarea
                       placeholder="Write resolution notes (e.g. Warning issued to donor, verified spoilage refund)..."
                       value={resolutionText}
@@ -96,9 +96,9 @@ export default function ComplaintsPage() {
                       className="input w-full text-xs"
                       rows={2}
                     />
-                    <div className="flex justify-end gap-2">
+                    <div className="flex items-center justify-end gap-2">
                       <button
-                        onClick={() => { setResolvingId(null); setResolutionText(''); }}
+                        onClick={() => setResolvingId(null)}
                         className="btn btn-secondary text-xs py-1.5 px-3"
                       >
                         Cancel
@@ -107,22 +107,25 @@ export default function ComplaintsPage() {
                         onClick={() => handleResolve(c.id)}
                         className="btn btn-primary text-xs py-1.5 px-3"
                       >
-                        Confirm Resolution
+                        Submit Resolution
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <button
-                    onClick={() => setResolvingId(c.id)}
-                    className="btn btn-secondary text-xs flex items-center gap-1.5 mt-2 py-2 px-3.5"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5" /> Resolve Complaint
-                  </button>
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      onClick={() => { setResolvingId(c.id); setResolutionText(''); }}
+                      className="btn btn-secondary text-xs py-2 px-3.5 w-full sm:w-auto"
+                    >
+                      Resolve Dispute
+                    </button>
+                  </div>
                 )
               ) : (
                 c.resolution_notes && (
-                  <div className="text-xs text-neutral-300 bg-[#151d16] p-3 rounded-xl border border-[#2b4c2d] mt-2">
-                    <span className="font-semibold text-white">Resolution:</span> {c.resolution_notes}
+                  <div className="p-3 bg-[#18181b] rounded-xl border border-[#27272e] text-xs text-neutral-400">
+                    <span className="font-semibold text-white block mb-0.5">Resolution Notes:</span>
+                    {c.resolution_notes}
                   </div>
                 )
               )}

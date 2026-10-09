@@ -81,24 +81,24 @@ export default function DeliveriesPage() {
   return (
     <div className="space-y-6 animate-fade-in max-w-5xl mx-auto pb-16">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#232328] pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#232328] pb-5 sm:pb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Volunteer Delivery Missions</h1>
-          <p className="text-neutral-400 text-sm mt-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Volunteer Delivery Missions</h1>
+          <p className="text-neutral-400 text-xs sm:text-sm mt-1">
             Claim available pickup routes, inspect food quality, and complete QR handoffs.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <Link
             to="/qr-scan"
-            className="btn btn-primary text-xs flex items-center gap-2"
+            className="btn btn-primary text-xs flex items-center justify-center gap-2 flex-1 sm:flex-initial"
           >
-            <QrCode className="w-4 h-4" /> Scan Pickup / Dropoff QR
+            <QrCode className="w-4 h-4" /> Scan QR
           </Link>
           <button
             onClick={loadData}
-            className="p-2.5 rounded-xl border border-[#27272e] bg-[#141416] text-neutral-400 hover:text-white transition-colors"
+            className="p-2.5 rounded-xl border border-[#27272e] bg-[#141416] text-neutral-400 hover:text-white transition-colors flex-shrink-0"
             title="Refresh"
           >
             <RefreshCw className="w-3.5 h-3.5" />
@@ -107,21 +107,21 @@ export default function DeliveriesPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-3 border-b border-[#232328] pb-3">
+      <div className="flex items-center gap-2 sm:gap-3 border-b border-[#232328] pb-3 overflow-x-auto whitespace-nowrap -mx-4 sm:mx-0 px-4 sm:px-0">
         <button
           onClick={() => setActiveTab('my')}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
+          className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
             activeTab === 'my'
               ? 'bg-white text-black shadow-lg shadow-white/5'
               : 'text-neutral-400 hover:text-white bg-[#141416] border border-[#232328]'
           }`}
         >
-          <Truck className="w-3.5 h-3.5" /> My Active Missions ({myDeliveries.length})
+          <Truck className="w-3.5 h-3.5" /> Active Missions ({myDeliveries.length})
         </button>
 
         <button
           onClick={() => setActiveTab('available')}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
+          className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
             activeTab === 'available'
               ? 'bg-white text-black shadow-lg shadow-white/5'
               : 'text-neutral-400 hover:text-white bg-[#141416] border border-[#232328]'

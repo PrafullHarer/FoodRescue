@@ -241,10 +241,10 @@ export default function MapAddressPickerModal({
         </div>
 
         {/* Selected Coordinates & Address Footer */}
-        <div className="p-4 sm:p-5 bg-[#0c0c0e] border-t border-[#232328] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="p-3.5 sm:p-5 bg-[#0c0c0e] border-t border-[#232328] flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div className="space-y-1 min-w-0 flex-1">
-            <div className="flex items-center gap-3">
-              <span className="text-[11px] font-bold text-white uppercase tracking-wider flex items-center gap-1">
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+              <span className="text-[10px] sm:text-[11px] font-bold text-white uppercase tracking-wider flex items-center gap-1">
                 <Navigation className="w-3 h-3" /> Selected Point:
               </span>
               <span className="font-mono text-xs text-neutral-300 bg-[#18181c] px-2 py-0.5 rounded border border-[#232328]">
@@ -256,20 +256,20 @@ export default function MapAddressPickerModal({
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 self-end sm:self-center">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
               type="button"
               onClick={onClose}
-              className="btn btn-secondary text-xs py-2.5 px-4"
+              className="btn btn-secondary text-xs py-2 px-3.5 flex-1 sm:flex-initial justify-center"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleConfirm}
-              className="btn btn-primary text-xs py-2.5 px-5 flex items-center gap-1.5"
+              className="btn btn-primary text-xs py-2 px-4 flex items-center justify-center gap-1.5 flex-1 sm:flex-initial"
             >
-              <Check className="w-4 h-4" /> Use This Location
+              <Check className="w-4 h-4" /> Confirm Location
             </button>
           </div>
         </div>

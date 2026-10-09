@@ -38,8 +38,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#050505] flex items-center justify-center p-4 sm:p-6 font-sans">
-      <div className="w-full max-w-[460px] bg-[#121214] border border-[#232328] rounded-[28px] p-7 sm:p-9 shadow-2xl shadow-black/80 space-y-6 animate-fade-in relative">
+    <div className="min-h-screen w-full bg-[#050505] flex items-center justify-center p-3.5 sm:p-6 font-sans">
+      <div className="w-full max-w-[460px] bg-[#121214] border border-[#232328] rounded-2xl sm:rounded-[28px] p-5 sm:p-9 shadow-2xl shadow-black/80 space-y-5 sm:space-y-6 animate-fade-in relative">
         
         {/* Back to Home pill */}
         <div className="flex items-center justify-between">

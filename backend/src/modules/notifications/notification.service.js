@@ -145,25 +145,29 @@ const getUserNotifications = async (userId, { page = 1, limit = 20, unreadOnly =
     whereClause += ' AND is_read = FALSE';
   }
 
-  const countResult = await db.query(
+  const countPromise = db.query(
     `SELECT COUNT(*) FROM notifications ${whereClause}`,
     params
   );
 
   const dataParams = [...params, limit, offset];
-  const { rows } = await db.query(
+  const dataPromise = db.query(
     `SELECT * FROM notifications ${whereClause}
      ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
     dataParams
   );
+
+  const [countResult, dataResult] = await Promise.all([countPromise, dataPromise]);
+  const rows = dataResult.rows;
+  const total = parseInt(countResult.rows[0]?.count || 0, 10);
 
   return {
     notifications: rows,
     pagination: {
       page,
       limit,
-      total: parseInt(countResult.rows[0].count, 10),
-      totalPages: Math.ceil(parseInt(countResult.rows[0].count, 10) / limit),
+      total,
+      totalPages: Math.ceil(total / limit) || 1,
     },
   };
 };
