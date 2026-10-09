@@ -30,6 +30,15 @@ export default function CreateDonationPage() {
 
   const [mapPickerOpen, setMapPickerOpen] = useState(false);
 
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const toLocalISOString = (d) =>
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+  const defaultStart = toLocalISOString(new Date(now.getTime() + 30 * 60 * 1000));
+  const defaultEnd = toLocalISOString(new Date(now.getTime() + 4 * 60 * 60 * 1000));
+  const defaultExpiry = toLocalISOString(new Date(now.getTime() + 6 * 60 * 60 * 1000));
+
   const handleLocationSelected = ({ address, latitude, longitude }) => {
     setForm((prev) => ({
       ...prev,
