@@ -4,8 +4,13 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../api/client';
 import {
   Bell, X, ChevronRight, Utensils,
-  Package, Clock, ExternalLink
+  Package, Clock, ExternalLink, AlertTriangle as AlertTriangleIcon
 } from 'lucide-react';
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from '../ui/alert';
 
 const POLL_INTERVAL = 45000; // 45 seconds (checks only when tab is active)
 
@@ -151,66 +156,107 @@ export default function NotificationPopup() {
 
   return (
     <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 z-50 flex flex-col-reverse gap-3 sm:max-w-sm pointer-events-none">
-      {popups.map((popup, index) => (
-        <div
-          key={popup._popupId}
-          className="pointer-events-auto animate-slide-in-right w-full"
-          style={{
-            animationDelay: `${index * 100}ms`,
-          }}
-        >
-          <div className="bg-[#141416]/95 border border-[#2a2a30] rounded-2xl shadow-2xl shadow-black/80 overflow-hidden backdrop-blur-xl">
-            {/* Accent bar */}
-            <div className="h-[3px] bg-gradient-to-r from-white via-neutral-400 to-transparent" />
+      {popups.map((popup, index) => {
+        const isExpiring =
+          popup.type === 'expiry_warning' ||
+          popup.type === 'expiry' ||
+          popup.title?.toLowerCase().includes('expir') ||
+          popup.body?.toLowerCase().includes('expir');
 
-            <div className="p-4">
-              {/* Header row */}
-              <div className="flex items-start justify-between gap-3 mb-2.5">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-white text-black flex items-center justify-center flex-shrink-0 shadow-md">
-                    <Utensils className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[13px] font-bold text-white leading-tight truncate">
+        return (
+          <div
+            key={popup._popupId}
+            className="pointer-events-auto animate-slide-in-right w-full"
+            style={{
+              animationDelay: `${index * 100}ms`,
+            }}
+          >
+            {isExpiring ? (
+              <Alert className="max-w-md border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-50 shadow-2xl backdrop-blur-xl relative">
+                <AlertTriangleIcon className="text-amber-600 dark:text-amber-400" />
+                <div className="flex-1 min-w-0 pr-6">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <AlertTitle className="text-xs font-bold leading-snug">
                       {popup.title}
-                    </p>
-                    <p className="text-[10px] text-neutral-500 mt-0.5 flex items-center gap-1">
-                      <Clock className="w-2.5 h-2.5" />
-                      Just now
-                    </p>
+                    </AlertTitle>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        dismissPopup(popup._popupId, popup.id);
+                      }}
+                      className="absolute top-2.5 right-2.5 p-1 rounded-md text-amber-700/70 hover:text-amber-950 dark:text-amber-300/70 dark:hover:text-amber-100 hover:bg-amber-200/50 dark:hover:bg-amber-900/50 transition-colors"
+                      aria-label="Dismiss alert"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
                   </div>
+                  <AlertDescription className="text-[11px] leading-relaxed text-amber-800 dark:text-amber-200 mb-2.5">
+                    {popup.body}
+                  </AlertDescription>
+                  <button
+                    onClick={() => handleClick(popup)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-bold bg-amber-900 text-amber-50 dark:bg-amber-100 dark:text-amber-950 hover:bg-amber-800 dark:hover:bg-amber-200 shadow-xs transition-all"
+                  >
+                    <span>View Donation</span>
+                    <ChevronRight className="w-3 h-3" />
+                  </button>
                 </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    dismissPopup(popup._popupId, popup.id);
-                  }}
-                  className="p-1 rounded-lg text-neutral-500 hover:text-white hover:bg-[#1f1f24] transition-colors flex-shrink-0"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+              </Alert>
+            ) : (
+              <div className="bg-[#141416]/95 border border-[#2a2a30] rounded-2xl shadow-2xl shadow-black/80 overflow-hidden backdrop-blur-xl">
+                {/* Accent bar */}
+                <div className="h-[3px] bg-gradient-to-r from-white via-neutral-400 to-transparent" />
+
+                <div className="p-4">
+                  {/* Header row */}
+                  <div className="flex items-start justify-between gap-3 mb-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-xl bg-white text-black flex items-center justify-center flex-shrink-0 shadow-md">
+                        <Utensils className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[13px] font-bold text-white leading-tight truncate">
+                          {popup.title}
+                        </p>
+                        <p className="text-[10px] text-neutral-500 mt-0.5 flex items-center gap-1">
+                          <Clock className="w-2.5 h-2.5" />
+                          Just now
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        dismissPopup(popup._popupId, popup.id);
+                      }}
+                      className="p-1 rounded-lg text-neutral-500 hover:text-white hover:bg-[#1f1f24] transition-colors flex-shrink-0"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Body */}
+                  <p className="text-[12px] text-neutral-300 leading-relaxed line-clamp-2 mb-3">
+                    {popup.body}
+                  </p>
+
+                  {/* Action */}
+                  <button
+                    onClick={() => handleClick(popup)}
+                    className="w-full flex items-center justify-between px-3.5 py-2 rounded-xl bg-white/5 border border-[#2a2a30] hover:bg-white/10 hover:border-neutral-500 transition-all text-xs group"
+                  >
+                    <span className="font-semibold text-white flex items-center gap-1.5">
+                      <ExternalLink className="w-3 h-3 text-neutral-400" />
+                      View Details
+                    </span>
+                    <ChevronRight className="w-3.5 h-3.5 text-neutral-500 group-hover:text-white group-hover:translate-x-0.5 transition-all" />
+                  </button>
+                </div>
               </div>
-
-              {/* Body */}
-              <p className="text-[12px] text-neutral-300 leading-relaxed line-clamp-2 mb-3">
-                {popup.body}
-              </p>
-
-              {/* Action */}
-              <button
-                onClick={() => handleClick(popup)}
-                className="w-full flex items-center justify-between px-3.5 py-2 rounded-xl bg-white/5 border border-[#2a2a30] hover:bg-white/10 hover:border-neutral-500 transition-all text-xs group"
-              >
-                <span className="font-semibold text-white flex items-center gap-1.5">
-                  <ExternalLink className="w-3 h-3 text-neutral-400" />
-                  View Details
-                </span>
-                <ChevronRight className="w-3.5 h-3.5 text-neutral-500 group-hover:text-white group-hover:translate-x-0.5 transition-all" />
-              </button>
-            </div>
+            )}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

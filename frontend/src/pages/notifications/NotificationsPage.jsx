@@ -4,8 +4,14 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../api/client';
 import {
   Bell, CheckCheck, Clock, ShieldAlert, Package, CheckCircle2,
-  Inbox, Utensils, ExternalLink, RefreshCw, ChevronRight
+  Inbox, Utensils, ExternalLink, RefreshCw, ChevronRight,
+  AlertTriangle as AlertTriangleIcon
 } from 'lucide-react';
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from '../../components/ui/alert';
 import toast from 'react-hot-toast';
 
 function formatRelativeTime(dateString) {
@@ -243,28 +249,39 @@ export default function NotificationsPage() {
             }
 
             const isDonation = notifData?.type === 'new_donation' || notifData?.donation_id;
+            const isExpiring =
+              n.type === 'expiry_warning' ||
+              n.type === 'expiry' ||
+              n.title?.toLowerCase().includes('expir') ||
+              (n.message || n.body)?.toLowerCase().includes('expir');
 
             return (
               <div
                 key={n.id}
                 onClick={() => handleCardClick(n)}
-                className={`p-5 flex items-start gap-4 transition-all cursor-pointer hover:bg-[#18181b] relative group ${
-                  !n.is_read ? 'bg-[#18181c]/60' : ''
+                className={`p-5 flex items-start gap-4 transition-all cursor-pointer hover:opacity-95 relative group ${
+                  isExpiring
+                    ? 'bg-amber-50/70 border-l-4 border-l-amber-500 text-amber-950 dark:bg-amber-950/30 dark:border-l-amber-500 dark:text-amber-100 hover:bg-amber-100/60 dark:hover:bg-amber-950/50'
+                    : !n.is_read ? 'bg-[#18181c]/60 hover:bg-[#18181b]' : 'hover:bg-[#18181b]'
                 }`}
               >
                 {/* Unread indicator dot */}
-                {!n.is_read && (
+                {!n.is_read && !isExpiring && (
                   <div className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-white rounded-r-full" />
                 )}
 
                 <div
                   className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border transition-all ${
-                    !n.is_read
+                    isExpiring
+                      ? 'bg-amber-200 text-amber-950 border-amber-300 dark:bg-amber-900 dark:text-amber-100 dark:border-amber-700 shadow-sm'
+                      : !n.is_read
                       ? 'bg-white text-black border-white shadow-md'
                       : 'bg-[#1c1c20] text-neutral-400 border-[#27272e]'
                   }`}
                 >
-                  {isDonation ? (
+                  {isExpiring ? (
+                    <AlertTriangleIcon className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                  ) : isDonation ? (
                     <Utensils className="w-5 h-5" />
                   ) : n.type === 'alert' ? (
                     <ShieldAlert className="w-5 h-5" />
@@ -277,9 +294,18 @@ export default function NotificationsPage() {
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <h4 className={`text-sm font-semibold flex items-center gap-2 ${!n.is_read ? 'text-white font-bold' : 'text-neutral-300'}`}>
+                    <h4 className={`text-sm font-semibold flex items-center gap-2 ${
+                      isExpiring
+                        ? 'text-amber-950 dark:text-amber-100 font-bold'
+                        : !n.is_read ? 'text-white font-bold' : 'text-neutral-300'
+                    }`}>
                       {n.title || 'Notification'}
-                      {!n.is_read && (
+                      {isExpiring && (
+                        <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-amber-200 text-amber-950 dark:bg-amber-900 dark:text-amber-200 border border-amber-400/50">
+                          Urgent Expiry
+                        </span>
+                      )}
+                      {!n.is_read && !isExpiring && (
                         <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-white/10 text-white border border-white/20">
                           New
                         </span>
