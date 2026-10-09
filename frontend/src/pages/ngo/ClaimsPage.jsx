@@ -4,8 +4,9 @@ import api from '../../api/client';
 import {
   Package, Clock, MapPin, Phone, Mail, User, Truck, ShieldCheck,
   Star, MessageSquare, ChevronRight, CheckCircle2, AlertCircle,
-  Sparkles, RefreshCw, ThumbsUp
+  Sparkles, RefreshCw, ThumbsUp, UserCheck, QrCode
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import ReviewModal from '../../components/common/ReviewModal';
 
 export default function ClaimsPage() {
@@ -14,6 +15,7 @@ export default function ClaimsPage() {
   const [filter, setFilter] = useState('all'); // 'all' | 'active' | 'completed'
   const [selectedDonationForReview, setSelectedDonationForReview] = useState(null);
   const [myReviews, setMyReviews] = useState({});
+  const [switchingId, setSwitchingId] = useState(null);
 
   const loadClaimsAndReviews = useCallback(async () => {
     try {
@@ -58,6 +60,19 @@ export default function ClaimsPage() {
       }));
     }
     loadClaimsAndReviews();
+  };
+
+  const handleSwitchPickupType = async (donationId, newType) => {
+    try {
+      setSwitchingId(donationId);
+      const { data } = await api.patch(`/donations/${donationId}/pickup-type`, { pickupType: newType });
+      toast.success(data.message || 'Pickup method updated!');
+      await loadClaimsAndReviews();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update pickup method');
+    } finally {
+      setSwitchingId(null);
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -165,6 +180,7 @@ export default function ClaimsPage() {
             const statusBadge = getStatusBadge(d.status);
             const review = myReviews[d.id];
             const hasVolunteer = Boolean(d.volunteer_name || d.volunteer_id);
+            const isSelfPickup = d.pickup_type === 'self_pickup';
 
             return (
               <div
@@ -178,15 +194,24 @@ export default function ClaimsPage() {
                       <Package className="w-6 h-6 stroke-[2.2]" />
                     </div>
                     <div>
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
                         <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-white/10 text-neutral-300">
                           {d.category?.replace(/_/g, ' ')}
                         </span>
                         <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border ${statusBadge.class}`}>
                           {statusBadge.label}
                         </span>
+                        {isSelfPickup ? (
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                            <UserCheck className="w-3 h-3" /> Direct Self-Pickup
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center gap-1">
+                            <Truck className="w-3 h-3" /> Volunteer Route
+                          </span>
+                        )}
                       </div>
-                      <h2 className="text-lg font-bold text-white tracking-tight mt-1">
+                      <h2 className="text-lg font-bold text-white tracking-tight">
                         {d.title}
                       </h2>
                       <p className="text-xs text-neutral-400 mt-0.5">
@@ -210,7 +235,7 @@ export default function ClaimsPage() {
                   </div>
                 </div>
 
-                {/* Details Section: 2 Columns (Food Provider & Assigned Volunteer) */}
+                {/* Details Section: 2 Columns (Food Provider & Collection Mode) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[#232328] bg-[#0d0d0f]">
                   {/* Column 1: Food Provider Details */}
                   <div className="p-5 sm:p-6 space-y-3">
@@ -271,20 +296,57 @@ export default function ClaimsPage() {
                     </div>
                   </div>
 
-                  {/* Column 2: Assigned Volunteer Pickup Details */}
+                  {/* Column 2: Collection Mode (Self-Pickup vs Volunteer) */}
                   <div className="p-5 sm:p-6 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
-                        <Truck className="w-3.5 h-3.5 text-white" /> Pickup Volunteer
+                        {isSelfPickup ? (
+                          <><UserCheck className="w-3.5 h-3.5 text-emerald-400" /> Direct NGO Pickup</>
+                        ) : (
+                          <><Truck className="w-3.5 h-3.5 text-white" /> Pickup Volunteer</>
+                        )}
                       </span>
-                      {hasVolunteer && (
+                      {isSelfPickup ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                          Self Handled
+                        </span>
+                      ) : hasVolunteer ? (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                           Assigned
                         </span>
-                      )}
+                      ) : null}
                     </div>
 
-                    {hasVolunteer ? (
+                    {isSelfPickup ? (
+                      <div className="space-y-3">
+                        <div className="p-3 bg-[#14171d] rounded-2xl border border-emerald-500/20 text-xs space-y-2">
+                          <p className="font-semibold text-emerald-400 flex items-center gap-1.5">
+                            <ShieldCheck className="w-4 h-4" /> Direct NGO Collection
+                          </p>
+                          <p className="text-neutral-400 text-[11px] leading-relaxed">
+                            Your NGO team collects this package directly from the donor. No volunteer will be dispatched.
+                          </p>
+                        </div>
+
+                        {['claimed', 'posted'].includes(d.status) && (
+                          <div className="flex flex-wrap items-center gap-2 pt-1">
+                            <Link
+                              to="/qr-scan"
+                              className="btn btn-primary text-xs flex items-center gap-1.5 py-2 px-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white"
+                            >
+                              <QrCode className="w-3.5 h-3.5" /> Scan Donor QR Code
+                            </Link>
+                            <button
+                              onClick={() => handleSwitchPickupType(d.id, 'volunteer')}
+                              disabled={switchingId === d.id}
+                              className="text-[11px] text-neutral-400 hover:text-white underline py-1"
+                            >
+                              {switchingId === d.id ? 'Updating...' : 'Publish to Volunteers Instead'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ) : hasVolunteer ? (
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-bold text-white">
@@ -333,12 +395,20 @@ export default function ClaimsPage() {
                         )}
                       </div>
                     ) : (
-                      <div className="py-4 text-center bg-[#121214] rounded-2xl border border-dashed border-[#27272e] p-4 space-y-1.5">
+                      <div className="py-4 text-center bg-[#121214] rounded-2xl border border-dashed border-[#27272e] p-4 space-y-2">
                         <AlertCircle className="w-6 h-6 mx-auto text-neutral-500 stroke-1" />
-                        <p className="text-xs font-semibold text-white">No Volunteer Assigned Yet</p>
+                        <p className="text-xs font-semibold text-white">Awaiting Volunteer Claim</p>
                         <p className="text-[11px] text-neutral-400">
-                          A nearby volunteer will accept this delivery shortly, or your team can self-pickup.
+                          Active in the volunteer pool, or your NGO team can collect directly.
                         </p>
+                        <button
+                          onClick={() => handleSwitchPickupType(d.id, 'self_pickup')}
+                          disabled={switchingId === d.id}
+                          className="px-3 py-1.5 rounded-lg bg-[#1a1a20] hover:bg-[#252530] text-emerald-400 border border-emerald-500/20 text-xs font-semibold transition-all inline-flex items-center gap-1.5"
+                        >
+                          <UserCheck className="w-3.5 h-3.5" />
+                          {switchingId === d.id ? 'Updating...' : 'Self-Pickup by Our Team'}
+                        </button>
                       </div>
                     )}
                   </div>
@@ -377,7 +447,18 @@ export default function ClaimsPage() {
                   )}
 
                   <div className="flex items-center gap-2.5 self-end sm:self-auto flex-wrap">
-                    {['collected', 'volunteer_assigned'].includes(d.status) && (
+                    {/* Direct Self-Pickup Quick Action */}
+                    {isSelfPickup && ['claimed', 'posted'].includes(d.status) && (
+                      <Link
+                        to="/qr-scan"
+                        className="btn btn-primary text-xs flex items-center gap-1.5 py-2 px-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/10 font-bold"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5" /> Scan Pickup QR
+                      </Link>
+                    )}
+
+                    {/* Volunteer Dropoff Receipt Scan */}
+                    {!isSelfPickup && ['collected', 'volunteer_assigned'].includes(d.status) && (
                       <Link
                         to="/qr-scan"
                         className="btn btn-primary text-xs flex items-center gap-1.5 py-2 px-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/10"

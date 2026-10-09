@@ -96,8 +96,15 @@ async function getPool() {
         console.warn('⚠️ [DB] PostgreSQL pool idle client error caught:', err.message);
       });
 
-      // Eagerly pre-warm pool connections so the first API request doesn't wait for TLS handshake
-      pool.query('SELECT 1').catch(() => {});
+      // Eagerly pre-warm pool connections and ensure schema migrations
+      pool.query(`
+        SELECT 1;
+        ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS pickup_type VARCHAR(50) DEFAULT 'volunteer';
+        ALTER TABLE donation_claims ADD COLUMN IF NOT EXISTS pickup_type VARCHAR(50) DEFAULT 'volunteer';
+        ALTER TABLE food_donations ADD COLUMN IF NOT EXISTS pickup_type VARCHAR(50) DEFAULT 'volunteer';
+      `).catch((schemaErr) => {
+        console.warn('⚠️ [DB] Schema column check notice:', schemaErr.message);
+      });
 
       poolInstance = pool;
       return poolInstance;

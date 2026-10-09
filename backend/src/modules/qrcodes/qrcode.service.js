@@ -201,10 +201,10 @@ const scanQRCode = async (code, scannedByUserId, qualityChecklist = null) => {
 
   const { rows } = await db.query(
     `SELECT qr.*,
-            d.id AS delivery_id, d.status AS delivery_status, d.volunteer_id, d.ngo_id,
+            d.id AS delivery_id, d.status AS delivery_status, d.volunteer_id, d.ngo_id, d.pickup_type,
             fd.id AS donation_id, fd.title AS donation_title, fd.provider_id,
             fp.user_id AS provider_user_id,
-            ngo.user_id AS ngo_user_id,
+            ngo.user_id AS ngo_user_id, ngo.organization_name AS ngo_name,
             v.user_id AS volunteer_user_id,
             u_scanner.full_name AS scanner_name, u_scanner.role AS scanner_role
      FROM qr_codes qr
@@ -249,12 +249,13 @@ const scanQRCode = async (code, scannedByUserId, qualityChecklist = null) => {
       [scannedByUserId, qrCode.id]
     );
 
+    const isNgoDirectPickup = qrCode.scanner_role === 'ngo' || qrCode.pickup_type === 'self_pickup';
+
     if (qrCode.type === 'pickup') {
-      // 1. Volunteer scanning Provider's Pickup QR code
       const checklistPayload = qualityChecklist || {
         passed: true,
         inspected_at: new Date().toISOString(),
-        inspector_name: qrCode.scanner_name || 'Volunteer',
+        inspector_name: qrCode.scanner_name || (isNgoDirectPickup ? 'NGO Staff' : 'Volunteer'),
         items: [
           { label: 'Freshness & Visual Quality', status: 'pass' },
           { label: 'Packaging & Seal Integrity', status: 'pass' },
@@ -263,48 +264,95 @@ const scanQRCode = async (code, scannedByUserId, qualityChecklist = null) => {
         ],
       };
 
-      await client.query(
-        `UPDATE deliveries
-         SET status = 'in_transit', pickup_time = NOW(), quality_checklist = $1
-         WHERE id = $2`,
-        [JSON.stringify(checklistPayload), qrCode.delivery_id]
-      );
+      if (isNgoDirectPickup) {
+        // Direct NGO Self-Pickup: Complete both pickup and receipt in 1 direct handoff
+        await client.query(
+          `UPDATE deliveries
+           SET status = 'delivered', pickup_time = NOW(), delivery_time = NOW(), quality_checklist = $1
+           WHERE id = $2`,
+          [JSON.stringify(checklistPayload), qrCode.delivery_id]
+        );
 
-      await client.query(
-        `UPDATE food_donations SET status = 'collected' WHERE id = $1`,
-        [qrCode.donation_id]
-      );
+        await client.query(
+          `UPDATE food_donations SET status = 'delivered' WHERE id = $1`,
+          [qrCode.donation_id]
+        );
 
-      await client.query('COMMIT');
+        // Update stats
+        await client.query(
+          `UPDATE ngos SET total_received = total_received + 1 WHERE id = $1`,
+          [qrCode.ngo_id]
+        );
+        await client.query(
+          `UPDATE food_providers SET total_donations = total_donations + 1 WHERE id = $1`,
+          [qrCode.provider_id]
+        );
 
-      // Send notifications to Provider and NGO
-      if (qrCode.provider_user_id) {
-        await createNotification({
-          userId: qrCode.provider_user_id,
-          title: 'Donation Picked Up',
-          body: `Volunteer ${qrCode.scanner_name || 'assigned'} has completed the quality inspection and picked up "${qrCode.donation_title}".`,
-          type: 'in_app',
-          data: { donation_id: qrCode.donation_id, delivery_id: qrCode.delivery_id, status: 'collected' },
-        }).catch(() => {});
+        await client.query('COMMIT');
+
+        // Notify Food Provider
+        if (qrCode.provider_user_id) {
+          await createNotification({
+            userId: qrCode.provider_user_id,
+            title: 'Donation Picked Up & Received',
+            body: `NGO ${qrCode.ngo_name || 'Shelter'} has directly inspected, picked up, and received "${qrCode.donation_title}".`,
+            type: 'in_app',
+            data: { donation_id: qrCode.donation_id, delivery_id: qrCode.delivery_id, status: 'delivered' },
+          }).catch(() => {});
+        }
+
+        return {
+          success: true,
+          type: 'pickup',
+          delivery_id: qrCode.delivery_id,
+          donation_id: qrCode.donation_id,
+          message: 'Direct pickup and quality inspection verified! Donation received.',
+        };
+      } else {
+        // Volunteer Pickup: Advance to in_transit
+        await client.query(
+          `UPDATE deliveries
+           SET status = 'in_transit', pickup_time = NOW(), quality_checklist = $1
+           WHERE id = $2`,
+          [JSON.stringify(checklistPayload), qrCode.delivery_id]
+        );
+
+        await client.query(
+          `UPDATE food_donations SET status = 'collected' WHERE id = $1`,
+          [qrCode.donation_id]
+        );
+
+        await client.query('COMMIT');
+
+        // Send notifications to Provider and NGO
+        if (qrCode.provider_user_id) {
+          await createNotification({
+            userId: qrCode.provider_user_id,
+            title: 'Donation Picked Up',
+            body: `Volunteer ${qrCode.scanner_name || 'assigned'} has completed the quality inspection and picked up "${qrCode.donation_title}".`,
+            type: 'in_app',
+            data: { donation_id: qrCode.donation_id, delivery_id: qrCode.delivery_id, status: 'collected' },
+          }).catch(() => {});
+        }
+
+        if (qrCode.ngo_user_id) {
+          await createNotification({
+            userId: qrCode.ngo_user_id,
+            title: 'Food In Transit',
+            body: `"${qrCode.donation_title}" has been picked up from donor and is now on the way to your shelter.`,
+            type: 'in_app',
+            data: { donation_id: qrCode.donation_id, delivery_id: qrCode.delivery_id, status: 'in_transit' },
+          }).catch(() => {});
+        }
+
+        return {
+          success: true,
+          type: 'pickup',
+          delivery_id: qrCode.delivery_id,
+          donation_id: qrCode.donation_id,
+          message: 'Quality check passed & pickup confirmed! Food is now in transit.',
+        };
       }
-
-      if (qrCode.ngo_user_id) {
-        await createNotification({
-          userId: qrCode.ngo_user_id,
-          title: 'Food In Transit',
-          body: `"${qrCode.donation_title}" has been picked up from donor and is now on the way to your shelter.`,
-          type: 'in_app',
-          data: { donation_id: qrCode.donation_id, delivery_id: qrCode.delivery_id, status: 'in_transit' },
-        }).catch(() => {});
-      }
-
-      return {
-        success: true,
-        type: 'pickup',
-        delivery_id: qrCode.delivery_id,
-        donation_id: qrCode.donation_id,
-        message: 'Quality check passed & pickup confirmed! Food is now in transit.',
-      };
     } else {
       // 2. NGO scanning Volunteer's Dropoff QR code
       await client.query(

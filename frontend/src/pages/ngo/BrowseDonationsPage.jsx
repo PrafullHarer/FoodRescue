@@ -3,6 +3,7 @@ import api from '../../api/client';
 import { Package, MapPin, Clock, Search, CheckCircle2, Map, LayoutGrid } from 'lucide-react';
 import toast from 'react-hot-toast';
 import DonationMapView from '../../components/common/DonationMapView';
+import ClaimDonationModal from '../../components/common/ClaimDonationModal';
 
 export default function BrowseDonationsPage() {
   const [donations, setDonations] = useState([]);
@@ -10,6 +11,7 @@ export default function BrowseDonationsPage() {
   const [search, setSearch] = useState('');
   const [claiming, setClaiming] = useState(null);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'map'
+  const [selectedDonationToClaim, setSelectedDonationToClaim] = useState(null);
 
   useEffect(() => { load(); }, []);
 
@@ -20,14 +22,19 @@ export default function BrowseDonationsPage() {
     } catch { /* ignore */ } finally { setLoading(false); }
   };
 
-  const handleClaim = async (donationId) => {
+  const handleInitiateClaim = (donation) => {
+    setSelectedDonationToClaim(donation);
+  };
+
+  const handleConfirmClaim = async (donationId, pickupType) => {
     setClaiming(donationId);
     try {
-      await api.post(`/donations/${donationId}/claim`);
-      toast.success('Donation claimed successfully!');
+      const { data } = await api.post(`/donations/${donationId}/claim`, { pickupType });
+      toast.success(data.message || 'Donation claimed successfully!');
       setDonations(prev => prev.filter(d => d.id !== donationId));
+      setSelectedDonationToClaim(null);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to claim');
+      toast.error(err.response?.data?.message || 'Failed to claim donation');
     } finally { setClaiming(null); }
   };
 
@@ -97,7 +104,7 @@ export default function BrowseDonationsPage() {
           </div>
           <DonationMapView
             donations={filtered}
-            onClaimDonation={handleClaim}
+            onClaimDonation={handleInitiateClaim}
             className="h-[580px] shadow-2xl"
           />
         </div>
@@ -139,7 +146,7 @@ export default function BrowseDonationsPage() {
 
                 <div className="flex items-center gap-2 pt-1">
                   <button
-                    onClick={() => handleClaim(d.id)}
+                    onClick={() => handleInitiateClaim(d)}
                     disabled={claiming === d.id}
                     className="flex-1 bg-white hover:bg-neutral-200 text-black font-semibold py-2.5 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
                   >
@@ -166,6 +173,17 @@ export default function BrowseDonationsPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Claim Options Modal (Self Pickup vs Volunteer Delivery) */}
+      {selectedDonationToClaim && (
+        <ClaimDonationModal
+          isOpen={Boolean(selectedDonationToClaim)}
+          onClose={() => setSelectedDonationToClaim(null)}
+          donation={selectedDonationToClaim}
+          onConfirmClaim={handleConfirmClaim}
+          isClaiming={claiming === selectedDonationToClaim.id}
+        />
       )}
     </div>
   );

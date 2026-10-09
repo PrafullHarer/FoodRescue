@@ -34,12 +34,19 @@ router.post(
   donationController.cancelDonation
 );
 
-// Protected: claim (NGO only)
+// Protected: claim & update pickup type (NGO only)
 router.post(
   '/:id/claim',
   authenticate,
   roleGuard('ngo'),
   donationController.claimDonation
+);
+
+router.patch(
+  '/:id/pickup-type',
+  authenticate,
+  roleGuard('ngo'),
+  donationController.updatePickupType
 );
 
 module.exports = router;

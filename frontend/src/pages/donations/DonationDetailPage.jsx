@@ -5,11 +5,13 @@ import api from '../../api/client';
 import {
   ArrowLeft, Package, Clock, MapPin, CheckCircle2,
   AlertTriangle, QrCode, Share2, Check, Phone, Mail,
-  User, Truck, ShieldCheck, Star, Sparkles, ThumbsUp
+  User, Truck, ShieldCheck, Star, Sparkles, ThumbsUp,
+  UserCheck, RefreshCw
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ReviewModal from '../../components/common/ReviewModal';
 import StaticRouteMap from '../../components/common/StaticRouteMap';
+import ClaimDonationModal from '../../components/common/ClaimDonationModal';
 
 export default function DonationDetailPage() {
   const { id } = useParams();
@@ -20,6 +22,8 @@ export default function DonationDetailPage() {
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showClaimModal, setShowClaimModal] = useState(false);
+  const [switchingPickupType, setSwitchingPickupType] = useState(false);
 
   const fetchDonation = async () => {
     try {
@@ -42,16 +46,30 @@ export default function DonationDetailPage() {
     fetchDonation();
   }, [id]);
 
-  const handleClaim = async () => {
+  const handleConfirmClaim = async (donationId, pickupType) => {
     try {
       setClaiming(true);
-      await api.post(`/donations/${id}/claim`);
-      toast.success('Donation claimed successfully!');
+      const { data } = await api.post(`/donations/${donationId}/claim`, { pickupType });
+      toast.success(data.message || 'Donation claimed successfully!');
+      setShowClaimModal(false);
       fetchDonation();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to claim donation');
     } finally {
       setClaiming(false);
+    }
+  };
+
+  const handleTogglePickupType = async (newType) => {
+    try {
+      setSwitchingPickupType(true);
+      const { data } = await api.patch(`/donations/${id}/pickup-type`, { pickupType: newType });
+      toast.success(data.message || 'Pickup mode updated!');
+      fetchDonation();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update pickup mode');
+    } finally {
+      setSwitchingPickupType(false);
     }
   };
 
@@ -196,7 +214,7 @@ export default function DonationDetailPage() {
           <div className="flex items-center gap-2.5">
             {isNgo && isAvailable && (
               <button
-                onClick={handleClaim}
+                onClick={() => setShowClaimModal(true)}
                 disabled={claiming}
                 className="btn btn-primary text-xs flex items-center gap-2"
               >
@@ -214,8 +232,43 @@ export default function DonationDetailPage() {
               </button>
             )}
 
+            {/* NGO Direct Self-Pickup Actions */}
+            {isNgo && donation.status === 'claimed' && donation.pickup_type === 'self_pickup' && (
+              <>
+                <Link
+                  to={`/qr-scan?code=${qrData?.pickup?.code || ''}`}
+                  className="btn btn-primary text-xs flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  Scan Donor QR & Receive Food
+                </Link>
+                <button
+                  onClick={() => handleTogglePickupType('volunteer')}
+                  disabled={switchingPickupType}
+                  className="btn btn-secondary text-xs flex items-center gap-1.5"
+                  title="Request community volunteer pickup instead"
+                >
+                  <Truck className="w-3.5 h-3.5 text-blue-400" />
+                  {switchingPickupType ? 'Updating...' : 'Publish to Volunteers'}
+                </button>
+              </>
+            )}
+
+            {/* NGO Volunteer Mission Switch Action */}
+            {isNgo && donation.status === 'claimed' && donation.pickup_type === 'volunteer' && !hasVolunteer && (
+              <button
+                onClick={() => handleTogglePickupType('self_pickup')}
+                disabled={switchingPickupType}
+                className="btn btn-secondary text-xs flex items-center gap-1.5"
+                title="Collect with your own NGO team"
+              >
+                <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
+                {switchingPickupType ? 'Updating...' : 'Pick Up by Our Team Instead'}
+              </button>
+            )}
+
             {/* Volunteer Actions */}
-            {isVolunteer && !hasVolunteer && donation.status === 'claimed' && (
+            {isVolunteer && !hasVolunteer && donation.status === 'claimed' && donation.pickup_type !== 'self_pickup' && (
               <button
                 onClick={async () => {
                   try {
@@ -304,9 +357,15 @@ export default function DonationDetailPage() {
                 <QrCode className="w-5 h-5 stroke-[2.5]" />
               </div>
               <div>
-                <h3 className="font-bold text-white text-base">Food Pickup Verification QR Code</h3>
+                <h3 className="font-bold text-white text-base">
+                  {donation.pickup_type === 'self_pickup'
+                    ? 'Direct NGO Pickup QR Code'
+                    : 'Food Pickup Verification QR Code'}
+                </h3>
                 <p className="text-xs text-neutral-400">
-                  {hasVolunteer
+                  {donation.pickup_type === 'self_pickup'
+                    ? `Show this QR code directly to representative from ${donation.ngo_name || 'the claiming shelter'} when they arrive to inspect and collect the food.`
+                    : hasVolunteer
                     ? `Show this QR code to volunteer ${donation.volunteer_name || ''} when they arrive to inspect and collect the food.`
                     : 'A volunteer will scan this QR code upon arrival to verify food quality and begin delivery.'}
                 </p>
@@ -316,7 +375,11 @@ export default function DonationDetailPage() {
             <span className={`badge uppercase text-[10px] font-bold ${
               qrData.pickup.is_scanned ? 'badge-primary' : 'badge-warning'
             }`}>
-              {qrData.pickup.is_scanned ? '✓ Pickup Completed' : 'Awaiting Volunteer Scan'}
+              {qrData.pickup.is_scanned
+                ? '✓ Pickup Completed'
+                : donation.pickup_type === 'self_pickup'
+                ? 'Awaiting NGO Direct Scan'
+                : 'Awaiting Volunteer Scan'}
             </span>
           </div>
 
@@ -452,20 +515,56 @@ export default function DonationDetailPage() {
           </div>
         </div>
 
-        {/* Assigned Volunteer Card */}
+        {/* Assigned Volunteer / Collection Method Card */}
         <div className="bg-[#121214] rounded-[24px] border border-[#232328] p-6 space-y-4 shadow-xl">
           <div className="flex items-center justify-between border-b border-[#232328] pb-3">
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Truck className="w-4 h-4 text-white" /> Pickup Volunteer
+              {donation.pickup_type === 'self_pickup' ? (
+                <><UserCheck className="w-4 h-4 text-emerald-400" /> Direct NGO Collection</>
+              ) : (
+                <><Truck className="w-4 h-4 text-white" /> Pickup Volunteer</>
+              )}
             </h3>
-            {hasVolunteer && (
+            {donation.pickup_type === 'self_pickup' ? (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                Self Pickup
+              </span>
+            ) : hasVolunteer ? (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                 Assigned
               </span>
-            )}
+            ) : null}
           </div>
 
-          {hasVolunteer ? (
+          {donation.pickup_type === 'self_pickup' ? (
+            <div className="space-y-3 text-xs">
+              <div>
+                <span className="text-neutral-500 uppercase text-[10px] font-bold block">Collecting Shelter</span>
+                <p className="text-white font-bold text-sm mt-0.5">{donation.ngo_name || 'Claiming Shelter NGO'}</p>
+              </div>
+
+              {donation.ngo_contact && (
+                <div>
+                  <span className="text-neutral-500 uppercase text-[10px] font-bold block">NGO Contact Person</span>
+                  <p className="text-neutral-300 font-medium">{donation.ngo_contact}</p>
+                </div>
+              )}
+
+              {donation.ngo_phone && (
+                <div className="flex items-center gap-2">
+                  <Phone className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
+                  <a href={`tel:${donation.ngo_phone}`} className="text-neutral-300 hover:text-white underline underline-offset-2">
+                    {donation.ngo_phone}
+                  </a>
+                </div>
+              )}
+
+              <div className="p-3 bg-[#181a20] rounded-xl border border-emerald-500/20 text-neutral-300 text-[11px] leading-relaxed">
+                <span className="font-semibold text-emerald-400 block mb-0.5">✓ Direct Handoff Workflow</span>
+                No volunteer involvement. The NGO representative collects the food directly from the food provider and verifies the QR code on-site.
+              </div>
+            </div>
+          ) : hasVolunteer ? (
             <div className="space-y-2.5 text-xs">
               <div className="flex items-center justify-between">
                 <div>
@@ -508,9 +607,9 @@ export default function DonationDetailPage() {
           ) : (
             <div className="py-8 text-center space-y-2">
               <Truck className="w-8 h-8 text-neutral-600 mx-auto stroke-1" />
-              <p className="text-xs font-semibold text-white">No Volunteer Assigned</p>
+              <p className="text-xs font-semibold text-white">Awaiting Volunteer Claim</p>
               <p className="text-[11px] text-neutral-400 max-w-xs mx-auto">
-                Once a volunteer accepts the pickup route, their vehicle, contact, and live status will appear here.
+                This mission is active in the volunteer pool. A local volunteer will claim and transport the package.
               </p>
             </div>
           )}
@@ -593,6 +692,17 @@ export default function DonationDetailPage() {
           onClose={() => setShowReviewModal(false)}
           donation={donation}
           onReviewSubmitted={() => fetchDonation()}
+        />
+      )}
+
+      {/* Claim Donation Modal */}
+      {showClaimModal && (
+        <ClaimDonationModal
+          isOpen={showClaimModal}
+          onClose={() => setShowClaimModal(false)}
+          donation={donation}
+          onConfirmClaim={handleConfirmClaim}
+          isClaiming={claiming}
         />
       )}
     </div>

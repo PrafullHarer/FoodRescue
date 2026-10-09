@@ -62,6 +62,7 @@ const getDonations = async ({ page = 1, limit = 20, status, category, providerId
     u.avatar_url AS provider_avatar,
     del.id AS delivery_id,
     del.status AS delivery_status,
+    del.pickup_type AS pickup_type,
     del.pickup_time AS delivery_pickup_time,
     del.delivery_time AS delivery_completed_time,
     del.notes AS delivery_notes,
@@ -175,6 +176,7 @@ const getDonationById = async (donationId) => {
       u.avatar_url AS provider_avatar,
       del.id AS delivery_id,
       del.status AS delivery_status,
+      del.pickup_type AS pickup_type,
       del.pickup_time AS delivery_pickup_time,
       del.delivery_time AS delivery_completed_time,
       del.notes AS delivery_notes,
@@ -191,6 +193,7 @@ const getDonationById = async (donationId) => {
       v.availability AS volunteer_availability,
       c.id AS claim_id,
       c.status AS claim_status,
+      c.pickup_type AS claim_pickup_type,
       c.claimed_at AS claim_time,
       ngo.id AS ngo_id,
       ngo.organization_name AS ngo_name,
@@ -308,9 +311,10 @@ const transitionStatus = async (donationId, newStatus) => {
 };
 
 /**
- * Claim a donation by an NGO.
+ * Claim a donation by an NGO. Supports { pickupType: 'self_pickup' | 'volunteer' }
  */
-const claimDonation = async (donationId, ngoId) => {
+const claimDonation = async (donationId, ngoId, { pickupType = 'volunteer' } = {}) => {
+  const cleanPickupType = (pickupType === 'self_pickup' || pickupType === 'self') ? 'self_pickup' : 'volunteer';
   const client = await db.getClient();
 
   try {
@@ -348,18 +352,18 @@ const claimDonation = async (donationId, ngoId) => {
       throw err;
     }
 
-    // Create claim
+    // Create claim with pickup_type
     const claimResult = await client.query(
-      `INSERT INTO donation_claims (donation_id, ngo_id, status, claimed_at)
-       VALUES ($1, $2, 'accepted', NOW())
+      `INSERT INTO donation_claims (donation_id, ngo_id, status, pickup_type, claimed_at)
+       VALUES ($1, $2, 'accepted', $3, NOW())
        RETURNING *`,
-      [donationId, ngoId]
+      [donationId, ngoId, cleanPickupType]
     );
 
     // Transition donation to claimed
     await client.query(
-      'UPDATE food_donations SET status = $1 WHERE id = $2',
-      ['claimed', donationId]
+      'UPDATE food_donations SET status = $1, pickup_type = $2 WHERE id = $3',
+      ['claimed', cleanPickupType, donationId]
     );
 
     // Reject other pending claims
@@ -378,17 +382,17 @@ const claimDonation = async (donationId, ngoId) => {
     let deliveryId = null;
     if (existingDelivery.rows.length === 0) {
       const delRes = await client.query(
-        `INSERT INTO deliveries (donation_id, ngo_id, status)
-         VALUES ($1, $2, 'pending')
+        `INSERT INTO deliveries (donation_id, ngo_id, status, pickup_type)
+         VALUES ($1, $2, 'pending', $3)
          RETURNING id`,
-        [donationId, ngoId]
+        [donationId, ngoId, cleanPickupType]
       );
       deliveryId = delRes.rows[0].id;
     } else {
       deliveryId = existingDelivery.rows[0].id;
       await client.query(
-        `UPDATE deliveries SET ngo_id = $1 WHERE id = $2`,
-        [ngoId, deliveryId]
+        `UPDATE deliveries SET ngo_id = $1, pickup_type = $2 WHERE id = $3`,
+        [ngoId, cleanPickupType, deliveryId]
       );
     }
 
@@ -402,15 +406,76 @@ const claimDonation = async (donationId, ngoId) => {
       console.error('[QR] Failed to pre-generate QR codes on claim:', qrErr.message);
     }
 
-    // Broadcast notification to volunteers about available pickup mission
-    try {
-      const notifService = require('../notifications/notification.service');
-      notifService.notifyVolunteersOfPickupMission(donation, deliveryId).catch(() => {});
-    } catch (notifErr) {
-      console.error('[NOTIFY] Failed to notify volunteers:', notifErr.message);
+    // If volunteer pickup is requested, broadcast notification to volunteers
+    if (cleanPickupType === 'volunteer') {
+      try {
+        const notifService = require('../notifications/notification.service');
+        notifService.notifyVolunteersOfPickupMission(donation, deliveryId).catch(() => {});
+      } catch (notifErr) {
+        console.error('[NOTIFY] Failed to notify volunteers:', notifErr.message);
+      }
     }
 
     return claimResult.rows[0];
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+/**
+ * Update pickup type for an active claimed donation (e.g. NGO switching between self-pickup and volunteer).
+ */
+const updatePickupType = async (donationId, ngoId, pickupType) => {
+  const cleanPickupType = (pickupType === 'self_pickup' || pickupType === 'self') ? 'self_pickup' : 'volunteer';
+  const client = await db.getClient();
+
+  try {
+    await client.query('BEGIN');
+
+    const donationRes = await client.query('SELECT * FROM food_donations WHERE id = $1', [donationId]);
+    if (donationRes.rows.length === 0) {
+      const err = new Error('Donation not found.');
+      err.statusCode = 404;
+      throw err;
+    }
+    const donation = donationRes.rows[0];
+
+    const claimRes = await client.query(
+      'SELECT * FROM donation_claims WHERE donation_id = $1 AND ngo_id = $2 AND status = $3',
+      [donationId, ngoId, 'accepted']
+    );
+
+    if (claimRes.rows.length === 0) {
+      const err = new Error('You have not claimed this donation.');
+      err.statusCode = 403;
+      throw err;
+    }
+
+    await client.query('UPDATE food_donations SET pickup_type = $1 WHERE id = $2', [cleanPickupType, donationId]);
+    await client.query('UPDATE donation_claims SET pickup_type = $1 WHERE id = $2', [cleanPickupType, claimRes.rows[0].id]);
+    const delRes = await client.query(
+      'UPDATE deliveries SET pickup_type = $1 WHERE donation_id = $2 RETURNING id',
+      [cleanPickupType, donationId]
+    );
+
+    await client.query('COMMIT');
+
+    const deliveryId = delRes.rows[0]?.id;
+
+    // If switched to volunteer delivery, broadcast notification to volunteers
+    if (cleanPickupType === 'volunteer' && deliveryId) {
+      try {
+        const notifService = require('../notifications/notification.service');
+        notifService.notifyVolunteersOfPickupMission(donation, deliveryId).catch(() => {});
+      } catch (notifErr) {
+        console.error('[NOTIFY] Failed to notify volunteers on pickup type switch:', notifErr.message);
+      }
+    }
+
+    return { success: true, pickup_type: cleanPickupType };
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -448,5 +513,6 @@ module.exports = {
   updateDonation,
   transitionStatus,
   claimDonation,
+  updatePickupType,
   cancelDonation,
 };

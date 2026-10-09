@@ -123,14 +123,15 @@ const getMyDeliveries = async (userId) => {
  * Get all available unassigned delivery missions that volunteers can claim.
  */
 const getAvailableMissions = async (userId) => {
-  // First, ensure any claimed donation has a pending delivery record
+  // First, ensure any claimed donation with volunteer pickup has a pending delivery record
   try {
     await db.query(
-      `INSERT INTO deliveries (donation_id, ngo_id, status)
-       SELECT c.donation_id, c.ngo_id, 'pending'
+      `INSERT INTO deliveries (donation_id, ngo_id, status, pickup_type)
+       SELECT c.donation_id, c.ngo_id, 'pending', COALESCE(c.pickup_type, 'volunteer')
        FROM donation_claims c
        JOIN food_donations fd ON fd.id = c.donation_id
        WHERE c.status = 'accepted'
+         AND COALESCE(c.pickup_type, 'volunteer') = 'volunteer'
          AND fd.status IN ('claimed', 'matched', 'posted')
          AND NOT EXISTS (SELECT 1 FROM deliveries d WHERE d.donation_id = c.donation_id)`
     );
@@ -156,6 +157,7 @@ const getAvailableMissions = async (userId) => {
      JOIN ngos n ON n.id = d.ngo_id
      JOIN users u_n ON u_n.id = n.user_id
      WHERE (d.volunteer_id IS NULL OR d.status = 'pending')
+       AND COALESCE(d.pickup_type, 'volunteer') = 'volunteer'
        AND fd.status IN ('claimed', 'posted', 'matched', 'volunteer_assigned')
      ORDER BY d.created_at DESC`
   );

@@ -113,7 +113,8 @@ const claimDonation = async (req, res, next) => {
       });
     }
 
-    const claim = await donationService.claimDonation(req.params.id, rows[0].id);
+    const pickupType = req.body.pickupType || req.body.pickup_type || 'volunteer';
+    const claim = await donationService.claimDonation(req.params.id, rows[0].id, { pickupType });
 
     // Notify provider that donation was claimed
     notificationService.notifyStatusChange(req.params.id, 'claimed').catch(() => {});
@@ -123,8 +124,42 @@ const claimDonation = async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      message: 'Donation claimed successfully.',
+      message: pickupType === 'self_pickup'
+        ? 'Donation claimed for direct self-pickup by NGO!'
+        : 'Donation claimed! Pickup mission published to community volunteers.',
       data: claim,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PATCH /api/donations/:id/pickup-type
+ */
+const updatePickupType = async (req, res, next) => {
+  try {
+    const { rows } = await db.query(
+      'SELECT id FROM ngos WHERE user_id = $1',
+      [req.user.id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'NGO profile not found.',
+      });
+    }
+
+    const pickupType = req.body.pickupType || req.body.pickup_type || 'volunteer';
+    const result = await donationService.updatePickupType(req.params.id, rows[0].id, pickupType);
+
+    res.json({
+      success: true,
+      message: pickupType === 'self_pickup'
+        ? 'Switched to direct NGO self-pickup.'
+        : 'Published pickup mission to community volunteers.',
+      data: result,
     });
   } catch (error) {
     next(error);
@@ -169,5 +204,6 @@ module.exports = {
   getDonationById,
   updateDonation,
   claimDonation,
+  updatePickupType,
   cancelDonation,
 };
