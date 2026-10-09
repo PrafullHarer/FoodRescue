@@ -7,8 +7,10 @@ const roleGuard = require('../../middleware/roleGuard');
 // All user routes require authentication
 router.use(authenticate);
 
-// Any authenticated user can list / view users
-router.get('/', userController.getUsers);
+// Admin-only: list all platform users
+router.get('/', roleGuard('admin'), userController.getUsers);
+
+// View user profile (self, admin, or public safe view)
 router.get('/:id', userController.getUserById);
 
 // Users can update their own profile; admins can update any

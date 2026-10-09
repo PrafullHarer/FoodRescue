@@ -135,6 +135,8 @@ const updateUser = async (userId, data) => {
   return rows[0];
 };
 
+const authenticate = require('../../middleware/auth');
+
 /**
  * Update user status (admin action).
  */
@@ -149,6 +151,11 @@ const updateUserStatus = async (userId, status) => {
     const err = new Error('User not found.');
     err.statusCode = 404;
     throw err;
+  }
+
+  // Invalidate cache immediately so blocked/suspended status takes effect
+  if (authenticate?.invalidateUserCache) {
+    authenticate.invalidateUserCache(userId);
   }
 
   return rows[0];
