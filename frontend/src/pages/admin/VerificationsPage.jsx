@@ -11,7 +11,8 @@ export default function VerificationsPage() {
     try {
       setLoading(true);
       const res = await api.get('/admin/pending-verifications');
-      setVerifications(res.data.data || []);
+      const { providers = [], ngos = [] } = res?.data?.data || {};
+      setVerifications([...providers, ...ngos]);
     } catch (err) {
       console.error('Failed to load pending verifications', err);
     } finally {

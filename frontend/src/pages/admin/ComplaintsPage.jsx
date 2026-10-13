@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/client';
-import { ShieldAlert, CheckCircle2, MessageSquare, ShieldCheck } from 'lucide-react';
+import { ShieldAlert, CheckCircle2, MessageSquare, ShieldCheck, ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+const PAGE_LIMIT = 20;
 
 export default function ComplaintsPage() {
   const [complaints, setComplaints] = useState([]);
@@ -9,11 +11,16 @@ export default function ComplaintsPage() {
   const [resolvingId, setResolvingId] = useState(null);
   const [resolutionText, setResolutionText] = useState('');
 
-  const fetchComplaints = async () => {
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 0 });
+
+  const fetchComplaints = async (pageNum = 1) => {
     try {
       setLoading(true);
-      const res = await api.get('/admin/complaints');
-      setComplaints(res.data.data || []);
+      const res = await api.get('/admin/complaints', { params: { page: pageNum, limit: PAGE_LIMIT } });
+      const { complaints: data = [], pagination: meta = {} } = res?.data?.data || {};
+      setComplaints(data);
+      setPagination({ total: meta.total ?? 0, totalPages: meta.totalPages ?? 0 });
     } catch (err) {
       console.error('Failed to load complaints', err);
     } finally {
@@ -22,8 +29,8 @@ export default function ComplaintsPage() {
   };
 
   useEffect(() => {
-    fetchComplaints();
-  }, []);
+    fetchComplaints(page);
+  }, [page]);
 
   const handleResolve = async (id) => {
     if (!resolutionText.trim()) {
@@ -41,10 +48,18 @@ export default function ComplaintsPage() {
     }
   };
 
+  const goToPage = (p) => {
+    if (p < 1 || p > pagination.totalPages) return;
+    setPage(p);
+  };
+
+  const startItem = complaints.length === 0 ? 0 : (page - 1) * PAGE_LIMIT + 1;
+  const endItem = (page - 1) * PAGE_LIMIT + complaints.length;
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto animate-fade-in pb-12">
       <div className="border-b border-[#232328] pb-5 sm:pb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Complaints & Disputes</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Complaints &amp; Disputes</h1>
         <p className="text-neutral-400 text-xs sm:text-sm mt-1">
           Review community disputes regarding food quality, late pickups, or missed delivery handoffs.
         </p>
@@ -133,6 +148,59 @@ export default function ComplaintsPage() {
           ))
         )}
       </div>
+
+      {/* Pagination controls */}
+      {!loading && pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between px-1">
+          <p className="text-xs text-neutral-500">
+            Showing <span className="text-neutral-300">{startItem}–{endItem}</span> of{' '}
+            <span className="text-neutral-300">{pagination.total}</span> complaints
+          </p>
+
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => goToPage(page - 1)}
+              disabled={page === 1}
+              className="btn btn-secondary p-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
+              aria-label="Previous page"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+              .filter(p => p === 1 || p === pagination.totalPages || Math.abs(p - page) <= 1)
+              .reduce((acc, p, idx, arr) => {
+                if (idx > 0 && p - arr[idx - 1] > 1) acc.push('ellipsis-' + p);
+                acc.push(p);
+                return acc;
+              }, [])
+              .map((p) =>
+                typeof p === 'string' ? (
+                  <span key={p} className="px-1 text-neutral-600 text-xs select-none">…</span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => goToPage(p)}
+                    className={`btn text-xs py-1.5 px-3 min-w-[2rem] ${
+                      p === page ? 'btn-primary' : 'btn-secondary'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                )
+              )}
+
+            <button
+              onClick={() => goToPage(page + 1)}
+              disabled={page === pagination.totalPages}
+              className="btn btn-secondary p-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
+              aria-label="Next page"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

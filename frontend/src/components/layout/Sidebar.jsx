@@ -157,7 +157,7 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
         `}
       >
         {/* Logo Section */}
-        <div className="flex items-center gap-3 px-5 py-5 border-b border-[#232328]">
+        <div className={`flex ${collapsed?"flex-col":"flex-row"} items-center gap-3 px-5 py-5 border-b border-[#232328]`}>
           <div className="w-10 h-10 rounded-xl bg-white text-black flex items-center justify-center flex-shrink-0 font-bold shadow-md shadow-white/5">
             <Box className="w-5 h-5 text-black stroke-[2.5]" />
           </div>
@@ -171,7 +171,7 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
           {/* Desktop collapse button */}
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="hidden lg:flex ml-auto p-1.5 rounded-lg hover:bg-[#1f1f24] text-neutral-400 hover:text-white transition-colors"
+            className="hidden lg:flex p-1.5 rounded-lg hover:bg-[#1f1f24] text-neutral-400 hover:text-white transition-colors"
             title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {collapsed ? <Menu className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
