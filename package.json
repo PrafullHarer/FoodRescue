@@ -1,0 +1,13 @@
+{
+  "name": "food-rescue-platform",
+  "version": "1.0.0",
+  "description": "Full-stack web application connecting food donors, NGOs, volunteers, and admins to eliminate food waste.",
+  "scripts": {
+    "start:backend": "npm --prefix backend run dev",
+    "start:frontend": "npm --prefix frontend run dev",
+    "build:frontend": "npm --prefix frontend run build"
+  },
+  "keywords": ["food-rescue", "sustainability", "react", "tailwind", "nodejs", "express", "postgresql"],
+  "author": "FoodRescue Team",
+  "license": "MIT"
+}

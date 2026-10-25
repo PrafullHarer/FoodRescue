@@ -1,0 +1,206 @@
+import { useEffect, useState } from 'react';
+import api from '../../api/client';
+import { ShieldAlert, CheckCircle2, MessageSquare, ShieldCheck, ChevronLeft, ChevronRight } from 'lucide-react';
+import toast from 'react-hot-toast';
+
+const PAGE_LIMIT = 20;
+
+export default function ComplaintsPage() {
+  const [complaints, setComplaints] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [resolvingId, setResolvingId] = useState(null);
+  const [resolutionText, setResolutionText] = useState('');
+
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 0 });
+
+  const fetchComplaints = async (pageNum = 1) => {
+    try {
+      setLoading(true);
+      const res = await api.get('/admin/complaints', { params: { page: pageNum, limit: PAGE_LIMIT } });
+      const { complaints: data = [], pagination: meta = {} } = res?.data?.data || {};
+      setComplaints(data);
+      setPagination({ total: meta.total ?? 0, totalPages: meta.totalPages ?? 0 });
+    } catch (err) {
+      console.error('Failed to load complaints', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchComplaints(page);
+  }, [page]);
+
+  const handleResolve = async (id) => {
+    if (!resolutionText.trim()) {
+      toast.error('Please provide a resolution note');
+      return;
+    }
+    try {
+      await api.post(`/admin/complaints/${id}/resolve`, { resolution_notes: resolutionText });
+      toast.success('Complaint marked as resolved');
+      setComplaints(prev => prev.map(c => c.id === id ? { ...c, status: 'resolved', resolution_notes: resolutionText } : c));
+      setResolvingId(null);
+      setResolutionText('');
+    } catch (err) {
+      toast.error('Failed to resolve complaint');
+    }
+  };
+
+  const goToPage = (p) => {
+    if (p < 1 || p > pagination.totalPages) return;
+    setPage(p);
+  };
+
+  const startItem = complaints.length === 0 ? 0 : (page - 1) * PAGE_LIMIT + 1;
+  const endItem = (page - 1) * PAGE_LIMIT + complaints.length;
+
+  return (
+    <div className="space-y-6 max-w-6xl mx-auto animate-fade-in pb-12">
+      <div className="border-b border-[#232328] pb-5 sm:pb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Complaints &amp; Disputes</h1>
+        <p className="text-neutral-400 text-xs sm:text-sm mt-1">
+          Review community disputes regarding food quality, late pickups, or missed delivery handoffs.
+        </p>
+      </div>
+
+      <div className="bg-[#121214] rounded-2xl border border-[#232328] overflow-hidden divide-y divide-[#232328]">
+        {loading ? (
+          <div className="p-12 sm:p-16 text-center text-neutral-500">
+            <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-3" />
+            Loading complaints queue...
+          </div>
+        ) : complaints.length === 0 ? (
+          <div className="p-12 sm:p-16 text-center text-neutral-500">
+            <ShieldCheck className="w-12 h-12 mx-auto mb-3 text-neutral-600 stroke-1" />
+            <p className="font-semibold text-white text-base">No unresolved complaints</p>
+            <p className="text-xs text-neutral-400 mt-1">Platform operations are running smoothly without active dispute tickets.</p>
+          </div>
+        ) : (
+          complaints.map((c) => (
+            <div key={c.id} className="p-4 sm:p-6 space-y-3 hover:bg-[#18181b]/50 transition-colors">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4">
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-white text-sm sm:text-base">{c.subject || 'Dispute Ticket'}</span>
+                    <span className={`badge uppercase text-[9px] sm:text-[10px] font-bold ${
+                      c.status === 'resolved' ? 'badge-primary' : 'badge-danger'
+                    }`}>
+                      {c.status || 'open'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-neutral-400 mt-1">
+                    Reported by: <span className="font-medium text-white">{c.reporter_name || c.user_email || 'User'}</span> •
+                    Date: {c.created_at ? new Date(c.created_at).toLocaleDateString() : 'Recent'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3.5 sm:p-4 bg-[#0c0c0e] rounded-xl text-neutral-300 text-xs border border-[#232328] leading-relaxed">
+                {c.description || c.message || 'No description provided'}
+              </div>
+
+              {c.status !== 'resolved' ? (
+                resolvingId === c.id ? (
+                  <div className="mt-3 p-3.5 sm:p-4 bg-[#0c0c0e] rounded-xl border border-[#232328] space-y-3">
+                    <textarea
+                      placeholder="Write resolution notes (e.g. Warning issued to donor, verified spoilage refund)..."
+                      value={resolutionText}
+                      onChange={(e) => setResolutionText(e.target.value)}
+                      className="input w-full text-xs"
+                      rows={2}
+                    />
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => setResolvingId(null)}
+                        className="btn btn-secondary text-xs py-1.5 px-3"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => handleResolve(c.id)}
+                        className="btn btn-primary text-xs py-1.5 px-3"
+                      >
+                        Submit Resolution
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      onClick={() => { setResolvingId(c.id); setResolutionText(''); }}
+                      className="btn btn-secondary text-xs py-2 px-3.5 w-full sm:w-auto"
+                    >
+                      Resolve Dispute
+                    </button>
+                  </div>
+                )
+              ) : (
+                c.resolution_notes && (
+                  <div className="p-3 bg-[#18181b] rounded-xl border border-[#27272e] text-xs text-neutral-400">
+                    <span className="font-semibold text-white block mb-0.5">Resolution Notes:</span>
+                    {c.resolution_notes}
+                  </div>
+                )
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Pagination controls */}
+      {!loading && pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between px-1">
+          <p className="text-xs text-neutral-500">
+            Showing <span className="text-neutral-300">{startItem}–{endItem}</span> of{' '}
+            <span className="text-neutral-300">{pagination.total}</span> complaints
+          </p>
+
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => goToPage(page - 1)}
+              disabled={page === 1}
+              className="btn btn-secondary p-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
+              aria-label="Previous page"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+              .filter(p => p === 1 || p === pagination.totalPages || Math.abs(p - page) <= 1)
+              .reduce((acc, p, idx, arr) => {
+                if (idx > 0 && p - arr[idx - 1] > 1) acc.push('ellipsis-' + p);
+                acc.push(p);
+                return acc;
+              }, [])
+              .map((p) =>
+                typeof p === 'string' ? (
+                  <span key={p} className="px-1 text-neutral-600 text-xs select-none">…</span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => goToPage(p)}
+                    className={`btn text-xs py-1.5 px-3 min-w-[2rem] ${
+                      p === page ? 'btn-primary' : 'btn-secondary'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                )
+              )}
+
+            <button
+              onClick={() => goToPage(page + 1)}
+              disabled={page === pagination.totalPages}
+              className="btn btn-secondary p-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
+              aria-label="Next page"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
