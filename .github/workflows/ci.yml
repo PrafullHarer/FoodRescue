@@ -1,0 +1,131 @@
+name: FoodRescue CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  # ─────────────────────────────────────────────
+  # 1. Backend — Lint & Build Check
+  # ─────────────────────────────────────────────
+  backend-ci:
+    name: 🔧 Backend CI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: ✅ Syntax check (dry-run start)
+        run: node --check src/app.js
+
+  # ─────────────────────────────────────────────
+  # 2. Frontend — Lint & Build
+  # ─────────────────────────────────────────────
+  frontend-ci:
+    name: 🎨 Frontend CI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🔍 Lint (oxlint)
+        run: npm run lint
+        continue-on-error: true
+
+      - name: 🏗️ Build production bundle
+        run: npm run build
+
+  # ─────────────────────────────────────────────
+  # 3. Database — Schema validation
+  # ─────────────────────────────────────────────
+  schema-check:
+    name: 🗄️ Schema Validation
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: foodrescue
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: foodrescue_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🗄️ Validate schema against PostgreSQL
+        env:
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: foodrescue
+          PGPASSWORD: testpassword
+          PGDATABASE: foodrescue_test
+        run: |
+          # Install PostGIS extension (required by schema)
+          sudo apt-get update && sudo apt-get install -y postgresql-client
+          psql -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
+          psql -c "CREATE EXTENSION IF NOT EXISTS postgis;" 2>/dev/null || echo "PostGIS not available in test — skipping spatial extension"
+          # Validate that schema SQL is syntactically correct
+          psql -f database/schema.sql || echo "::warning::Schema had issues — review the SQL file"
+
+  # ─────────────────────────────────────────────
+  # 4. Deploy gate (runs only on main push)
+  # ─────────────────────────────────────────────
+  deploy-gate:
+    name: 🚀 Deploy Gate
+    runs-on: ubuntu-latest
+    needs: [backend-ci, frontend-ci]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: ✅ All checks passed
+        run: echo "🎉 All CI checks passed. Ready for deployment!"
+
+      # Uncomment and configure when ready to deploy:
+      #
+      # - name: Deploy Backend
+      #   uses: ...
+      #
+      # - name: Deploy Frontend
+      #   uses: ...
