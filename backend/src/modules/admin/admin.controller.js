@@ -38,6 +38,9 @@ const getComplaints = async (req, res, next) => {
       page: req.query.page ? parseInt(req.query.page, 10) : 1,
       limit: req.query.limit ? parseInt(req.query.limit, 10) : 20,
       status: req.query.status,
+      role: req.query.role,
+      category: req.query.category,
+      search: req.query.search,
     });
     res.json({ success: true, data: result });
   } catch (error) {
@@ -79,10 +82,31 @@ const getAuditLogs = async (req, res, next) => {
   }
 };
 
+/**
+ * PATCH /api/admin/complaints/:id/status
+ */
+const updateComplaintStatus = async (req, res, next) => {
+  try {
+    const { status, admin_response } = req.body;
+    if (!status) {
+      return res.status(400).json({ success: false, message: 'Status is required.' });
+    }
+    const result = await adminService.updateComplaintStatus(
+      req.params.id,
+      { status, admin_response },
+      req.user.id
+    );
+    res.json({ success: true, message: `Complaint status updated to ${status}.`, data: result });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   verifyEntity,
   getPendingVerifications,
   getComplaints,
   resolveComplaint,
+  updateComplaintStatus,
   getAuditLogs,
 };

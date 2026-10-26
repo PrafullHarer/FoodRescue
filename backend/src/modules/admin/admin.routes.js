@@ -14,6 +14,7 @@ router.post('/verify/:type/:id', adminController.verifyEntity);
 // Complaints
 router.get('/complaints', adminController.getComplaints);
 router.post('/complaints/:id/resolve', adminController.resolveComplaint);
+router.patch('/complaints/:id/status', adminController.updateComplaintStatus);
 
 // Audit Logs
 router.get('/audit-logs', adminController.getAuditLogs);

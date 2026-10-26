@@ -2,7 +2,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   LayoutDashboard, Package, Users, Truck, QrCode, Bell,
-  BarChart3, Shield, LogOut, ChevronLeft, Menu, X, Box
+  BarChart3, Shield, LogOut, ChevronLeft, Menu, X, Box, User
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import api from '../../api/client';
@@ -227,12 +227,17 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
 
         {/* User profile & Footer */}
         <div className="border-t border-[#232328] px-3 py-4 bg-[#0a0a0c] space-y-1">
-          {(!collapsed || mobileOpen) && (
-            <div className="px-3 mb-3 animate-fade-in">
-              <p className="font-semibold text-xs text-white truncate">{user?.full_name}</p>
-              <p className="text-[11px] text-neutral-400 truncate">{user?.email}</p>
-            </div>
-          )}
+          <Link
+            to="/profile"
+            onClick={() => setMobileOpen?.(false)}
+            className={`sidebar-link w-full ${
+              location.pathname === '/profile' ? 'active' : 'text-neutral-400 hover:text-white hover:bg-[#1c1c20]'
+            } ${collapsed && !mobileOpen ? 'lg:justify-center lg:px-3' : ''}`}
+            title="Profile"
+          >
+            <User className="w-4 h-4 flex-shrink-0" />
+            {(!collapsed || mobileOpen) && <span className="text-xs font-medium">Profile</span>}
+          </Link>
 
           {/* Theme Toggle Button */}
           <ThemeToggle

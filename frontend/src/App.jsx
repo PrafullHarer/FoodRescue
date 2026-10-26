@@ -29,6 +29,7 @@ import QRScanPage from './pages/volunteer/QRScanPage';
 // Shared Pages
 import NotificationsPage from './pages/notifications/NotificationsPage';
 import AnalyticsPage from './pages/analytics/AnalyticsPage';
+import ProfilePage from './pages/profile/ProfilePage';
 
 // Admin Pages
 import VerificationsPage from './pages/admin/VerificationsPage';
@@ -134,6 +135,7 @@ export default function App() {
               {/* Notifications & Analytics */}
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
 
               {/* Admin Routes */}
               <Route

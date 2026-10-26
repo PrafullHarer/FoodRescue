@@ -1,4 +1,5 @@
 const db = require('../../config/db');
+const notificationService = require('../notifications/notification.service');
 
 /**
  * Verify a provider or NGO.
@@ -61,30 +62,49 @@ const getPendingVerifications = async () => {
 /**
  * Get all complaints with filtering.
  */
-const getComplaints = async ({ page = 1, limit = 20, status }) => {
+const getComplaints = async ({ page = 1, limit = 20, status, role, category, search }) => {
   const offset = (page - 1) * limit;
   const params = [];
-  let whereClause = '';
+  const conditions = [];
 
   if (status) {
     params.push(status);
-    whereClause = `WHERE c.status = $${params.length}`;
+    conditions.push(`c.status = $${params.length}`);
   }
 
+  if (role) {
+    params.push(role);
+    conditions.push(`u.role = $${params.length}`);
+  }
+
+  if (category) {
+    params.push(category);
+    conditions.push(`c.category = $${params.length}`);
+  }
+
+  if (search) {
+    params.push(`%${search}%`);
+    conditions.push(`(c.subject ILIKE $${params.length} OR u.full_name ILIKE $${params.length} OR u.email ILIKE $${params.length} OR c.id::text ILIKE $${params.length})`);
+  }
+
+  const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+
   const countResult = await db.query(
-    `SELECT COUNT(*) FROM complaints c ${whereClause}`,
+    `SELECT COUNT(*) FROM complaints c JOIN users u ON u.id = c.reporter_id ${whereClause}`,
     params
   );
 
   const dataParams = [...params, limit, offset];
   const { rows } = await db.query(
-    `SELECT c.*, u.full_name AS reporter_name, u.email AS reporter_email,
+    `SELECT c.*, u.full_name AS reporter_name, u.email AS reporter_email, u.role AS reporter_role,
             ru.full_name AS reported_user_name
      FROM complaints c
      JOIN users u ON u.id = c.reporter_id
      LEFT JOIN users ru ON ru.id = c.reported_user_id
      ${whereClause}
-     ORDER BY c.created_at DESC
+     ORDER BY
+       CASE c.status WHEN 'open' THEN 0 WHEN 'investigating' THEN 1 WHEN 'resolved' THEN 2 WHEN 'dismissed' THEN 3 END,
+       c.created_at DESC
      LIMIT $${dataParams.length - 1} OFFSET $${dataParams.length}`,
     dataParams
   );
@@ -122,6 +142,88 @@ const resolveComplaint = async (complaintId, resolution_notes, adminUserId) => {
      VALUES ($1, 'complaint.resolve', 'complaint', $2, $3)`,
     [adminUserId, complaintId, JSON.stringify({ status: 'resolved', resolution_notes })]
   );
+
+  // Notify the reporter
+  try {
+    await notificationService.createNotification({
+      userId: rows[0].reporter_id,
+      title: '✅ Complaint Resolved',
+      body: `Your complaint "${rows[0].subject}" has been resolved.`,
+      type: 'in_app',
+      data: { type: 'complaint_resolved', complaint_id: complaintId },
+    });
+  } catch (err) {
+    console.error('[NOTIFY] Failed to notify reporter:', err.message);
+  }
+
+  return rows[0];
+};
+
+/**
+ * Update complaint status (full lifecycle).
+ */
+const updateComplaintStatus = async (complaintId, { status, admin_response }, adminUserId) => {
+  const validStatuses = ['open', 'investigating', 'resolved', 'dismissed'];
+  if (!validStatuses.includes(status)) {
+    const err = new Error(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const fields = ['status = $1'];
+  const params = [status];
+
+  if (admin_response !== undefined) {
+    params.push(admin_response);
+    fields.push(`resolution_notes = $${params.length}`);
+  }
+
+  if (status === 'resolved' || status === 'dismissed') {
+    params.push(adminUserId);
+    fields.push(`resolved_by = $${params.length}`);
+    fields.push('resolved_at = NOW()');
+  }
+
+  params.push(complaintId);
+  const { rows } = await db.query(
+    `UPDATE complaints SET ${fields.join(', ')} WHERE id = $${params.length} RETURNING *`,
+    params
+  );
+
+  if (rows.length === 0) {
+    const err = new Error('Complaint not found.');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  // Audit log
+  await db.query(
+    `INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, changes)
+     VALUES ($1, 'complaint.status_update', 'complaint', $2, $3)`,
+    [adminUserId, complaintId, JSON.stringify({ status, admin_response })]
+  );
+
+  // Notify the reporter of status change
+  const statusLabels = {
+    investigating: '🔍 Complaint Under Review',
+    resolved: '✅ Complaint Resolved',
+    dismissed: '🚫 Complaint Dismissed',
+    open: '📋 Complaint Reopened',
+  };
+
+  try {
+    await notificationService.createNotification({
+      userId: rows[0].reporter_id,
+      title: statusLabels[status] || 'Complaint Updated',
+      body: admin_response
+        ? `Your complaint "${rows[0].subject}" status: ${status}. Response: ${admin_response}`
+        : `Your complaint "${rows[0].subject}" status changed to: ${status}.`,
+      type: 'in_app',
+      data: { type: 'complaint_status_update', complaint_id: complaintId, status },
+    });
+  } catch (err) {
+    console.error('[NOTIFY] Failed to notify reporter:', err.message);
+  }
 
   return rows[0];
 };
@@ -182,5 +284,6 @@ module.exports = {
   getPendingVerifications,
   getComplaints,
   resolveComplaint,
+  updateComplaintStatus,
   getAuditLogs,
 };

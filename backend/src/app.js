@@ -20,6 +20,7 @@ const notificationRoutes = require('./modules/notifications/notification.routes'
 const analyticsRoutes = require('./modules/analytics/analytics.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
 const reviewRoutes = require('./modules/reviews/review.routes');
+const complaintRoutes = require('./modules/complaints/complaint.routes');
 
 // Import background jobs
 const { startExpiryChecker } = require('./jobs/expiry-checker.cron');
@@ -134,6 +135,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/complaints', complaintRoutes);
 
 // ─── 8. 404 Handler ──────────────────────────────────────────
 app.use((req, res) => {
