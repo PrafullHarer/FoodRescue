@@ -190,7 +190,9 @@ export default function NotificationsPage() {
     }
 
     if (isComplaintNotif(n)) {
+      const complaintId = notifData?.complaint_id || notifData?.complaintId;
       if (user?.role === 'admin') navigate('/admin/complaints');
+      else if (complaintId) navigate(`/complaints/${complaintId}`);
       else navigate('/complaints');
       return;
     }
@@ -293,8 +295,8 @@ export default function NotificationsPage() {
           onClick={() => setFilter('unread')}
           className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
             filter === 'unread'
-              ? 'bg-neutral-900 text-white dark:bg-white dark:text-black shadow-sm'
-              : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-[#18181c]'
+              ? 'bg-neutral-900 text-white dark:bg-[#25252b] dark:text-white dark:border dark:border-[#383842] shadow-sm font-bold'
+              : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-[#18181c] border border-transparent'
           }`}
         >
           Unread
@@ -313,8 +315,8 @@ export default function NotificationsPage() {
           onClick={() => setFilter('all')}
           className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
             filter === 'all'
-              ? 'bg-neutral-900 text-white dark:bg-white dark:text-black shadow-sm'
-              : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-[#18181c]'
+              ? 'bg-neutral-900 text-white dark:bg-[#25252b] dark:text-white dark:border dark:border-[#383842] shadow-sm font-bold'
+              : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-[#18181c] border border-transparent'
           }`}
         >
           All ({filteredNotifications.length})
@@ -443,8 +445,8 @@ export default function NotificationsPage() {
                       : isResolved
                       ? 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-800 shadow-xs'
                       : !n.is_read
-                      ? 'bg-neutral-900 text-white dark:bg-white dark:text-black border-neutral-900 dark:border-white shadow-xs'
-                      : 'bg-neutral-100 text-neutral-500 dark:bg-[#1c1c20] dark:text-neutral-400 border-neutral-200 dark:border-[#27272e]'
+                      ? 'bg-neutral-900 text-white border-neutral-900 dark:bg-[#1c1c22] dark:text-[#39FF14] dark:border-emerald-500/30 shadow-xs'
+                      : 'bg-neutral-100 text-neutral-500 border-neutral-200 dark:bg-[#18181c] dark:text-neutral-400 dark:border-[#27272e]'
                   }`}
                 >
                   {isIncident ? (

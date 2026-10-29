@@ -264,6 +264,9 @@ const getDonationById = async (donationId, user = null) => {
       ngo_u.id AS ngo_user_id,
       ngo.organization_name AS ngo_name,
       ngo.address AS ngo_address,
+      ngo.latitude AS ngo_latitude,
+      ngo.longitude AS ngo_longitude,
+      ngo.is_verified AS ngo_is_verified,
       ngo_u.full_name AS ngo_contact,
       ngo_u.phone AS ngo_phone,
       ngo_u.email AS ngo_email

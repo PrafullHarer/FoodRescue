@@ -121,7 +121,7 @@ export default function AdminFeedbackPage() {
         {[1, 2, 3, 4, 5].map((s) => (
           <Star
             key={s}
-            className={`w-3.5 h-3.5 ${s <= rating ? 'fill-current' : 'text-neutral-700'}`}
+            className={`w-3.5 h-3.5 ${s <= rating ? 'fill-current' : 'text-neutral-300 dark:text-neutral-700'}`}
           />
         ))}
       </div>

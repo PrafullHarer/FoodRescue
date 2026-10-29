@@ -220,7 +220,7 @@ export default function CompleteProfilePage() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-xs uppercase font-bold tracking-wider text-neutral-600 dark:text-neutral-400 flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-black text-[11px] font-bold flex items-center justify-center">1</span>
+                <span className="w-5 h-5 rounded-full bg-neutral-900 text-white dark:bg-emerald-500/20 dark:text-emerald-400 dark:border dark:border-emerald-500/30 text-[11px] font-bold flex items-center justify-center">1</span>
                 Choose Your Role in FoodRescue <span className="text-red-500">*</span>
               </label>
               <span className="text-xs text-neutral-500">Pick one to adapt your workspace</span>
@@ -243,7 +243,7 @@ export default function CompleteProfilePage() {
                   >
                     <div className="flex items-center justify-between mb-3">
                       <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                        isSelected ? 'bg-neutral-900 text-white dark:bg-white dark:text-black' : 'bg-neutral-200/70 text-neutral-700 dark:bg-[#1a1a20] dark:text-neutral-300'
+                        isSelected ? 'bg-neutral-900 text-white dark:bg-[#25252c] dark:text-emerald-400 dark:border dark:border-emerald-500/30' : 'bg-neutral-200/70 text-neutral-700 dark:bg-[#1a1a20] dark:text-neutral-300'
                       }`}>
                         <Icon className="w-5 h-5" />
                       </div>
@@ -267,7 +267,7 @@ export default function CompleteProfilePage() {
           {/* STEP 2: PERSONAL & CONTACT INFORMATION */}
           <div className="space-y-4 border-t border-neutral-200 dark:border-[#232328] pt-6">
             <label className="text-xs uppercase font-bold tracking-wider text-neutral-600 dark:text-neutral-400 flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-black text-[11px] font-bold flex items-center justify-center">2</span>
+              <span className="w-5 h-5 rounded-full bg-neutral-900 text-white dark:bg-emerald-500/20 dark:text-emerald-400 dark:border dark:border-emerald-500/30 text-[11px] font-bold flex items-center justify-center">2</span>
               Contact & Representative Details
             </label>
 
@@ -313,7 +313,7 @@ export default function CompleteProfilePage() {
           {/* STEP 3: ROLE-SPECIFIC MANDATORY FIELDS */}
           <div className="space-y-4 border-t border-neutral-200 dark:border-[#232328] pt-6">
             <label className="text-xs uppercase font-bold tracking-wider text-neutral-600 dark:text-neutral-400 flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-black text-[11px] font-bold flex items-center justify-center">3</span>
+              <span className="w-5 h-5 rounded-full bg-neutral-900 text-white dark:bg-emerald-500/20 dark:text-emerald-400 dark:border dark:border-emerald-500/30 text-[11px] font-bold flex items-center justify-center">3</span>
               {role === 'provider'
                 ? 'Provider & Business Logistics'
                 : role === 'ngo'

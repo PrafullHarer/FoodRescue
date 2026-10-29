@@ -43,20 +43,20 @@ export default function BrowseDonationsPage() {
 
   return (
     <div className="space-y-6 animate-fade-in max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#232328] pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-200 dark:border-[#232328] pb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Browse Available Surplus Food</h1>
-          <p className="text-neutral-400 text-sm mt-1">Discover, reserve, and claim surplus food for your shelter network.</p>
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white tracking-tight">Browse Available Surplus Food</h1>
+          <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">Discover, reserve, and claim surplus food for your shelter network.</p>
         </div>
 
         {/* View Mode Toggle */}
-        <div className="flex items-center gap-1.5 p-1 bg-[#141416] border border-[#232328] rounded-xl self-start sm:self-auto">
+        <div className="flex items-center gap-1.5 p-1 bg-neutral-100 dark:bg-[#141416] border border-neutral-200 dark:border-[#232328] rounded-xl self-start sm:self-auto shadow-xs">
           <button
             onClick={() => setViewMode('grid')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
               viewMode === 'grid'
-                ? 'bg-white text-black shadow-md shadow-white/5'
-                : 'text-neutral-400 hover:text-white'
+                ? 'bg-neutral-900 text-white dark:bg-[#25252b] dark:text-white dark:border dark:border-[#383842] shadow-sm font-bold'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
             }`}
           >
             <LayoutGrid className="w-3.5 h-3.5" />
@@ -64,10 +64,10 @@ export default function BrowseDonationsPage() {
           </button>
           <button
             onClick={() => setViewMode('map')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
               viewMode === 'map'
-                ? 'bg-white text-black shadow-md shadow-white/5'
-                : 'text-neutral-400 hover:text-white'
+                ? 'bg-neutral-900 text-white dark:bg-[#25252b] dark:text-white dark:border dark:border-[#383842] shadow-sm font-bold'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
             }`}
           >
             <Map className="w-3.5 h-3.5" />

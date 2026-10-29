@@ -104,24 +104,24 @@ export default function QRScanPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in pb-16">
       {/* Header */}
-      <div className="border-b border-[#232328] pb-6 flex items-center justify-between">
+      <div className="border-b border-neutral-200 dark:border-[#232328] pb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">QR Code Verification & Handoff</h1>
-          <p className="text-neutral-400 text-sm mt-1">
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white tracking-tight">QR Code Verification & Handoff</h1>
+          <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">
             Validate food pickup inspection or verify shelter dropoff receipt.
           </p>
         </div>
       </div>
 
       {/* Code Input Card */}
-      <div className="bg-[#121214] border border-[#232328] rounded-[24px] p-6 sm:p-8 shadow-2xl space-y-6">
+      <div className="bg-white dark:bg-[#121214] border border-neutral-200 dark:border-[#232328] rounded-[24px] p-6 sm:p-8 shadow-2xl space-y-6">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-[#1c1c20] border border-[#2c2c34] flex items-center justify-center flex-shrink-0">
-            <QrCode className="w-6 h-6 text-white" />
+          <div className="w-12 h-12 rounded-2xl bg-neutral-100 dark:bg-[#1c1c20] border border-neutral-200 dark:border-[#2c2c34] flex items-center justify-center flex-shrink-0">
+            <QrCode className="w-6 h-6 text-neutral-900 dark:text-white" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-white">Enter or Scan Verification Token</h3>
-            <p className="text-xs text-neutral-400">
+            <h3 className="text-base font-bold text-neutral-900 dark:text-white">Enter or Scan Verification Token</h3>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
               Enter the alphanumeric code from the donor or volunteer screen.
             </p>
           </div>
@@ -169,73 +169,73 @@ export default function QRScanPage() {
 
       {/* QR Preview & Inspection Area */}
       {qrPreview && (
-        <div className="bg-[#121214] border border-[#232328] rounded-[24px] p-6 sm:p-8 shadow-2xl space-y-6 animate-slide-up">
+        <div className="bg-white dark:bg-[#121214] border border-neutral-200 dark:border-[#232328] rounded-[24px] p-6 sm:p-8 shadow-2xl space-y-6 animate-slide-up">
           {/* Milestone Banner */}
-          <div className="flex items-center justify-between border-b border-[#232328] pb-4">
+          <div className="flex items-center justify-between border-b border-neutral-200 dark:border-[#232328] pb-4">
             <div className="flex items-center gap-2">
               <span className={`px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${
                 isPickup
-                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                  : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                  : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
               }`}>
                 {isPickup ? 'Step 1: Food Pickup from Donor' : 'Step 2: Food Dropoff to Shelter'}
               </span>
             </div>
-            <span className="font-mono text-xs text-neutral-400 bg-[#18181b] px-2.5 py-1 rounded-lg border border-[#282830]">
+            <span className="font-mono text-xs text-neutral-600 dark:text-neutral-400 bg-neutral-100 dark:bg-[#18181b] px-2.5 py-1 rounded-lg border border-neutral-200 dark:border-[#282830]">
               {qrPreview.code}
             </span>
           </div>
 
           {/* Donation Summary Card */}
-          <div className="bg-[#0c0c0e] border border-[#232328] rounded-2xl p-5 space-y-3">
+          <div className="bg-neutral-50 dark:bg-[#0c0c0e] border border-neutral-200 dark:border-[#232328] rounded-2xl p-5 space-y-3">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <span className="badge badge-neutral uppercase text-[10px] font-bold mb-1">
                   {qrPreview.donation?.category?.replace(/_/g, ' ')}
                 </span>
-                <h3 className="text-lg font-bold text-white">{qrPreview.donation?.title}</h3>
+                <h3 className="text-lg font-bold text-neutral-900 dark:text-white">{qrPreview.donation?.title}</h3>
                 {qrPreview.donation?.description && (
-                  <p className="text-neutral-400 text-xs mt-0.5">{qrPreview.donation.description}</p>
+                  <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">{qrPreview.donation.description}</p>
                 )}
               </div>
-              <div className="text-right flex-shrink-0 bg-[#141416] p-3 rounded-xl border border-[#232328]">
-                <span className="text-xl font-black text-white block">
-                  {qrPreview.donation?.quantity} <span className="text-xs font-normal text-neutral-400">{qrPreview.donation?.unit || 'servings'}</span>
+              <div className="text-right flex-shrink-0 bg-white dark:bg-[#141416] p-3 rounded-xl border border-neutral-200 dark:border-[#232328] shadow-xs">
+                <span className="text-xl font-black text-neutral-900 dark:text-white block">
+                  {qrPreview.donation?.quantity} <span className="text-xs font-normal text-neutral-500 dark:text-neutral-400">{qrPreview.donation?.unit || 'servings'}</span>
                 </span>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs border-t border-[#1c1c22]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs border-t border-neutral-200 dark:border-[#1c1c22]">
               <div>
                 <span className="text-neutral-500 uppercase text-[10px] font-bold block">Food Donor Provider</span>
-                <p className="text-white font-medium">{qrPreview.provider?.business_name}</p>
-                <p className="text-neutral-400 text-[11px]">{qrPreview.provider?.address}</p>
+                <p className="text-neutral-900 dark:text-white font-medium">{qrPreview.provider?.business_name}</p>
+                <p className="text-neutral-500 dark:text-neutral-400 text-[11px]">{qrPreview.provider?.address}</p>
               </div>
 
               <div>
                 <span className="text-neutral-500 uppercase text-[10px] font-bold block">Destination Shelter NGO</span>
-                <p className="text-white font-medium">{qrPreview.ngo?.organization_name}</p>
-                <p className="text-neutral-400 text-[11px]">{qrPreview.ngo?.address}</p>
+                <p className="text-neutral-900 dark:text-white font-medium">{qrPreview.ngo?.organization_name}</p>
+                <p className="text-neutral-500 dark:text-neutral-400 text-[11px]">{qrPreview.ngo?.address}</p>
               </div>
             </div>
           </div>
 
           {/* IF PICKUP QR: VOLUNTEER QUALITY CHECKLIST */}
           {isPickup && (
-            <div className="space-y-4 border-t border-[#232328] pt-4">
+            <div className="space-y-4 border-t border-neutral-200 dark:border-[#232328] pt-4">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-amber-400" />
-                <h4 className="text-sm font-bold text-white tracking-tight">Volunteer Quality Inspection Checklist</h4>
+                <ShieldCheck className="w-5 h-5 text-amber-500 dark:text-amber-400" />
+                <h4 className="text-sm font-bold text-neutral-900 dark:text-white tracking-tight">Volunteer Quality Inspection Checklist</h4>
               </div>
-              <p className="text-xs text-neutral-400">
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
                 Please inspect the food items at the donor location before accepting and commencing transit.
               </p>
 
               <div className="space-y-2.5">
                 {/* Checkpoint 1 */}
-                <label className="flex items-center justify-between p-3.5 rounded-xl bg-[#0c0c0e] border border-[#232328] cursor-pointer hover:border-[#383842] transition-colors">
-                  <span className="text-xs font-medium text-white flex items-center gap-2">
-                    <CheckCircle2 className={`w-4 h-4 ${checklist.freshness ? 'text-emerald-400' : 'text-neutral-600'}`} />
+                <label className="flex items-center justify-between p-3.5 rounded-xl bg-neutral-50 dark:bg-[#0c0c0e] border border-neutral-200 dark:border-[#232328] cursor-pointer hover:border-neutral-300 dark:hover:border-[#383842] transition-colors">
+                  <span className="text-xs font-medium text-neutral-900 dark:text-white flex items-center gap-2">
+                    <CheckCircle2 className={`w-4 h-4 ${checklist.freshness ? 'text-emerald-500' : 'text-neutral-400 dark:text-neutral-600'}`} />
                     1. Freshness & Visual Appearance
                   </span>
                   <input
@@ -247,9 +247,9 @@ export default function QRScanPage() {
                 </label>
 
                 {/* Checkpoint 2 */}
-                <label className="flex items-center justify-between p-3.5 rounded-xl bg-[#0c0c0e] border border-[#232328] cursor-pointer hover:border-[#383842] transition-colors">
-                  <span className="text-xs font-medium text-white flex items-center gap-2">
-                    <CheckCircle2 className={`w-4 h-4 ${checklist.packaging ? 'text-emerald-400' : 'text-neutral-600'}`} />
+                <label className="flex items-center justify-between p-3.5 rounded-xl bg-neutral-50 dark:bg-[#0c0c0e] border border-neutral-200 dark:border-[#232328] cursor-pointer hover:border-neutral-300 dark:hover:border-[#383842] transition-colors">
+                  <span className="text-xs font-medium text-neutral-900 dark:text-white flex items-center gap-2">
+                    <CheckCircle2 className={`w-4 h-4 ${checklist.packaging ? 'text-emerald-500' : 'text-neutral-400 dark:text-neutral-600'}`} />
                     2. Packaging & Container Seal Integrity
                   </span>
                   <input
@@ -261,9 +261,9 @@ export default function QRScanPage() {
                 </label>
 
                 {/* Checkpoint 3 */}
-                <label className="flex items-center justify-between p-3.5 rounded-xl bg-[#0c0c0e] border border-[#232328] cursor-pointer hover:border-[#383842] transition-colors">
-                  <span className="text-xs font-medium text-white flex items-center gap-2">
-                    <CheckCircle2 className={`w-4 h-4 ${checklist.temperature ? 'text-emerald-400' : 'text-neutral-600'}`} />
+                <label className="flex items-center justify-between p-3.5 rounded-xl bg-neutral-50 dark:bg-[#0c0c0e] border border-neutral-200 dark:border-[#232328] cursor-pointer hover:border-neutral-300 dark:hover:border-[#383842] transition-colors">
+                  <span className="text-xs font-medium text-neutral-900 dark:text-white flex items-center gap-2">
+                    <CheckCircle2 className={`w-4 h-4 ${checklist.temperature ? 'text-emerald-500' : 'text-neutral-400 dark:text-neutral-600'}`} />
                     3. Safe Storage, Hygiene & Temperature
                   </span>
                   <input
@@ -275,9 +275,9 @@ export default function QRScanPage() {
                 </label>
 
                 {/* Checkpoint 4 */}
-                <label className="flex items-center justify-between p-3.5 rounded-xl bg-[#0c0c0e] border border-[#232328] cursor-pointer hover:border-[#383842] transition-colors">
-                  <span className="text-xs font-medium text-white flex items-center gap-2">
-                    <CheckCircle2 className={`w-4 h-4 ${checklist.quantity ? 'text-emerald-400' : 'text-neutral-600'}`} />
+                <label className="flex items-center justify-between p-3.5 rounded-xl bg-neutral-50 dark:bg-[#0c0c0e] border border-neutral-200 dark:border-[#232328] cursor-pointer hover:border-neutral-300 dark:hover:border-[#383842] transition-colors">
+                  <span className="text-xs font-medium text-neutral-900 dark:text-white flex items-center gap-2">
+                    <CheckCircle2 className={`w-4 h-4 ${checklist.quantity ? 'text-emerald-500' : 'text-neutral-400 dark:text-neutral-600'}`} />
                     4. Portion & Quantity Verification
                   </span>
                   <input
@@ -321,42 +321,42 @@ export default function QRScanPage() {
 
           {/* IF DROPOFF QR: NGO RECEIPT & VOLUNTEER QUALITY INSPECTION REVIEW */}
           {isDelivery && (
-            <div className="space-y-4 border-t border-[#232328] pt-4">
+            <div className="space-y-4 border-t border-neutral-200 dark:border-[#232328] pt-4">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                <h4 className="text-sm font-bold text-white tracking-tight">Volunteer Inspection Report</h4>
+                <ShieldCheck className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
+                <h4 className="text-sm font-bold text-neutral-900 dark:text-white tracking-tight">Volunteer Inspection Report</h4>
               </div>
 
               {completedChecklist?.items ? (
-                <div className="p-4 rounded-xl bg-[#0c0c0e] border border-[#232328] space-y-3">
-                  <div className="flex items-center justify-between text-xs text-neutral-400 border-b border-[#1c1c22] pb-2">
-                    <span>Inspected by: <strong className="text-white">{completedChecklist.inspector_name || qrPreview.volunteer?.name || 'Volunteer'}</strong></span>
+                <div className="p-4 rounded-xl bg-neutral-50 dark:bg-[#0c0c0e] border border-neutral-200 dark:border-[#232328] space-y-3">
+                  <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400 border-b border-neutral-200 dark:border-[#1c1c22] pb-2">
+                    <span>Inspected by: <strong className="text-neutral-900 dark:text-white">{completedChecklist.inspector_name || qrPreview.volunteer?.name || 'Volunteer'}</strong></span>
                     <span>{completedChecklist.inspected_at ? new Date(completedChecklist.inspected_at).toLocaleTimeString() : ''}</span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                     {completedChecklist.items.map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-2 text-neutral-200">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                      <div key={idx} className="flex items-center gap-2 text-neutral-700 dark:text-neutral-200">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500 dark:text-emerald-400 flex-shrink-0" />
                         <span>{item.label}</span>
                       </div>
                     ))}
                   </div>
 
                   {completedChecklist.notes && (
-                    <p className="text-xs text-neutral-400 italic pt-1">
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 italic pt-1">
                       Note: "{completedChecklist.notes}"
                     </p>
                   )}
                 </div>
               ) : (
-                <p className="text-xs text-neutral-400">Standard safety guidelines verified by courier.</p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">Standard safety guidelines verified by courier.</p>
               )}
 
               <button
                 onClick={handleConfirmScan}
                 disabled={submitting}
-                className="btn btn-primary w-full py-3.5 text-xs font-bold flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white"
+                className="btn btn-primary w-full py-3.5 text-xs font-bold flex items-center justify-center gap-2"
               >
                 {submitting ? (
                   <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />

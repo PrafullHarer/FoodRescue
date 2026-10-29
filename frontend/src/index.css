@@ -606,7 +606,7 @@ html.light .border-\[\#52525b\] {
 }
 
 /* Light Mode Text */
-html.light .text-white:not(.btn):not(.btn-primary):not([data-theme-keep="dark"]):not(.badge-primary):not(.badge-success) {
+html.light .text-white:not(.btn):not(.btn-primary):not([data-theme-keep="dark"]):not(.badge-primary):not(.badge-success):not([class*="bg-neutral-900"]):not([class*="bg-black"]):not([class*="bg-zinc-900"]):not([class*="bg-emerald-"]):not([class*="bg-rose-"]):not([class*="bg-amber-"]):not([class*="bg-blue-"]):not([class*="bg-purple-"]):not([class*="bg-indigo-"]):not([class*="bg-teal-"]) {
   color: #111827 !important;
 }
 
@@ -649,9 +649,37 @@ html.light .btn-primary:hover,
   box-shadow: 0 6px 20px rgba(57, 255, 20, 0.5) !important;
 }
 
+.dark [class*="dark:text-black"],
+[data-theme="dark"] [class*="dark:text-black"],
+:root:not(.light) [class*="dark:text-black"] {
+  color: #000000 !important;
+}
+
+.dark [class*="dark:text-black"] svg,
+[data-theme="dark"] [class*="dark:text-black"] svg,
+:root:not(.light) [class*="dark:text-black"] svg {
+  color: #000000 !important;
+}
+
+.dark [class*="dark:text-neutral-900"],
+[data-theme="dark"] [class*="dark:text-neutral-900"],
+:root:not(.light) [class*="dark:text-neutral-900"] {
+  color: #171717 !important;
+}
+
+.dark [class*="dark:text-neutral-900"] svg,
+[data-theme="dark"] [class*="dark:text-neutral-900"] svg,
+:root:not(.light) [class*="dark:text-neutral-900"] svg {
+  color: #171717 !important;
+}
+
 .dark .bg-white.text-black svg,
 :root:not(.light) .bg-white.text-black svg {
   color: #111827 !important;
+}
+
+html.light .bg-neutral-900.text-white svg {
+  color: #FFFFFF !important;
 }
 
 @keyframes fadeIn {

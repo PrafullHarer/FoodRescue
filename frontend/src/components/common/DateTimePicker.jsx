@@ -164,7 +164,7 @@ export default function DateTimePicker({
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
       {label && (
-        <label className="text-xs font-semibold text-neutral-300 dark:text-neutral-300 block mb-1.5 flex items-center justify-between">
+        <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 block mb-1.5 flex items-center justify-between">
           <span>{label}</span>
         </label>
       )}
@@ -173,17 +173,17 @@ export default function DateTimePicker({
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-left transition-all duration-150 text-sm font-medium ${
+        className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-left transition-all duration-150 text-sm font-medium cursor-pointer ${
           open
-            ? 'border-white bg-[#18181c] ring-2 ring-white/20 shadow-lg'
-            : 'border-[#232328] bg-[#0c0c0e] hover:border-[#3f3f46] hover:bg-[#141416]'
+            ? 'border-neutral-900 bg-neutral-100 ring-2 ring-neutral-900/10 dark:border-white dark:bg-[#18181c] dark:ring-white/20 shadow-lg'
+            : 'border-neutral-200 bg-neutral-50 hover:border-neutral-400 hover:bg-neutral-100 dark:border-[#232328] dark:bg-[#0c0c0e] dark:hover:border-[#3f3f46] dark:hover:bg-[#141416]'
         }`}
       >
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-7 h-7 rounded-lg bg-white/10 text-white flex items-center justify-center flex-shrink-0">
+          <div className="w-7 h-7 rounded-lg bg-neutral-200 text-neutral-700 dark:bg-white/10 dark:text-white flex items-center justify-center flex-shrink-0">
             <CalendarIcon className="w-3.5 h-3.5" />
           </div>
-          <span className={value ? 'text-white font-medium truncate' : 'text-neutral-500 truncate'}>
+          <span className={value ? 'text-neutral-900 dark:text-white font-medium truncate' : 'text-neutral-500 truncate'}>
             {formatDisplayDate(value)}
           </span>
         </div>
@@ -192,18 +192,18 @@ export default function DateTimePicker({
 
       {/* Dropdown Popover */}
       {open && (
-        <div className="absolute top-full left-0 mt-2 z-50 w-full sm:w-[360px] bg-[#121214] border border-[#26262e] rounded-2xl shadow-2xl p-4 text-white animate-fade-in backdrop-blur-xl">
+        <div className="absolute top-full left-0 mt-2 z-50 w-full sm:w-[360px] bg-white border border-neutral-200 dark:bg-[#121214] dark:border-[#26262e] rounded-2xl shadow-2xl p-4 text-neutral-900 dark:text-white animate-fade-in backdrop-blur-xl">
           {/* Quick Presets */}
           {presets && presets.length > 0 && (
-            <div className="mb-3.5 pb-3 border-b border-[#232328]">
+            <div className="mb-3.5 pb-3 border-b border-neutral-200 dark:border-[#232328]">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-white" /> Quick Presets
+                <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-amber-500 dark:text-amber-400" /> Quick Presets
                 </span>
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="p-1 rounded-md text-neutral-400 hover:text-white hover:bg-white/10"
+                  className="p-1 rounded-md text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/10 cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -214,7 +214,7 @@ export default function DateTimePicker({
                     key={i}
                     type="button"
                     onClick={() => applyPreset(p.minutes)}
-                    className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#1c1c20] hover:bg-white hover:text-black border border-[#2a2a32] transition-all"
+                    className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-neutral-100 text-neutral-700 hover:bg-neutral-900 hover:text-white dark:bg-[#1c1c20] dark:text-neutral-300 dark:hover:bg-white dark:hover:text-black border border-neutral-200 dark:border-[#2a2a32] transition-all cursor-pointer"
                   >
                     {p.label}
                   </button>
@@ -228,17 +228,17 @@ export default function DateTimePicker({
             <button
               type="button"
               onClick={handlePrevMonth}
-              className="p-1.5 rounded-lg hover:bg-[#202026] text-neutral-400 hover:text-white transition-colors"
+              className="p-1.5 rounded-lg hover:bg-neutral-100 text-neutral-500 hover:text-neutral-900 dark:hover:bg-[#202026] dark:text-neutral-400 dark:hover:text-white transition-colors cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="text-xs font-bold text-white tracking-tight">
+            <span className="text-xs font-bold text-neutral-900 dark:text-white tracking-tight">
               {MONTHS[currentMonth]} {currentYear}
             </span>
             <button
               type="button"
               onClick={handleNextMonth}
-              className="p-1.5 rounded-lg hover:bg-[#202026] text-neutral-400 hover:text-white transition-colors"
+              className="p-1.5 rounded-lg hover:bg-neutral-100 text-neutral-500 hover:text-neutral-900 dark:hover:bg-[#202026] dark:text-neutral-400 dark:hover:text-white transition-colors cursor-pointer"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -279,12 +279,12 @@ export default function DateTimePicker({
                     setSelectedDay(day);
                     commitDateTime(day, selectedHour, selectedMinute, selectedAmPm);
                   }}
-                  className={`h-7 w-7 mx-auto rounded-lg text-xs font-semibold flex items-center justify-center transition-all ${
+                  className={`h-7 w-7 mx-auto rounded-lg text-xs font-semibold flex items-center justify-center transition-all cursor-pointer ${
                     isSelected
-                      ? 'bg-white text-black font-bold shadow-md shadow-white/20'
+                      ? 'bg-neutral-900 text-white dark:bg-emerald-500/20 dark:text-emerald-300 dark:border dark:border-emerald-500/40 font-bold shadow-md'
                       : isCurrentToday
-                      ? 'border border-white/40 text-white'
-                      : 'text-neutral-300 hover:bg-[#202026] hover:text-white'
+                      ? 'border border-neutral-900 text-neutral-900 dark:border-white/40 dark:text-white'
+                      : 'text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-[#202026] dark:hover:text-white'
                   }`}
                 >
                   {day}
@@ -294,17 +294,17 @@ export default function DateTimePicker({
           </div>
 
           {/* Time Picker Section */}
-          <div className="pt-3 border-t border-[#232328] space-y-2.5">
-            <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-neutral-400 px-1">
+          <div className="pt-3 border-t border-neutral-200 dark:border-[#232328] space-y-2.5">
+            <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 px-1">
               <span className="flex items-center gap-1">
-                <Clock className="w-3 h-3 text-white" /> Time Selection
+                <Clock className="w-3 h-3 text-neutral-700 dark:text-white" /> Time Selection
               </span>
-              <span className="text-white font-mono font-bold">
+              <span className="text-neutral-900 dark:text-white font-mono font-bold">
                 {String(selectedHour).padStart(2, '0')}:{String(selectedMinute).padStart(2, '0')} {selectedAmPm}
               </span>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 items-center bg-[#0a0a0c] p-2.5 rounded-xl border border-[#202026]">
+            <div className="grid grid-cols-3 gap-2 items-center bg-neutral-100 dark:bg-[#0a0a0c] p-2.5 rounded-xl border border-neutral-200 dark:border-[#202026]">
               {/* Hour Select */}
               <div>
                 <label className="text-[9px] font-bold text-neutral-500 block mb-1 uppercase text-center">Hour</label>
@@ -315,7 +315,7 @@ export default function DateTimePicker({
                     setSelectedHour(h);
                     commitDateTime(selectedDay, h, selectedMinute, selectedAmPm);
                   }}
-                  className="w-full bg-[#18181b] border border-[#282830] text-white text-xs font-bold rounded-lg p-1.5 text-center outline-none focus:border-white"
+                  className="w-full bg-white dark:bg-[#18181b] border border-neutral-300 dark:border-[#282830] text-neutral-900 dark:text-white text-xs font-bold rounded-lg p-1.5 text-center outline-none focus:border-neutral-900 dark:focus:border-white cursor-pointer"
                 >
                   {hoursList.map((h) => (
                     <option key={h} value={h}>
@@ -335,7 +335,7 @@ export default function DateTimePicker({
                     setSelectedMinute(m);
                     commitDateTime(selectedDay, selectedHour, m, selectedAmPm);
                   }}
-                  className="w-full bg-[#18181b] border border-[#282830] text-white text-xs font-bold rounded-lg p-1.5 text-center outline-none focus:border-white"
+                  className="w-full bg-white dark:bg-[#18181b] border border-neutral-300 dark:border-[#282830] text-neutral-900 dark:text-white text-xs font-bold rounded-lg p-1.5 text-center outline-none focus:border-neutral-900 dark:focus:border-white cursor-pointer"
                 >
                   {minutesList.map((m) => (
                     <option key={m} value={m}>
@@ -348,17 +348,17 @@ export default function DateTimePicker({
               {/* AM / PM Toggle */}
               <div>
                 <label className="text-[9px] font-bold text-neutral-500 block mb-1 uppercase text-center">AM / PM</label>
-                <div className="grid grid-cols-2 gap-1 bg-[#18181b] border border-[#282830] rounded-lg p-0.5">
+                <div className="grid grid-cols-2 gap-1 bg-white dark:bg-[#18181b] border border-neutral-300 dark:border-[#282830] rounded-lg p-0.5">
                   <button
                     type="button"
                     onClick={() => {
                       setSelectedAmPm('AM');
                       commitDateTime(selectedDay, selectedHour, selectedMinute, 'AM');
                     }}
-                    className={`py-1 text-[11px] font-bold rounded-md transition-all ${
+                    className={`py-1 text-[11px] font-bold rounded-md transition-all cursor-pointer ${
                       selectedAmPm === 'AM'
-                        ? 'bg-white text-black shadow-xs'
-                        : 'text-neutral-400 hover:text-white'
+                        ? 'bg-neutral-900 text-white dark:bg-[#25252b] dark:text-white dark:border dark:border-[#383842] shadow-xs'
+                        : 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'
                     }`}
                   >
                     AM
@@ -369,10 +369,10 @@ export default function DateTimePicker({
                       setSelectedAmPm('PM');
                       commitDateTime(selectedDay, selectedHour, selectedMinute, 'PM');
                     }}
-                    className={`py-1 text-[11px] font-bold rounded-md transition-all ${
+                    className={`py-1 text-[11px] font-bold rounded-md transition-all cursor-pointer ${
                       selectedAmPm === 'PM'
-                        ? 'bg-white text-black shadow-xs'
-                        : 'text-neutral-400 hover:text-white'
+                        ? 'bg-neutral-900 text-white dark:bg-[#25252b] dark:text-white dark:border dark:border-[#383842] shadow-xs'
+                        : 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'
                     }`}
                   >
                     PM
@@ -385,7 +385,7 @@ export default function DateTimePicker({
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="w-full py-2 rounded-xl bg-white text-black font-bold text-xs hover:bg-neutral-200 transition-all flex items-center justify-center gap-1.5 shadow-md shadow-white/5"
+              className="w-full py-2 rounded-xl bg-neutral-900 text-white dark:bg-[#25252b] dark:text-white dark:border dark:border-[#383842] font-bold text-xs hover:bg-neutral-800 dark:hover:bg-[#303038] transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
             >
               <Check className="w-3.5 h-3.5" />
               <span>Confirm Date & Time</span>

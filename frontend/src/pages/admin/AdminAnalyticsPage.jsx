@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import {
   TrendingUp, TrendingDown, Minus, Filter, RotateCcw, Download,
   MapPin, AlertTriangle, ShieldCheck, Clock, CheckCircle2,
@@ -279,22 +279,18 @@ function HotspotLeafletMap({ hotspots, focusedHotspot, onSelectHotspot, onFitAll
 }
 
 export default function AdminAnalyticsPage({ defaultTab }) {
-  const location = useLocation();
   const [searchParams] = useSearchParams();
   const queryTab = searchParams.get('tab');
-  const isHotspotsPath = location.pathname.includes('/admin/hotspots');
-  const initialTab = isHotspotsPath ? 'overview' : (queryTab || defaultTab || 'overview');
+  const initialTab = queryTab || defaultTab || 'overview';
 
   // Active Tab
   const [activeTab, setActiveTab] = useState(initialTab);
 
   useEffect(() => {
-    if (location.pathname.includes('/admin/hotspots')) {
-      setActiveTab('overview');
-    } else if (queryTab) {
+    if (queryTab) {
       setActiveTab(queryTab);
     }
-  }, [location.pathname, queryTab]);
+  }, [queryTab]);
 
   // Global Filters
   const [dateRange, setDateRange] = useState('30d');
@@ -783,13 +779,13 @@ export default function AdminAnalyticsPage({ defaultTab }) {
       ) : null}
 
       {/* Dashboard Sub-Navigation Tabs */}
-      <div className="flex items-center gap-1.5 border-b border-[#232328] pb-1 overflow-x-auto text-xs">
+      <div className="flex items-center gap-1.5 border-b border-neutral-200 dark:border-[#232328] pb-1 overflow-x-auto text-xs">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`px-4 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+          className={`px-4 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
             activeTab === 'overview'
-              ? 'bg-white text-black shadow-md'
-              : 'text-neutral-400 hover:text-white hover:bg-[#18181b]'
+              ? 'bg-neutral-900 text-white dark:bg-[#25252b] dark:text-white dark:border dark:border-[#383842] shadow-md'
+              : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 dark:bg-[#141416] border border-neutral-200 dark:border-[#232328]'
           }`}
         >
           <MapPin className="w-4 h-4" />
@@ -798,10 +794,10 @@ export default function AdminAnalyticsPage({ defaultTab }) {
 
         <button
           onClick={() => setActiveTab('categories')}
-          className={`px-4 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+          className={`px-4 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
             activeTab === 'categories'
-              ? 'bg-white text-black shadow-md'
-              : 'text-neutral-400 hover:text-white hover:bg-[#18181b]'
+              ? 'bg-neutral-900 text-white dark:bg-[#25252b] dark:text-white dark:border dark:border-[#383842] shadow-md'
+              : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 dark:bg-[#141416] border border-neutral-200 dark:border-[#232328]'
           }`}
         >
           <BarChart2 className="w-4 h-4" />
@@ -810,10 +806,10 @@ export default function AdminAnalyticsPage({ defaultTab }) {
 
         <button
           onClick={() => setActiveTab('demand')}
-          className={`px-4 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+          className={`px-4 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
             activeTab === 'demand'
-              ? 'bg-white text-black shadow-md'
-              : 'text-neutral-400 hover:text-white hover:bg-[#18181b]'
+              ? 'bg-neutral-900 text-white dark:bg-[#25252b] dark:text-white dark:border dark:border-[#383842] shadow-md'
+              : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 dark:bg-[#141416] border border-neutral-200 dark:border-[#232328]'
           }`}
         >
           <Building2 className="w-4 h-4" />
@@ -822,10 +818,10 @@ export default function AdminAnalyticsPage({ defaultTab }) {
 
         <button
           onClick={() => setActiveTab('reliability')}
-          className={`px-4 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+          className={`px-4 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
             activeTab === 'reliability'
-              ? 'bg-white text-black shadow-md'
-              : 'text-neutral-400 hover:text-white hover:bg-[#18181b]'
+              ? 'bg-neutral-900 text-white dark:bg-[#25252b] dark:text-white dark:border dark:border-[#383842] shadow-md'
+              : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 dark:bg-[#141416] border border-neutral-200 dark:border-[#232328]'
           }`}
         >
           <Truck className="w-4 h-4" />
@@ -834,10 +830,10 @@ export default function AdminAnalyticsPage({ defaultTab }) {
 
         <button
           onClick={() => setActiveTab('providers')}
-          className={`px-4 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+          className={`px-4 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
             activeTab === 'providers'
-              ? 'bg-white text-black shadow-md'
-              : 'text-neutral-400 hover:text-white hover:bg-[#18181b]'
+              ? 'bg-neutral-900 text-white dark:bg-[#25252b] dark:text-white dark:border dark:border-[#383842] shadow-md'
+              : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 dark:bg-[#141416] border border-neutral-200 dark:border-[#232328]'
           }`}
         >
           <Users className="w-4 h-4" />

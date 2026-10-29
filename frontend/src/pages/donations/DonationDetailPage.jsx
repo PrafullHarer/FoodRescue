@@ -5,8 +5,8 @@ import api from '../../api/client';
 import {
   ArrowLeft, Package, Clock, MapPin, CheckCircle2,
   AlertTriangle, QrCode, Share2, Check, Phone, Mail,
-  User, Truck, ShieldCheck, Star, Sparkles, ThumbsUp,
-  UserCheck, RefreshCw, Trash2
+  User, Truck, ShieldCheck, Star, ThumbsUp,
+  UserCheck, Trash2, ShieldAlert, Calendar, Building2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ReviewModal from '../../components/common/ReviewModal';
@@ -121,7 +121,11 @@ export default function DonationDetailPage() {
   }
 
   const isAvailable = donation.status === 'posted' || donation.status === 'available';
-  const isOwner = user?.id === donation.donor_id || user?.id === donation.provider_id || user?.id === donation.provider_user_id;
+  const isOwner = Boolean(user?.id) && (
+    user.id === donation.donor_id ||
+    user.id === donation.provider_id ||
+    user.id === donation.provider_user_id
+  );
   const isNgo = user?.role === 'ngo';
   const isVolunteer = user?.role === 'volunteer';
 
@@ -140,13 +144,50 @@ export default function DonationDetailPage() {
       {/* Top navigation */}
       <button
         onClick={() => navigate(-1)}
-        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#1b1b1f] hover:bg-[#26262c] text-xs font-medium text-neutral-400 hover:text-white transition-all"
+        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#1b1b1f] hover:bg-[#26262c] text-xs font-medium text-neutral-400 hover:text-white transition-all cursor-pointer"
       >
         <ArrowLeft className="w-3.5 h-3.5" /> Back
       </button>
 
+      {/* Warning/Status Alerts for Cancelled or Expired */}
+      {donation.status === 'cancelled' && (
+        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center gap-3 text-rose-300 text-xs">
+          <AlertTriangle className="w-5 h-5 text-rose-400 flex-shrink-0" />
+          <div>
+            <span className="font-bold block text-sm text-white">This donation was cancelled</span>
+            <span>The food provider cancelled this listing. It is no longer active for claims or delivery.</span>
+          </div>
+        </div>
+      )}
+
+      {donation.status === 'expired' && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center gap-3 text-amber-300 text-xs">
+          <Clock className="w-5 h-5 text-amber-400 flex-shrink-0" />
+          <div>
+            <span className="font-bold block text-sm text-white">Donation Listing Expired</span>
+            <span>The pickup window or food expiry time for this donation has passed.</span>
+          </div>
+        </div>
+      )}
+
       {/* Main Details Card */}
       <div className="bg-[#121214] rounded-[24px] border border-[#232328] shadow-2xl overflow-hidden p-6 sm:p-8 space-y-6">
+        {/* Optional Food Image Banner */}
+        {donation.image_url && (
+          <div className="relative w-full h-48 sm:h-64 rounded-2xl overflow-hidden border border-[#232328]">
+            <img
+              src={donation.image_url}
+              alt={donation.title}
+              className="w-full h-full object-cover"
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#121214] via-transparent to-black/20 pointer-events-none" />
+            <span className="absolute bottom-3 left-3 badge badge-primary text-[10px] font-bold uppercase shadow-lg backdrop-blur-sm">
+              {donation.category?.replace(/_/g, ' ') || 'Food Parcel'}
+            </span>
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-[#232328] pb-6">
           <div>
             <div className="flex items-center gap-2 flex-wrap mb-2">
@@ -155,10 +196,18 @@ export default function DonationDetailPage() {
               </span>
               <span className={`badge uppercase text-[10px] font-bold ${
                 donation.status === 'delivered' || donation.status === 'completed' ? 'badge-primary' :
-                donation.status === 'claimed' ? 'badge-warning' : 'badge-neutral'
+                donation.status === 'claimed' || donation.status === 'volunteer_assigned' ? 'badge-warning' :
+                donation.status === 'cancelled' ? 'border-rose-500/30 text-rose-400 bg-rose-500/10' :
+                donation.status === 'expired' ? 'border-amber-500/30 text-amber-400 bg-amber-500/10' :
+                'badge-neutral'
               }`}>
                 {donation.status?.replace(/_/g, ' ')}
               </span>
+              {donation.pickup_type && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#1c1c22] border border-[#2e2e38] text-neutral-300 uppercase">
+                  {donation.pickup_type === 'self_pickup' ? 'NGO Direct Collection' : 'Volunteer Courier'}
+                </span>
+              )}
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{donation.title}</h1>
             <p className="text-neutral-400 text-xs sm:text-sm mt-1 leading-relaxed">{donation.description}</p>
@@ -169,31 +218,38 @@ export default function DonationDetailPage() {
               {donation.quantity} <span className="text-xs font-normal text-neutral-400">{donation.unit || 'portions'}</span>
             </span>
             <span className="text-[10px] text-neutral-500 uppercase tracking-wider font-semibold">Total Quantity</span>
+            {donation.weight_kg && (
+              <span className="text-[11px] text-neutral-400 mt-1 font-mono">
+                ~{donation.weight_kg} kg estimated
+              </span>
+            )}
           </div>
         </div>
 
         {/* Progress Timeline */}
-        <div className="py-4 border-b border-[#232328]">
-          <h4 className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-4">Rescue Lifecycle</h4>
-          <div className="grid grid-cols-4 gap-2 text-center">
-            {steps.map((step, idx) => (
-              <div key={idx} className="flex flex-col items-center">
-                <div
-                  className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold transition-all ${
-                    step.done
-                      ? 'bg-white text-black shadow-md shadow-white/5'
-                      : 'bg-[#18181b] border border-[#27272e] text-neutral-500'
-                  }`}
-                >
-                  {step.done ? <Check className="w-4 h-4 stroke-[3]" /> : idx + 1}
+        {donation.status !== 'cancelled' && donation.status !== 'expired' && (
+          <div className="py-4 border-b border-[#232328]">
+            <h4 className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-4">Rescue Lifecycle</h4>
+            <div className="grid grid-cols-4 gap-2 text-center">
+              {steps.map((step, idx) => (
+                <div key={idx} className="flex flex-col items-center">
+                  <div
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold transition-all ${
+                      step.done
+                        ? 'bg-white text-black shadow-md shadow-white/5'
+                        : 'bg-[#18181b] border border-[#27272e] text-neutral-500'
+                    }`}
+                  >
+                    {step.done ? <Check className="w-4 h-4 stroke-[3]" /> : idx + 1}
+                  </div>
+                  <span className={`text-xs mt-2 font-medium ${step.done ? 'text-white' : 'text-neutral-500'}`}>
+                    {step.title}
+                  </span>
                 </div>
-                <span className={`text-xs mt-2 font-medium ${step.done ? 'text-white' : 'text-neutral-500'}`}>
-                  {step.title}
-                </span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Key details grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -208,6 +264,23 @@ export default function DonationDetailPage() {
 
           <div className="p-4 bg-[#0c0c0e] rounded-xl border border-[#232328] space-y-1">
             <div className="flex items-center gap-2 text-neutral-400 text-[11px] font-semibold uppercase">
+              <Calendar className="w-3.5 h-3.5 text-white" /> Pickup Window
+            </div>
+            <p className="text-white font-medium text-sm">
+              {donation.pickup_window_start && donation.pickup_window_end ? (
+                <>
+                  {new Date(donation.pickup_window_start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {' — '}
+                  {new Date(donation.pickup_window_end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </>
+              ) : (
+                'Immediate / Flexible'
+              )}
+            </p>
+          </div>
+
+          <div className="p-4 bg-[#0c0c0e] rounded-xl border border-[#232328] space-y-1 md:col-span-2">
+            <div className="flex items-center gap-2 text-neutral-400 text-[11px] font-semibold uppercase">
               <MapPin className="w-3.5 h-3.5 text-white" /> Pickup Location
             </div>
             <p className="text-white font-medium text-sm">
@@ -216,19 +289,32 @@ export default function DonationDetailPage() {
           </div>
         </div>
 
-        {/* Location & Navigation Map */}
+        {/* Special Instructions callout */}
+        {donation.special_instructions && (
+          <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl space-y-1">
+            <span className="font-bold text-amber-400 flex items-center gap-1.5 uppercase text-[10px] tracking-wider">
+              <AlertTriangle className="w-3.5 h-3.5" /> Special Handling & Access Notes
+            </span>
+            <p className="text-amber-200/90 text-xs leading-relaxed">{donation.special_instructions}</p>
+          </div>
+        )}
+
+        {/* Location & Navigation Map with Shelter Destination Connection */}
         {((donation.latitude && donation.longitude) || donation.pickup_address) && (
           <StaticRouteMap
             pickupLat={donation.latitude}
             pickupLng={donation.longitude}
             pickupAddress={donation.pickup_address || donation.address}
-            title="Pickup & Navigation Map"
+            dropoffLat={donation.ngo_latitude}
+            dropoffLng={donation.ngo_longitude}
+            dropoffAddress={donation.ngo_address}
+            title={donation.ngo_name ? `Route: Pickup to ${donation.ngo_name}` : 'Pickup & Navigation Map'}
           />
         )}
 
         {/* Action buttons */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
             {isNgo && isAvailable && (
               <button
                 onClick={() => setShowClaimModal(true)}
@@ -243,7 +329,7 @@ export default function DonationDetailPage() {
             {isOwner && isAvailable && (
               <button
                 onClick={handleCancel}
-                className="btn border border-neutral-700 bg-transparent text-white hover:bg-neutral-800 text-xs"
+                className="btn border border-neutral-300 dark:border-neutral-700 bg-transparent text-neutral-800 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 text-xs cursor-pointer"
               >
                 Cancel Donation
               </button>
@@ -252,7 +338,7 @@ export default function DonationDetailPage() {
             {isOwner && ['posted', 'cancelled'].includes(donation.status) && (
               <button
                 onClick={handleDelete}
-                className="btn border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 text-xs flex items-center gap-1.5"
+                className="btn border border-rose-300 dark:border-rose-500/30 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 text-xs flex items-center gap-1.5 cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" /> Delete Donation
               </button>
@@ -263,7 +349,7 @@ export default function DonationDetailPage() {
               <>
                 <Link
                   to={`/qr-scan?code=${qrData?.pickup?.code || ''}`}
-                  className="btn btn-primary text-xs flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold"
+                  className="btn btn-primary text-xs flex items-center gap-2"
                 >
                   <ShieldCheck className="w-4 h-4" />
                   Scan Donor QR & Receive Food
@@ -452,7 +538,7 @@ export default function DonationDetailPage() {
             </div>
 
             <p className="text-xs text-neutral-400 max-w-xs leading-relaxed">
-              The assigned volunteer will scan this code to perform the quality checklist and begin the delivery run to the shelter.
+              The assigned collector will scan this code to perform quality verification and begin transport.
             </p>
           </div>
         </div>
@@ -504,7 +590,7 @@ export default function DonationDetailPage() {
         </div>
       )}
 
-      {/* 2 Cards: Food Provider Details & Volunteer Pickup Details */}
+      {/* 2 Cards: Food Provider Details & Claim / Destination Details */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Food Provider Card */}
         <div className="bg-[#121214] rounded-[24px] border border-[#232328] p-6 space-y-4 shadow-xl">
@@ -521,7 +607,7 @@ export default function DonationDetailPage() {
 
           <div className="space-y-2.5 text-xs">
             <div>
-              <span className="text-neutral-500 uppercase text-[10px] font-bold block">Business / Organization</span>
+              <span className="text-neutral-500 uppercase text-[10px] font-bold block">Business / Kitchen</span>
               <div className="mt-1">
                 <UserReputationLink
                   userId={donation.provider_user_id}
@@ -566,28 +652,59 @@ export default function DonationDetailPage() {
           </div>
         </div>
 
-        {/* Assigned Volunteer / Collection Method Card */}
+        {/* Claim / Delivery Destination / Volunteer Card */}
         <div className="bg-[#121214] rounded-[24px] border border-[#232328] p-6 space-y-4 shadow-xl">
+          {/* Header */}
           <div className="flex items-center justify-between border-b border-[#232328] pb-3">
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              {donation.pickup_type === 'self_pickup' ? (
+              {isAvailable ? (
+                <><Package className="w-4 h-4 text-emerald-400" /> Community Listing</>
+              ) : donation.pickup_type === 'self_pickup' ? (
                 <><UserCheck className="w-4 h-4 text-emerald-400" /> Direct NGO Collection</>
               ) : (
-                <><Truck className="w-4 h-4 text-white" /> Pickup Volunteer</>
+                <><Truck className="w-4 h-4 text-white" /> Volunteer Delivery & Shelter</>
               )}
             </h3>
-            {donation.pickup_type === 'self_pickup' ? (
+
+            {isAvailable ? (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                Available to Claim
+              </span>
+            ) : donation.pickup_type === 'self_pickup' ? (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                 Self Pickup
               </span>
             ) : hasVolunteer ? (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                Assigned
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                Volunteer Assigned
               </span>
-            ) : null}
+            ) : (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                Awaiting Volunteer
+              </span>
+            )}
           </div>
 
-          {donation.pickup_type === 'self_pickup' ? (
+          {/* Body Content based on lifecycle state */}
+          {isAvailable ? (
+            <div className="py-6 text-center space-y-3">
+              <Package className="w-9 h-9 text-emerald-400/80 mx-auto stroke-1" />
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-white">Available for Shelter Claim</p>
+                <p className="text-[11px] text-neutral-400 max-w-xs mx-auto leading-relaxed">
+                  This food package is available in the community pool. Any registered NGO or community shelter can claim this package for immediate distribution.
+                </p>
+              </div>
+              {isNgo && (
+                <button
+                  onClick={() => setShowClaimModal(true)}
+                  className="btn btn-primary text-xs inline-flex items-center gap-1.5 mt-2"
+                >
+                  <Package className="w-3.5 h-3.5" /> Claim Food Parcel
+                </button>
+              )}
+            </div>
+          ) : donation.pickup_type === 'self_pickup' ? (
             <div className="space-y-3 text-xs">
               <div>
                 <span className="text-neutral-500 uppercase text-[10px] font-bold block">Collecting Shelter</span>
@@ -619,56 +736,86 @@ export default function DonationDetailPage() {
 
               <div className="p-3 bg-[#181a20] rounded-xl border border-emerald-500/20 text-neutral-300 text-[11px] leading-relaxed">
                 <span className="font-semibold text-emerald-400 block mb-0.5">✓ Direct Handoff Workflow</span>
-                No volunteer involvement. The NGO representative collects the food directly from the food provider and verifies the QR code on-site.
+                Direct pickup: the NGO team collects the food parcel directly from the provider and verifies the QR code on-site.
               </div>
-            </div>
-          ) : hasVolunteer ? (
-            <div className="space-y-2.5 text-xs">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-neutral-500 uppercase text-[10px] font-bold block">Volunteer Name</span>
-                  <div className="mt-1">
-                    <UserReputationLink
-                      userId={donation.volunteer_user_id}
-                      name={donation.volunteer_name || 'Assigned Volunteer'}
-                      showBadge={true}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {donation.volunteer_phone && (
-                <div className="flex items-center gap-2">
-                  <Phone className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
-                  <a href={`tel:${donation.volunteer_phone}`} className="text-neutral-300 hover:text-white underline underline-offset-2">
-                    {donation.volunteer_phone}
-                  </a>
-                </div>
-              )}
-
-              {donation.volunteer_vehicle_type && (
-                <div className="flex items-center gap-2">
-                  <Truck className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
-                  <span className="text-neutral-300">Vehicle: <strong className="text-white capitalize">{donation.volunteer_vehicle_type}</strong></span>
-                </div>
-              )}
-
-              {donation.delivery_status && (
-                <div className="pt-2">
-                  <span className="text-[10px] uppercase font-bold text-neutral-500 block mb-1">Live Delivery Status</span>
-                  <span className="px-2.5 py-1 rounded-lg bg-[#1a1a1f] border border-[#2a2a32] text-xs font-semibold text-white capitalize">
-                    {donation.delivery_status.replace(/_/g, ' ')}
-                  </span>
-                </div>
-              )}
             </div>
           ) : (
-            <div className="py-8 text-center space-y-2">
-              <Truck className="w-8 h-8 text-neutral-600 mx-auto stroke-1" />
-              <p className="text-xs font-semibold text-white">Awaiting Volunteer Claim</p>
-              <p className="text-[11px] text-neutral-400 max-w-xs mx-auto">
-                This mission is active in the volunteer pool. A local volunteer will claim and transport the package.
-              </p>
+            <div className="space-y-4 text-xs">
+              {/* Destination Shelter */}
+              {donation.ngo_name && (
+                <div className="p-3 bg-[#0c0c0e] rounded-xl border border-[#232328] space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] uppercase font-bold text-neutral-500 flex items-center gap-1">
+                      <Building2 className="w-3 h-3 text-neutral-400" /> Destination Shelter
+                    </span>
+                    {donation.ngo_is_verified && (
+                      <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20">
+                        Verified
+                      </span>
+                    )}
+                  </div>
+                  <UserReputationLink
+                    userId={donation.ngo_user_id}
+                    name={donation.ngo_name}
+                    isVerified={donation.ngo_is_verified}
+                    showBadge={false}
+                  />
+                  {donation.ngo_address && (
+                    <p className="text-[11px] text-neutral-400 truncate">{donation.ngo_address}</p>
+                  )}
+                  {donation.ngo_phone && (
+                    <div className="flex items-center gap-1.5 text-[11px] text-neutral-300">
+                      <Phone className="w-3 h-3 text-neutral-500" />
+                      <a href={`tel:${donation.ngo_phone}`} className="hover:underline">{donation.ngo_phone}</a>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Volunteer Courier status */}
+              {hasVolunteer ? (
+                <div className="space-y-2">
+                  <span className="text-[10px] uppercase font-bold text-neutral-500 block">Assigned Volunteer</span>
+                  <UserReputationLink
+                    userId={donation.volunteer_user_id}
+                    name={donation.volunteer_name || 'Assigned Volunteer'}
+                    showBadge={true}
+                  />
+
+                  {donation.volunteer_phone && (
+                    <div className="flex items-center gap-2">
+                      <Phone className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
+                      <a href={`tel:${donation.volunteer_phone}`} className="text-neutral-300 hover:text-white underline underline-offset-2">
+                        {donation.volunteer_phone}
+                      </a>
+                    </div>
+                  )}
+
+                  {donation.volunteer_vehicle_type && (
+                    <div className="flex items-center gap-2">
+                      <Truck className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
+                      <span className="text-neutral-300">Vehicle: <strong className="text-white capitalize">{donation.volunteer_vehicle_type}</strong></span>
+                    </div>
+                  )}
+
+                  {donation.delivery_status && (
+                    <div className="pt-1">
+                      <span className="text-[10px] uppercase font-bold text-neutral-500 block mb-1">Live Delivery Status</span>
+                      <span className="px-2.5 py-1 rounded-lg bg-[#1a1a1f] border border-[#2a2a32] text-xs font-semibold text-white capitalize">
+                        {donation.delivery_status.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="py-4 text-center space-y-2">
+                  <Truck className="w-7 h-7 text-amber-400/80 mx-auto stroke-1" />
+                  <p className="text-xs font-semibold text-white">Awaiting Volunteer Courier</p>
+                  <p className="text-[11px] text-neutral-400 max-w-xs mx-auto">
+                    This pickup mission is active in the volunteer pool. A local volunteer will claim and transport the package to {donation.ngo_name || 'the shelter'}.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -790,4 +937,3 @@ export default function DonationDetailPage() {
     </div>
   );
 }
-

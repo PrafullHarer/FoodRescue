@@ -143,7 +143,7 @@ export default function CreateDonationPage() {
       <div className="bg-white dark:bg-[#121214] border border-neutral-200 dark:border-[#232328] rounded-[24px] p-6 sm:p-9 shadow-xl shadow-neutral-200/40 dark:shadow-black/80 space-y-8">
         {/* Header */}
         <div className="flex items-center gap-4 border-b border-neutral-200 dark:border-[#232328] pb-6">
-          <div className="w-12 h-12 rounded-2xl bg-neutral-900 text-white dark:bg-white dark:text-black flex items-center justify-center flex-shrink-0 shadow-md">
+          <div className="w-12 h-12 rounded-2xl bg-neutral-900 text-white dark:bg-[#1a1a20] dark:text-emerald-400 dark:border dark:border-emerald-500/30 flex items-center justify-center flex-shrink-0 shadow-md">
             <Package className="w-6 h-6 stroke-[2.2]" />
           </div>
           <div>
@@ -158,7 +158,7 @@ export default function CreateDonationPage() {
           {/* ─── SECTION 1: FOOD DETAILS ──────────────────────────── */}
           <div className="space-y-4">
             <h3 className="font-bold text-neutral-800 dark:text-neutral-200 text-xs uppercase tracking-wider flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-black text-[11px] font-bold flex items-center justify-center">1</span>
+              <span className="w-5 h-5 rounded-full bg-neutral-900 text-white dark:bg-emerald-500/20 dark:text-emerald-400 dark:border dark:border-emerald-500/30 text-[11px] font-bold flex items-center justify-center">1</span>
               Food Information
             </h3>
 
@@ -219,9 +219,9 @@ export default function CreateDonationPage() {
                       key={tag}
                       type="button"
                       onClick={() => toggleTag(tag)}
-                      className={`px-3 py-1 rounded-full text-xs font-semibold transition-all flex items-center gap-1 ${
+                      className={`px-3 py-1 rounded-full text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer ${
                         isSelected
-                          ? 'bg-neutral-900 text-white dark:bg-white dark:text-black shadow-xs font-bold'
+                          ? 'bg-neutral-900 text-white dark:bg-emerald-500/20 dark:text-emerald-300 dark:border dark:border-emerald-500/40 shadow-xs font-bold'
                           : 'bg-neutral-100 border border-neutral-200 text-neutral-600 hover:text-neutral-900 dark:bg-[#18181b] dark:border-[#232328] dark:text-neutral-400 dark:hover:text-white'
                       }`}
                     >
@@ -292,15 +292,15 @@ export default function CreateDonationPage() {
           <div className="space-y-4 border-t border-neutral-200 dark:border-[#232328] pt-6">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-neutral-800 dark:text-neutral-200 text-xs uppercase tracking-wider flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-black text-[11px] font-bold flex items-center justify-center">2</span>
+                <span className="w-5 h-5 rounded-full bg-neutral-900 text-white dark:bg-emerald-500/20 dark:text-emerald-400 dark:border dark:border-emerald-500/30 text-[11px] font-bold flex items-center justify-center">2</span>
                 Pickup Location & Map Pin
               </h3>
               <button
                 type="button"
                 onClick={() => setMapPickerOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-900 text-white dark:bg-white dark:text-black font-bold text-xs hover:opacity-90 transition-all shadow-sm"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-900 text-white dark:bg-[#1c1c22] dark:text-white dark:border dark:border-[#2e2e38] dark:hover:border-neutral-500 font-bold text-xs hover:opacity-90 transition-all shadow-sm cursor-pointer"
               >
-                <Compass className="w-3.5 h-3.5" />
+                <Compass className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
                 <span>Pick on Interactive Map</span>
               </button>
             </div>
@@ -345,7 +345,7 @@ export default function CreateDonationPage() {
           <div className="space-y-4 border-t border-neutral-200 dark:border-[#232328] pt-6">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-neutral-800 dark:text-neutral-200 text-xs uppercase tracking-wider flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-black text-[11px] font-bold flex items-center justify-center">3</span>
+                <span className="w-5 h-5 rounded-full bg-neutral-900 text-white dark:bg-emerald-500/20 dark:text-emerald-400 dark:border dark:border-emerald-500/30 text-[11px] font-bold flex items-center justify-center">3</span>
                 Pickup Window & Expiry Timings
               </h3>
               <span className="text-[11px] text-neutral-500 dark:text-neutral-400 flex items-center gap-1">
@@ -403,7 +403,7 @@ export default function CreateDonationPage() {
           {/* ─── SECTION 4: SPECIAL INSTRUCTIONS ───────────────────── */}
           <div className="space-y-4 border-t border-neutral-200 dark:border-[#232328] pt-6">
             <h3 className="font-bold text-neutral-800 dark:text-neutral-200 text-xs uppercase tracking-wider flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-black text-[11px] font-bold flex items-center justify-center">4</span>
+              <span className="w-5 h-5 rounded-full bg-neutral-900 text-white dark:bg-emerald-500/20 dark:text-emerald-400 dark:border dark:border-emerald-500/30 text-[11px] font-bold flex items-center justify-center">4</span>
               Special Handling Instructions (Optional)
             </h3>
             <textarea

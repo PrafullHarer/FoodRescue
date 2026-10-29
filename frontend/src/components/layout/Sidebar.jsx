@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   LayoutDashboard, Package, Users, Truck, QrCode, Bell,
   BarChart3, Shield, LogOut, ChevronLeft, Menu, X, User, Star, ShieldAlert,
-  MessageSquareQuote, MapPin
+  MessageSquareQuote
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import api from '../../api/client';
@@ -42,7 +42,6 @@ const roleNavItems = {
   admin: [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/notifications', icon: Bell, label: 'Notifications', hasBadge: true },
-    { to: '/admin/hotspots', icon: MapPin, label: 'Donation Hotspots' },
     { to: '/admin/analytics', icon: BarChart3, label: 'Analytics' },
     { to: '/admin/incidents', icon: ShieldAlert, label: 'Incidents' },
     { to: '/admin/verifications', icon: Shield, label: 'Verifications' },
@@ -175,7 +174,7 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
           {/* Desktop collapse button */}
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="hidden lg:flex p-1.5 rounded-lg hover:bg-[#1f1f24] text-neutral-400 hover:text-white transition-colors"
+            className="hidden lg:flex p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-[#1f1f24] text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
             title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {collapsed ? <Menu className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
@@ -184,7 +183,7 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
           {/* Mobile close button */}
           <button
             onClick={() => setMobileOpen?.(false)}
-            className="lg:hidden ml-auto p-1.5 rounded-lg hover:bg-[#1f1f24] text-neutral-400 hover:text-white transition-colors"
+            className="lg:hidden ml-auto p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-[#1f1f24] text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
           >
             <X className="w-5 h-5" />
           </button>

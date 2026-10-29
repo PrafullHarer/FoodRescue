@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import api from '../../api/client';
 import {
   Package, TrendingUp, Users, Truck, Clock, CheckCircle2,
-  ArrowUpRight, AlertCircle, Plus, ChevronRight, Bell, ShieldAlert, MapPin
+  ArrowUpRight, AlertCircle, Plus, ChevronRight, Bell, ShieldAlert
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -91,12 +91,11 @@ export default function DashboardPage() {
     ],
     admin: [
       { to: '/notifications', icon: Bell, label: 'Notifications', desc: 'Operational alerts & escalations' },
-      { to: '/admin/hotspots', icon: MapPin, label: 'Donation Hotspots', desc: 'Geographical demand map' },
       { to: '/admin/incidents', icon: ShieldAlert, label: 'Incidents', desc: 'System critical issues' },
       { to: '/admin/verifications', icon: Users, label: 'Verifications', desc: 'Review NGOs & Donors' },
       { to: '/admin/complaints', icon: AlertCircle, label: 'Complaints', desc: 'Dispute tickets' },
       { to: '/admin/feedback', icon: CheckCircle2, label: 'Feedback', desc: 'Review suggestions' },
-      { to: '/admin/analytics', icon: TrendingUp, label: 'Analytics', desc: 'Platform telemetry' },
+      { to: '/admin/analytics', icon: TrendingUp, label: 'Analytics', desc: 'Platform telemetry & hotspots' },
     ],
   };
 

@@ -168,7 +168,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Avatar + Identity Card */}
-      <div className="bg-[#121214] rounded-2xl border border-[#232328] p-5 sm:p-8">
+      <div className="bg-white dark:bg-[#121214] rounded-2xl border border-neutral-200 dark:border-[#232328] p-5 sm:p-8 shadow-sm">
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-6">
           {/* Avatar */}
           <div className="relative flex-shrink-0">
@@ -176,16 +176,16 @@ export default function ProfilePage() {
               <img
                 src={profile.avatar_url}
                 alt={profile.full_name}
-                className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover border-2 border-[#232328]"
+                className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover border-2 border-neutral-200 dark:border-[#232328]"
               />
             ) : (
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[#1c1c20] border-2 border-[#232328] flex items-center justify-center">
-                <span className="text-xl sm:text-2xl font-bold text-white">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-neutral-100 dark:bg-[#1c1c20] border-2 border-neutral-200 dark:border-[#232328] flex items-center justify-center">
+                <span className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white">
                   {getInitials(profile.full_name)}
                 </span>
               </div>
             )}
-            <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full bg-emerald-500 border-2 border-[#121214] flex items-center justify-center">
+            <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full bg-emerald-500 border-2 border-white dark:border-[#121214] flex items-center justify-center">
               <Check className="w-3 h-3 text-white" />
             </div>
           </div>
@@ -201,12 +201,12 @@ export default function ProfilePage() {
                 autoFocus
               />
             ) : (
-              <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight truncate">
+              <h2 className="text-lg sm:text-xl font-bold text-neutral-900 dark:text-white tracking-tight truncate">
                 {profile.full_name}
               </h2>
             )}
             {orgName && (
-              <p className="text-sm text-neutral-400 mt-0.5 truncate">
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5 truncate">
                 <Building2 className="w-3.5 h-3.5 inline-block mr-1.5 relative -top-px" />
                 {orgName}
               </p>
@@ -222,25 +222,25 @@ export default function ProfilePage() {
       {/* Contact & Account Details */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Contact Info */}
-        <div className="bg-[#121214] rounded-2xl border border-[#232328] p-5 sm:p-6 space-y-4">
-          <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Contact</h3>
+        <div className="bg-white dark:bg-[#121214] rounded-2xl border border-neutral-200 dark:border-[#232328] p-5 sm:p-6 space-y-4 shadow-sm">
+          <h3 className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Contact</h3>
 
           <div className="space-y-3.5">
             {/* Email */}
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#1c1c20] border border-[#27272e] flex items-center justify-center flex-shrink-0">
-                <Mail className="w-4 h-4 text-neutral-400" />
+              <div className="w-9 h-9 rounded-xl bg-neutral-100 dark:bg-[#1c1c20] border border-neutral-200 dark:border-[#27272e] flex items-center justify-center flex-shrink-0">
+                <Mail className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] text-neutral-500 uppercase font-bold">Email</p>
-                <p className="text-sm text-white truncate">{profile.email}</p>
+                <p className="text-sm text-neutral-900 dark:text-white truncate">{profile.email}</p>
               </div>
             </div>
 
             {/* Phone */}
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#1c1c20] border border-[#27272e] flex items-center justify-center flex-shrink-0">
-                <Phone className="w-4 h-4 text-neutral-400" />
+              <div className="w-9 h-9 rounded-xl bg-neutral-100 dark:bg-[#1c1c20] border border-neutral-200 dark:border-[#27272e] flex items-center justify-center flex-shrink-0">
+                <Phone className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] text-neutral-500 uppercase font-bold">Phone</p>
@@ -252,8 +252,8 @@ export default function ProfilePage() {
                     placeholder="Phone number"
                   />
                 ) : (
-                  <p className="text-sm text-white truncate">
-                    {profile.phone || <span className="text-neutral-500 italic">Not provided</span>}
+                  <p className="text-sm text-neutral-900 dark:text-white truncate">
+                    {profile.phone || <span className="text-neutral-400 dark:text-neutral-500 italic">Not provided</span>}
                   </p>
                 )}
               </div>
@@ -262,12 +262,12 @@ export default function ProfilePage() {
             {/* Address */}
             {address && (
               <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#1c1c20] border border-[#27272e] flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <MapPin className="w-4 h-4 text-neutral-400" />
+                <div className="w-9 h-9 rounded-xl bg-neutral-100 dark:bg-[#1c1c20] border border-neutral-200 dark:border-[#27272e] flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <MapPin className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-[10px] text-neutral-500 uppercase font-bold">Address</p>
-                  <p className="text-sm text-white">{address}</p>
+                  <p className="text-sm text-neutral-900 dark:text-white">{address}</p>
                 </div>
               </div>
             )}
@@ -275,24 +275,24 @@ export default function ProfilePage() {
         </div>
 
         {/* Account Info */}
-        <div className="bg-[#121214] rounded-2xl border border-[#232328] p-5 sm:p-6 space-y-4">
-          <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Account</h3>
+        <div className="bg-white dark:bg-[#121214] rounded-2xl border border-neutral-200 dark:border-[#232328] p-5 sm:p-6 space-y-4 shadow-sm">
+          <h3 className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Account</h3>
 
           <div className="space-y-3.5">
             {/* Status */}
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#1c1c20] border border-[#27272e] flex items-center justify-center flex-shrink-0">
-                <Shield className="w-4 h-4 text-neutral-400" />
+              <div className="w-9 h-9 rounded-xl bg-neutral-100 dark:bg-[#1c1c20] border border-neutral-200 dark:border-[#27272e] flex items-center justify-center flex-shrink-0">
+                <Shield className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] text-neutral-500 uppercase font-bold">Status</p>
                 <span className={`inline-flex items-center gap-1 text-sm font-medium ${
-                  profile.status === 'active' ? 'text-emerald-400' :
-                  profile.status === 'suspended' ? 'text-amber-400' : 'text-red-400'
+                  profile.status === 'active' ? 'text-emerald-500 dark:text-emerald-400' :
+                  profile.status === 'suspended' ? 'text-amber-500 dark:text-amber-400' : 'text-red-500 dark:text-red-400'
                 }`}>
                   <span className={`w-1.5 h-1.5 rounded-full ${
-                    profile.status === 'active' ? 'bg-emerald-400' :
-                    profile.status === 'suspended' ? 'bg-amber-400' : 'bg-red-400'
+                    profile.status === 'active' ? 'bg-emerald-500' :
+                    profile.status === 'suspended' ? 'bg-amber-500' : 'bg-red-500'
                   }`} />
                   {profile.status ? profile.status.charAt(0).toUpperCase() + profile.status.slice(1) : 'Unknown'}
                 </span>
@@ -301,12 +301,12 @@ export default function ProfilePage() {
 
             {/* Member Since */}
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#1c1c20] border border-[#27272e] flex items-center justify-center flex-shrink-0">
-                <Calendar className="w-4 h-4 text-neutral-400" />
+              <div className="w-9 h-9 rounded-xl bg-neutral-100 dark:bg-[#1c1c20] border border-neutral-200 dark:border-[#27272e] flex items-center justify-center flex-shrink-0">
+                <Calendar className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] text-neutral-500 uppercase font-bold">Member Since</p>
-                <p className="text-sm text-white">
+                <p className="text-sm text-neutral-900 dark:text-white">
                   {profile.created_at
                     ? new Date(profile.created_at).toLocaleDateString('en-US', {
                         year: 'numeric',
@@ -320,12 +320,12 @@ export default function ProfilePage() {
 
             {/* User ID */}
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#1c1c20] border border-[#27272e] flex items-center justify-center flex-shrink-0">
-                <User className="w-4 h-4 text-neutral-400" />
+              <div className="w-9 h-9 rounded-xl bg-neutral-100 dark:bg-[#1c1c20] border border-neutral-200 dark:border-[#27272e] flex items-center justify-center flex-shrink-0">
+                <User className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] text-neutral-500 uppercase font-bold">User ID</p>
-                <p className="text-sm text-white font-mono truncate">{profile.id}</p>
+                <p className="text-sm text-neutral-900 dark:text-white font-mono truncate">{profile.id}</p>
               </div>
             </div>
           </div>
@@ -334,20 +334,20 @@ export default function ProfilePage() {
 
       {/* Role-Specific Details */}
       {roleFields.length > 0 && (
-        <div className="bg-[#121214] rounded-2xl border border-[#232328] p-5 sm:p-6 space-y-4">
-          <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
+        <div className="bg-white dark:bg-[#121214] rounded-2xl border border-neutral-200 dark:border-[#232328] p-5 sm:p-6 space-y-4 shadow-sm">
+          <h3 className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
             {profile.role === 'provider' ? 'Business Details' :
              profile.role === 'ngo' ? 'Organization Details' : 'Volunteer Details'}
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             {roleFields.map((field, i) => (
               <div key={i} className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#1c1c20] border border-[#27272e] flex items-center justify-center flex-shrink-0">
-                  <field.icon className="w-4 h-4 text-neutral-400" />
+                <div className="w-9 h-9 rounded-xl bg-neutral-100 dark:bg-[#1c1c20] border border-neutral-200 dark:border-[#27272e] flex items-center justify-center flex-shrink-0">
+                  <field.icon className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-[10px] text-neutral-500 uppercase font-bold">{field.label}</p>
-                  <p className="text-sm text-white truncate capitalize">{field.value}</p>
+                  <p className="text-sm text-neutral-900 dark:text-white truncate capitalize">{field.value}</p>
                 </div>
               </div>
             ))}
@@ -357,17 +357,17 @@ export default function ProfilePage() {
 
       {/* Trust, Ratings & Reliability Card (Hidden for Administrators) */}
       {user?.role !== 'admin' && (
-        <div className="bg-[#121214] rounded-2xl border border-[#232328] p-5 sm:p-6 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#232328] pb-4">
+        <div className="bg-white dark:bg-[#121214] rounded-2xl border border-neutral-200 dark:border-[#232328] p-5 sm:p-6 space-y-4 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-200 dark:border-[#232328] pb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-400/10 border border-amber-400/20 text-amber-400 flex items-center justify-center flex-shrink-0">
-                <Star className="w-5 h-5 fill-amber-400" />
+              <div className="w-10 h-10 rounded-xl bg-amber-400/10 border border-amber-400/20 text-amber-500 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
+                <Star className="w-5 h-5 fill-current" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <h3 className="text-sm font-bold text-neutral-900 dark:text-white flex items-center gap-2">
                   Ratings & Trust Profile
                 </h3>
-                <p className="text-xs text-neutral-400">
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
                   Verified community feedback and reliability metrics across completed rescues.
                 </p>
               </div>
@@ -376,7 +376,7 @@ export default function ProfilePage() {
             <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={() => openReputation(user?.id)}
-                className="px-3.5 py-1.5 rounded-xl border border-[#282830] bg-[#1a1a1e] hover:bg-[#25252a] text-neutral-300 hover:text-white text-xs font-semibold transition-colors flex items-center gap-1.5"
+                className="px-3.5 py-1.5 rounded-xl border border-neutral-200 dark:border-[#282830] bg-neutral-50 hover:bg-neutral-100 dark:bg-[#1a1a1e] dark:hover:bg-[#25252a] text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
               >
                 <ExternalLink className="w-3.5 h-3.5" /> Preview Public Reputation
               </button>

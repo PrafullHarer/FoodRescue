@@ -202,7 +202,7 @@ export default function LoginPage() {
               onClick={() => setRememberMe(!rememberMe)}
               className={`w-4 h-4 rounded-[5px] flex items-center justify-center transition-colors cursor-pointer ${
                 rememberMe
-                  ? 'bg-neutral-900 text-white dark:bg-white dark:text-black'
+                  ? 'bg-neutral-900 text-white dark:bg-[#39FF14] dark:text-black'
                   : 'border border-neutral-300 dark:border-[#38383f] bg-neutral-100 dark:bg-[#0c0c0e]'
               }`}
             >

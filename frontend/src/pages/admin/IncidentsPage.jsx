@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  AlertTriangle, ShieldAlert, CheckCircle2, XCircle, Clock,
-  Search, Filter, RotateCcw, UserCheck, MessageSquare, ChevronRight,
-  TrendingUp, RefreshCw, X, FileText, ArrowUpRight, ShieldCheck,
-  AlertCircle, AlertOctagon, HelpCircle
+  AlertTriangle,
+  Search, RotateCcw, MessageSquare,
+  RefreshCw, X, FileText,
+  AlertCircle, AlertOctagon
 } from 'lucide-react';
 import api from '../../api/client';
 import toast from 'react-hot-toast';
@@ -23,7 +23,6 @@ export default function IncidentsPage() {
 
   // Selected incident for detail view
   const [selectedIncident, setSelectedIncident] = useState(null);
-  const [detailLoading, setDetailLoading] = useState(false);
 
   // Modals for actions
   const [actionModal, setActionModal] = useState(null); // 'assign', 'severity', 'status', 'resolve', 'reopen', 'escalate'
@@ -104,25 +103,25 @@ export default function IncidentsPage() {
     switch (sev) {
       case 'critical':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-500/15 text-rose-400 border border-rose-500/30 flex items-center gap-1">
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex items-center gap-1">
             <AlertOctagon className="w-3 h-3" /> Critical
           </span>
         );
       case 'high':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1">
             <AlertTriangle className="w-3 h-3" /> High
           </span>
         );
       case 'medium':
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-500/15 text-blue-400 border border-blue-500/30 flex items-center gap-1">
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 flex items-center gap-1">
             <AlertCircle className="w-3 h-3" /> Medium
           </span>
         );
       default:
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-neutral-500/15 text-neutral-400 border border-neutral-500/30">
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-neutral-500/15 text-neutral-600 dark:text-neutral-400 border border-neutral-500/30">
             Low
           </span>
         );
@@ -132,13 +131,13 @@ export default function IncidentsPage() {
   // Status styling
   const renderStatusBadge = (st) => {
     const map = {
-      open: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
-      acknowledged: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-      investigating: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-      awaiting_response: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-      resolved: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-      closed: 'bg-neutral-500/10 text-neutral-400 border-neutral-500/20',
-      reopened: 'bg-rose-500/20 text-rose-300 border-rose-500/40',
+      open: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
+      acknowledged: 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20',
+      investigating: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
+      awaiting_response: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
+      resolved: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+      closed: 'bg-neutral-500/10 text-neutral-600 dark:text-neutral-400 border-neutral-500/20',
+      reopened: 'bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-500/40',
     };
     return (
       <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${map[st] || 'bg-neutral-500/10 text-neutral-400'}`}>
@@ -261,14 +260,14 @@ export default function IncidentsPage() {
           </div>
 
           <div className="bg-[#121214] border border-[#232328] rounded-2xl p-4 shadow-md space-y-1">
-            <span className="text-[10px] font-bold text-rose-400 uppercase tracking-wider">Critical Urgency</span>
-            <div className="text-2xl font-bold text-rose-400">{summary.critical_incidents}</div>
+            <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">Critical Urgency</span>
+            <div className="text-2xl font-bold text-rose-600 dark:text-rose-400">{summary.critical_incidents}</div>
             <span className="text-[10px] text-neutral-500">Immediate Action</span>
           </div>
 
           <div className="bg-[#121214] border border-[#232328] rounded-2xl p-4 shadow-md space-y-1">
-            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Overdue SLA (&gt;24h)</span>
-            <div className="text-2xl font-bold text-amber-400">{summary.overdue_incidents}</div>
+            <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Overdue SLA (&gt;24h)</span>
+            <div className="text-2xl font-bold text-amber-700 dark:text-amber-400">{summary.overdue_incidents}</div>
             <span className="text-[10px] text-neutral-500">Breaching Threshold</span>
           </div>
 
@@ -279,8 +278,8 @@ export default function IncidentsPage() {
           </div>
 
           <div className="bg-[#121214] border border-[#232328] rounded-2xl p-4 shadow-md space-y-1">
-            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Resolved Today</span>
-            <div className="text-2xl font-bold text-emerald-400">{summary.resolved_today}</div>
+            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Resolved Today</span>
+            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{summary.resolved_today}</div>
             <span className="text-[10px] text-neutral-500">Closed Loops</span>
           </div>
 

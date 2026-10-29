@@ -174,11 +174,7 @@ export default function App() {
               />
               <Route
                 path="/admin/hotspots"
-                element={
-                  <ProtectedRoute allowedRoles={['admin']}>
-                    <AdminAnalyticsPage defaultTab="overview" />
-                  </ProtectedRoute>
-                }
+                element={<Navigate to="/admin/analytics" replace />}
               />
               <Route
                 path="/admin/incidents"

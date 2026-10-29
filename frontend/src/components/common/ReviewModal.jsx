@@ -71,21 +71,21 @@ export default function ReviewModal({ isOpen, onClose, donation, onReviewSubmitt
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3.5 sm:p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-      <div className="bg-[#121214] border border-[#27272e] rounded-2xl sm:rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl shadow-black/80 animate-slide-up">
+      <div className="bg-white dark:bg-[#121214] border border-neutral-200 dark:border-[#27272e] rounded-2xl sm:rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl shadow-black/80 animate-slide-up">
         {/* Header */}
-        <div className="p-4 sm:p-6 border-b border-[#232328] flex items-center justify-between">
+        <div className="p-4 sm:p-6 border-b border-neutral-200 dark:border-[#232328] flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white text-black flex items-center justify-center shadow-md">
-              <Star className="w-5 h-5 fill-black stroke-black" />
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-500 dark:bg-amber-500/20 dark:text-amber-400 flex items-center justify-center shadow-xs border border-amber-500/20 dark:border-amber-500/30">
+              <Star className="w-5 h-5 fill-current stroke-current" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white tracking-tight">Review Food Claim</h3>
-              <p className="text-xs text-neutral-400 mt-0.5 truncate max-w-xs">{donation.title}</p>
+              <h3 className="text-base font-bold text-neutral-900 dark:text-white tracking-tight">Review Food Claim</h3>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 truncate max-w-xs">{donation.title}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-[#1c1c20] transition-colors"
+            className="p-2 rounded-xl text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-[#1c1c20] transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -95,7 +95,7 @@ export default function ReviewModal({ isOpen, onClose, donation, onReviewSubmitt
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Rating Selection */}
           <div className="text-center space-y-2">
-            <label className="text-xs font-semibold text-neutral-400 uppercase tracking-wider block">
+            <label className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider block">
               Overall Experience Rating
             </label>
             <div className="flex items-center justify-center gap-2 py-2">
@@ -106,27 +106,27 @@ export default function ReviewModal({ isOpen, onClose, donation, onReviewSubmitt
                   onClick={() => setRating(star)}
                   onMouseEnter={() => setHoverRating(star)}
                   onMouseLeave={() => setHoverRating(0)}
-                  className="p-1.5 transition-transform hover:scale-125 focus:outline-none"
+                  className="p-1.5 transition-transform hover:scale-125 focus:outline-none cursor-pointer"
                 >
                   <Star
                     className={`w-8 h-8 transition-colors ${
                       star <= activeRating
                         ? 'fill-amber-400 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]'
-                        : 'text-neutral-600 hover:text-neutral-400'
+                        : 'text-neutral-300 dark:text-neutral-600 hover:text-neutral-400'
                     }`}
                   />
                 </button>
               ))}
             </div>
-            <p className="text-xs font-medium text-neutral-300 h-5 transition-all">
+            <p className="text-xs font-medium text-neutral-700 dark:text-neutral-300 h-5 transition-all">
               {RATING_DESCRIPTIONS[activeRating]}
             </p>
           </div>
 
           {/* Quick Feedback Tags */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-neutral-400 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-white" /> What went well?
+            <label className="text-xs font-semibold text-neutral-600 dark:text-neutral-400 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" /> What went well?
             </label>
             <div className="flex flex-wrap gap-2">
               {PRESET_TAGS.map((tag) => {
@@ -136,10 +136,10 @@ export default function ReviewModal({ isOpen, onClose, donation, onReviewSubmitt
                     type="button"
                     key={tag}
                     onClick={() => toggleTag(tag)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-1.5 ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
                       isSelected
-                        ? 'bg-white text-black border border-white shadow-sm'
-                        : 'bg-[#18181c] text-neutral-400 border border-[#27272e] hover:text-white hover:border-neutral-500'
+                        ? 'bg-neutral-900 text-white dark:bg-emerald-500/20 dark:text-emerald-300 dark:border dark:border-emerald-500/40 shadow-xs font-bold'
+                        : 'bg-neutral-100 dark:bg-[#18181c] text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-[#27272e] hover:text-neutral-900 dark:hover:text-white hover:border-neutral-400 dark:hover:border-neutral-500'
                     }`}
                   >
                     {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
@@ -152,22 +152,22 @@ export default function ReviewModal({ isOpen, onClose, donation, onReviewSubmitt
 
           {/* Detailed Comment */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-neutral-400 flex items-center gap-1.5">
-              <MessageSquare className="w-3.5 h-3.5 text-white" /> Detailed Comments & Feedback (Optional)
+            <label className="text-xs font-semibold text-neutral-600 dark:text-neutral-400 flex items-center gap-1.5">
+              <MessageSquare className="w-3.5 h-3.5 text-neutral-600 dark:text-neutral-400" /> Detailed Comments & Feedback (Optional)
             </label>
             <textarea
               rows={3}
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder="Tell us about the freshness of the food, packaging quality, or interaction with the provider/volunteer..."
-              className="w-full rounded-2xl bg-[#0c0c0e] border border-[#27272e] p-3.5 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-all resize-none"
+              className="w-full rounded-2xl bg-neutral-50 dark:bg-[#0c0c0e] border border-neutral-200 dark:border-[#27272e] p-3.5 text-xs text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-600 focus:outline-none focus:border-neutral-900 dark:focus:border-white focus:ring-1 focus:ring-neutral-900 dark:focus:ring-white transition-all resize-none"
             />
           </div>
 
           {/* Provider / Volunteer Info Preview */}
-          <div className="bg-[#0c0c0e] rounded-2xl p-3.5 border border-[#232328] flex items-center justify-between text-xs text-neutral-400">
+          <div className="bg-neutral-50 dark:bg-[#0c0c0e] rounded-2xl p-3.5 border border-neutral-200 dark:border-[#232328] flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
             <span>Reviewing Provider:</span>
-            <span className="font-semibold text-white">{donation.provider_name || 'Food Provider'}</span>
+            <span className="font-semibold text-neutral-900 dark:text-white">{donation.provider_name || 'Food Provider'}</span>
           </div>
 
           {/* Actions */}
@@ -175,14 +175,14 @@ export default function ReviewModal({ isOpen, onClose, donation, onReviewSubmitt
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl text-xs font-medium text-neutral-400 hover:text-white hover:bg-[#1c1c20] transition-colors"
+              className="px-4 py-2.5 rounded-xl text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-[#1c1c20] transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="btn btn-primary text-xs flex items-center gap-2 py-2.5 px-5"
+              className="btn btn-primary text-xs flex items-center gap-2 py-2.5 px-5 cursor-pointer"
             >
               <ThumbsUp className="w-3.5 h-3.5" />
               {submitting ? 'Submitting Review...' : 'Submit Review'}

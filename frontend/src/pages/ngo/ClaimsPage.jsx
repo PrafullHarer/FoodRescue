@@ -33,9 +33,15 @@ export default function ClaimsPage() {
 
       // Map my reviews by donation_id
       const reviewsMap = {};
-      const userReviews = reviewsRes.data?.data || [];
+      const userReviews = Array.isArray(reviewsRes.data?.data?.reviews)
+        ? reviewsRes.data.data.reviews
+        : Array.isArray(reviewsRes.data?.data)
+        ? reviewsRes.data.data
+        : [];
       userReviews.forEach(r => {
-        reviewsMap[r.donation_id] = r;
+        if (r && r.donation_id) {
+          reviewsMap[r.donation_id] = r;
+        }
       });
       setMyReviews(reviewsMap);
     } catch (err) {
@@ -108,17 +114,17 @@ export default function ClaimsPage() {
   return (
     <div className="space-y-6 animate-fade-in max-w-5xl mx-auto pb-12">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#232328] pb-5 sm:pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-200 dark:border-[#232328] pb-5 sm:pb-6">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Reserved Food Claims</h1>
-          <p className="text-neutral-400 text-xs sm:text-sm mt-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white tracking-tight">Reserved Food Claims</h1>
+          <p className="text-neutral-500 dark:text-neutral-400 text-xs sm:text-sm mt-1">
             Manage claimed supplies, view food provider and assigned volunteer pickup details, and submit reviews.
           </p>
         </div>
 
         <button
           onClick={loadClaimsAndReviews}
-          className="p-2.5 rounded-xl border border-[#27272e] bg-[#141416] text-neutral-400 hover:text-white hover:border-[#383842] transition-colors self-start sm:self-auto flex items-center gap-2 text-xs"
+          className="p-2.5 rounded-xl border border-neutral-200 dark:border-[#27272e] bg-white dark:bg-[#141416] text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:border-neutral-300 dark:hover:border-[#383842] transition-colors self-start sm:self-auto flex items-center gap-2 text-xs shadow-xs cursor-pointer"
           title="Refresh claims"
         >
           <RefreshCw className="w-3.5 h-3.5" /> Refresh
@@ -126,33 +132,33 @@ export default function ClaimsPage() {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex items-center gap-2 border-b border-[#232328] pb-3 overflow-x-auto whitespace-nowrap -mx-4 sm:mx-0 px-4 sm:px-0">
+      <div className="flex items-center gap-2 border-b border-neutral-200 dark:border-[#232328] pb-3 overflow-x-auto whitespace-nowrap -mx-4 sm:mx-0 px-4 sm:px-0">
         <button
           onClick={() => setFilter('all')}
-          className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-medium transition-all ${
+          className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
             filter === 'all'
-              ? 'bg-white text-black shadow-sm'
-              : 'text-neutral-400 hover:text-white hover:bg-[#18181c]'
+              ? 'bg-neutral-900 text-white dark:bg-[#25252b] dark:text-white dark:border dark:border-[#383842] shadow-md font-bold'
+              : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 dark:bg-[#141416] border border-neutral-200 dark:border-[#232328]'
           }`}
         >
           All Claims ({claims.length})
         </button>
         <button
           onClick={() => setFilter('active')}
-          className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-medium transition-all ${
+          className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
             filter === 'active'
-              ? 'bg-white text-black shadow-sm'
-              : 'text-neutral-400 hover:text-white hover:bg-[#18181c]'
+              ? 'bg-neutral-900 text-white dark:bg-[#25252b] dark:text-white dark:border dark:border-[#383842] shadow-md font-bold'
+              : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 dark:bg-[#141416] border border-neutral-200 dark:border-[#232328]'
           }`}
         >
           In Progress ({claims.filter(c => ['claimed', 'volunteer_assigned', 'collected'].includes(c.status)).length})
         </button>
         <button
           onClick={() => setFilter('completed')}
-          className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-medium transition-all ${
+          className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
             filter === 'completed'
-              ? 'bg-white text-black shadow-sm'
-              : 'text-neutral-400 hover:text-white hover:bg-[#18181c]'
+              ? 'bg-neutral-900 text-white dark:bg-[#25252b] dark:text-white dark:border dark:border-[#383842] shadow-md font-bold'
+              : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 dark:bg-[#141416] border border-neutral-200 dark:border-[#232328]'
           }`}
         >
           Delivered ({claims.filter(c => ['delivered', 'completed'].includes(c.status)).length})
@@ -182,36 +188,36 @@ export default function ClaimsPage() {
             return (
               <div
                 key={d.id}
-                className="bg-[#121214] rounded-3xl border border-[#232328] overflow-hidden shadow-xl hover:border-[#383842] transition-all"
+                className="bg-white dark:bg-[#121214] rounded-3xl border border-neutral-200 dark:border-[#232328] overflow-hidden shadow-xl hover:border-neutral-300 dark:hover:border-[#383842] transition-all"
               >
                 {/* Header Bar */}
-                <div className="p-5 sm:p-6 border-b border-[#232328] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="p-5 sm:p-6 border-b border-neutral-200 dark:border-[#232328] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-white text-black flex items-center justify-center flex-shrink-0 shadow-md">
+                    <div className="w-12 h-12 rounded-2xl bg-neutral-100 text-neutral-900 dark:bg-[#1c1c22] dark:text-white flex items-center justify-center flex-shrink-0 shadow-xs border border-neutral-200 dark:border-[#27272e]">
                       <Package className="w-6 h-6 stroke-[2.2]" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-white/10 text-neutral-300">
+                        <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-white/10 text-neutral-600 dark:text-neutral-300">
                           {d.category?.replace(/_/g, ' ')}
                         </span>
                         <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border ${statusBadge.class}`}>
                           {statusBadge.label}
                         </span>
                         {isSelfPickup ? (
-                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
                             <UserCheck className="w-3 h-3" /> Direct Self-Pickup
                           </span>
                         ) : (
-                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center gap-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 flex items-center gap-1">
                             <Truck className="w-3 h-3" /> Volunteer Route
                           </span>
                         )}
                       </div>
-                      <h2 className="text-lg font-bold text-white tracking-tight">
+                      <h2 className="text-lg font-bold text-neutral-900 dark:text-white tracking-tight">
                         {d.title}
                       </h2>
-                      <p className="text-xs text-neutral-400 mt-0.5">
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
                         {d.quantity} {d.unit || 'servings'} {d.weight_kg ? `· ${d.weight_kg} kg` : ''}
                       </p>
                     </div>
@@ -224,7 +230,7 @@ export default function ClaimsPage() {
                     </div>
                     <Link
                       to={`/donations/${d.id}`}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-white/80 hover:text-white group"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-neutral-700 dark:text-white/80 hover:text-neutral-900 dark:hover:text-white group"
                     >
                       View Full Listing
                       <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
@@ -233,22 +239,22 @@ export default function ClaimsPage() {
                 </div>
 
                 {/* Details Section: 2 Columns (Food Provider & Collection Mode) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[#232328] bg-[#0d0d0f]">
+                <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-neutral-200 dark:divide-[#232328] bg-neutral-50/70 dark:bg-[#0d0d0f]">
                   {/* Column 1: Food Provider Details */}
                   <div className="p-5 sm:p-6 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">
+                        <span className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
                           Food Provider
                         </span>
                         {d.provider_is_verified && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md border border-emerald-500/20">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md border border-emerald-500/20">
                             <ShieldCheck className="w-3 h-3" /> Verified
                           </span>
                         )}
                       </div>
                       {d.provider_business_type && (
-                        <span className="text-[11px] text-neutral-500 font-medium capitalize">
+                        <span className="text-[11px] text-neutral-500 dark:text-neutral-400 font-medium capitalize">
                           {d.provider_business_type}
                         </span>
                       )}
@@ -265,31 +271,31 @@ export default function ClaimsPage() {
                       </div>
 
                       {d.provider_contact && (
-                        <div className="flex items-center gap-2 text-xs text-neutral-300">
+                        <div className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-300">
                           <User className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
-                          <span>Contact: <strong className="text-white font-medium">{d.provider_contact}</strong></span>
+                          <span>Contact: <strong className="text-neutral-900 dark:text-white font-medium">{d.provider_contact}</strong></span>
                         </div>
                       )}
 
                       {d.provider_phone && (
-                        <div className="flex items-center gap-2 text-xs text-neutral-300">
+                        <div className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-300">
                           <Phone className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
-                          <a href={`tel:${d.provider_phone}`} className="hover:text-white underline underline-offset-2">
+                          <a href={`tel:${d.provider_phone}`} className="text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white underline underline-offset-2">
                             {d.provider_phone}
                           </a>
                         </div>
                       )}
 
                       {d.provider_email && (
-                        <div className="flex items-center gap-2 text-xs text-neutral-300">
+                        <div className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-300">
                           <Mail className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
-                          <a href={`mailto:${d.provider_email}`} className="hover:text-white truncate">
+                          <a href={`mailto:${d.provider_email}`} className="text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white truncate">
                             {d.provider_email}
                           </a>
                         </div>
                       )}
 
-                      <div className="flex items-start gap-2 text-xs text-neutral-400 pt-1">
+                      <div className="flex items-start gap-2 text-xs text-neutral-600 dark:text-neutral-400 pt-1">
                         <MapPin className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0 mt-0.5" />
                         <span className="leading-relaxed">
                           {d.pickup_address || d.provider_address || 'Address on record'}
@@ -301,19 +307,19 @@ export default function ClaimsPage() {
                   {/* Column 2: Collection Mode (Self-Pickup vs Volunteer) */}
                   <div className="p-5 sm:p-6 space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
+                      <span className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 flex items-center gap-1.5">
                         {isSelfPickup ? (
-                          <><UserCheck className="w-3.5 h-3.5 text-emerald-400" /> Direct NGO Pickup</>
+                          <><UserCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Direct NGO Pickup</>
                         ) : (
-                          <><Truck className="w-3.5 h-3.5 text-white" /> Pickup Volunteer</>
+                          <><Truck className="w-3.5 h-3.5 text-neutral-700 dark:text-white" /> Pickup Volunteer</>
                         )}
                       </span>
                       {isSelfPickup ? (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                           Self Handled
                         </span>
                       ) : hasVolunteer ? (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                           Assigned
                         </span>
                       ) : null}
@@ -321,11 +327,11 @@ export default function ClaimsPage() {
 
                     {isSelfPickup ? (
                       <div className="space-y-3">
-                        <div className="p-3 bg-[#14171d] rounded-2xl border border-emerald-500/20 text-xs space-y-2">
-                          <p className="font-semibold text-emerald-400 flex items-center gap-1.5">
+                        <div className="p-3 bg-emerald-500/10 dark:bg-[#14171d] rounded-2xl border border-emerald-500/20 text-xs space-y-2">
+                          <p className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
                             <ShieldCheck className="w-4 h-4" /> Direct NGO Collection
                           </p>
-                          <p className="text-neutral-400 text-[11px] leading-relaxed">
+                          <p className="text-neutral-600 dark:text-neutral-400 text-[11px] leading-relaxed">
                             Your NGO team collects this package directly from the donor. No volunteer will be dispatched.
                           </p>
                         </div>
@@ -334,14 +340,14 @@ export default function ClaimsPage() {
                           <div className="flex flex-wrap items-center gap-2 pt-1">
                             <Link
                               to="/qr-scan"
-                              className="btn btn-primary text-xs flex items-center gap-1.5 py-2 px-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white"
+                              className="btn btn-primary text-xs flex items-center gap-1.5 py-2 px-3"
                             >
                               <QrCode className="w-3.5 h-3.5" /> Scan Donor QR Code
                             </Link>
                             <button
                               onClick={() => handleSwitchPickupType(d.id, 'volunteer')}
                               disabled={switchingId === d.id}
-                              className="text-[11px] text-neutral-400 hover:text-white underline py-1"
+                              className="text-[11px] text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white underline py-1"
                             >
                               {switchingId === d.id ? 'Updating...' : 'Publish to Volunteers Instead'}
                             </button>
@@ -359,23 +365,23 @@ export default function ClaimsPage() {
                         </div>
 
                         {d.volunteer_phone && (
-                          <div className="flex items-center gap-2 text-xs text-neutral-300">
+                          <div className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-300">
                             <Phone className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
-                            <a href={`tel:${d.volunteer_phone}`} className="hover:text-white underline underline-offset-2">
+                            <a href={`tel:${d.volunteer_phone}`} className="text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white underline underline-offset-2">
                               {d.volunteer_phone}
                             </a>
                           </div>
                         )}
 
                         {d.volunteer_vehicle_type && (
-                          <div className="flex items-center gap-2 text-xs text-neutral-300">
+                          <div className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-300">
                             <Truck className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
-                            <span>Vehicle: <strong className="text-white capitalize">{d.volunteer_vehicle_type}</strong></span>
+                            <span>Vehicle: <strong className="text-neutral-900 dark:text-white capitalize">{d.volunteer_vehicle_type}</strong></span>
                           </div>
                         )}
 
                         {d.volunteer_total_deliveries !== undefined && (
-                          <div className="flex items-center gap-2 text-xs text-neutral-400">
+                          <div className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">
                             <CheckCircle2 className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
                             <span>{d.volunteer_total_deliveries} successful rescues completed</span>
                           </div>
@@ -383,9 +389,9 @@ export default function ClaimsPage() {
 
                         {d.delivery_status && (
                           <div className="pt-1">
-                            <span className="text-[11px] text-neutral-400">
+                            <span className="text-[11px] text-neutral-600 dark:text-neutral-400">
                               Current Delivery Stage:{' '}
-                              <strong className="text-white uppercase text-[10px] tracking-wider px-1.5 py-0.5 bg-[#1f1f24] rounded border border-[#2a2a30]">
+                              <strong className="text-neutral-900 dark:text-white uppercase text-[10px] tracking-wider px-1.5 py-0.5 bg-neutral-200 dark:bg-[#1f1f24] rounded border border-neutral-300 dark:border-[#2a2a30]">
                                 {d.delivery_status.replace('_', ' ')}
                               </strong>
                             </span>
@@ -393,16 +399,16 @@ export default function ClaimsPage() {
                         )}
                       </div>
                     ) : (
-                      <div className="py-4 text-center bg-[#121214] rounded-2xl border border-dashed border-[#27272e] p-4 space-y-2">
+                      <div className="py-4 text-center bg-white dark:bg-[#121214] rounded-2xl border border-dashed border-neutral-300 dark:border-[#27272e] p-4 space-y-2">
                         <AlertCircle className="w-6 h-6 mx-auto text-neutral-500 stroke-1" />
-                        <p className="text-xs font-semibold text-white">Awaiting Volunteer Claim</p>
-                        <p className="text-[11px] text-neutral-400">
+                        <p className="text-xs font-semibold text-neutral-900 dark:text-white">Awaiting Volunteer Claim</p>
+                        <p className="text-[11px] text-neutral-600 dark:text-neutral-400">
                           Active in the volunteer pool, or your NGO team can collect directly.
                         </p>
                         <button
                           onClick={() => handleSwitchPickupType(d.id, 'self_pickup')}
                           disabled={switchingId === d.id}
-                          className="px-3 py-1.5 rounded-lg bg-[#1a1a20] hover:bg-[#252530] text-emerald-400 border border-emerald-500/20 text-xs font-semibold transition-all inline-flex items-center gap-1.5"
+                          className="px-3 py-1.5 rounded-lg bg-neutral-900 text-emerald-400 hover:bg-neutral-800 dark:bg-[#1a1a20] dark:hover:bg-[#252530] border border-emerald-500/20 text-xs font-semibold transition-all inline-flex items-center gap-1.5"
                         >
                           <UserCheck className="w-3.5 h-3.5" />
                           {switchingId === d.id ? 'Updating...' : 'Self-Pickup by Our Team'}
@@ -413,7 +419,7 @@ export default function ClaimsPage() {
                 </div>
 
                 {/* Bottom Bar: Reviews & Action */}
-                <div className="p-4 sm:p-5 bg-[#141416] border-t border-[#232328] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="p-4 sm:p-5 bg-neutral-100/70 dark:bg-[#141416] border-t border-neutral-200 dark:border-[#232328] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   {review ? (
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-1">
@@ -423,23 +429,23 @@ export default function ClaimsPage() {
                             className={`w-4 h-4 ${
                               star <= review.rating
                                 ? 'fill-amber-400 text-amber-400'
-                                : 'text-neutral-600'
+                                : 'text-neutral-300 dark:text-neutral-600'
                             }`}
                           />
                         ))}
                       </div>
-                      <span className="text-xs font-bold text-white">
+                      <span className="text-xs font-bold text-neutral-900 dark:text-white">
                         {review.rating}/5 Rated
                       </span>
                       {review.comment && (
-                        <p className="text-xs text-neutral-400 italic truncate max-w-sm">
+                        <p className="text-xs text-neutral-600 dark:text-neutral-400 italic truncate max-w-sm">
                           "{review.comment}"
                         </p>
                       )}
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2 text-xs text-neutral-400">
-                      <Sparkles className="w-4 h-4 text-white" />
+                    <div className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">
+                      <Sparkles className="w-4 h-4 text-neutral-500 dark:text-white" />
                       <span>Have you received this delivery? Share your feedback.</span>
                     </div>
                   )}
@@ -468,14 +474,14 @@ export default function ClaimsPage() {
                     {review ? (
                       <button
                         onClick={() => setSelectedDonationForReview(d)}
-                        className="px-3.5 py-1.5 rounded-xl bg-[#1c1c20] hover:bg-[#25252b] border border-[#27272e] text-xs font-semibold text-neutral-300 hover:text-white transition-colors"
+                        className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-neutral-100 dark:bg-[#1c1c20] dark:hover:bg-[#25252b] border border-neutral-200 dark:border-[#27272e] text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors shadow-xs cursor-pointer"
                       >
                         Edit Review
                       </button>
                     ) : (
                       <button
                         onClick={() => setSelectedDonationForReview(d)}
-                        className="btn btn-secondary text-xs flex items-center gap-1.5 py-2 px-4"
+                        className="btn btn-secondary text-xs flex items-center gap-1.5 py-2 px-4 cursor-pointer"
                       >
                         <ThumbsUp className="w-3.5 h-3.5" /> Rate & Review
                       </button>

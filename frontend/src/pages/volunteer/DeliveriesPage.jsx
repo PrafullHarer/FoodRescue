@@ -90,10 +90,10 @@ export default function DeliveriesPage() {
   return (
     <div className="space-y-6 animate-fade-in max-w-5xl mx-auto pb-16">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#232328] pb-5 sm:pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-200 dark:border-[#232328] pb-5 sm:pb-6">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Volunteer Delivery Missions</h1>
-          <p className="text-neutral-400 text-xs sm:text-sm mt-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white tracking-tight">Volunteer Delivery Missions</h1>
+          <p className="text-neutral-500 dark:text-neutral-400 text-xs sm:text-sm mt-1">
             Claim available pickup routes, inspect food quality, and complete QR handoffs.
           </p>
         </div>
@@ -107,7 +107,7 @@ export default function DeliveriesPage() {
           </Link>
           <button
             onClick={loadData}
-            className="p-2.5 rounded-xl border border-[#27272e] bg-[#141416] text-neutral-400 hover:text-white transition-colors flex-shrink-0"
+            className="p-2.5 rounded-xl border border-neutral-200 dark:border-[#27272e] bg-white dark:bg-[#141416] text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-[#1f1f24] transition-colors flex-shrink-0 shadow-xs cursor-pointer"
             title="Refresh"
           >
             <RefreshCw className="w-3.5 h-3.5" />
@@ -116,30 +116,30 @@ export default function DeliveriesPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 sm:gap-3 border-b border-[#232328] pb-3 overflow-x-auto whitespace-nowrap -mx-4 sm:mx-0 px-4 sm:px-0">
+      <div className="flex items-center gap-2 sm:gap-3 border-b border-neutral-200 dark:border-[#232328] pb-3 overflow-x-auto whitespace-nowrap -mx-4 sm:mx-0 px-4 sm:px-0">
         <button
           onClick={() => setActiveTab('my')}
-          className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
+          className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer ${
             activeTab === 'my'
-              ? 'bg-white text-black shadow-lg shadow-white/5'
-              : 'text-neutral-400 hover:text-white bg-[#141416] border border-[#232328]'
+              ? 'bg-neutral-900 text-white dark:bg-[#25252b] dark:text-white dark:border dark:border-[#383842] shadow-md font-bold'
+              : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 dark:bg-[#141416] border border-neutral-200 dark:border-[#232328]'
           }`}
         >
-          <Truck className="w-3.5 h-3.5" /> Active Missions ({myDeliveries.length})
+          <Truck className="w-3.5 h-3.5 text-white" /> Active Missions ({myDeliveries.length})
         </button>
 
         <button
           onClick={() => setActiveTab('available')}
-          className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
+          className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer ${
             activeTab === 'available'
-              ? 'bg-white text-black shadow-lg shadow-white/5'
-              : 'text-neutral-400 hover:text-white bg-[#141416] border border-[#232328]'
+              ? 'bg-neutral-900 text-white dark:bg-[#25252b] dark:text-white dark:border dark:border-[#383842] shadow-md font-bold'
+              : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 dark:bg-[#141416] border border-neutral-200 dark:border-[#232328]'
           }`}
         >
-          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+          <Sparkles className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
           Available for Pickup ({availableMissions.length})
           {availableMissions.length > 0 && (
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           )}
         </button>
       </div>
@@ -227,15 +227,15 @@ export default function DeliveriesPage() {
                           dropoffAddress: d.ngo_address,
                           title: `Route: ${d.provider_name || 'Donor'} → ${d.ngo_name || 'Shelter'}`,
                         })}
-                        className="p-2.5 rounded-xl border border-[#2a2a32] bg-[#18181b] text-neutral-400 hover:text-white transition-colors"
+                        className="p-2.5 rounded-xl border border-neutral-200 dark:border-[#2a2a32] bg-white dark:bg-[#18181b] text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors shadow-xs cursor-pointer"
                         title="View Route Map & GPS"
                       >
-                        <Map className="w-4 h-4 text-amber-400" />
+                        <Map className="w-4 h-4 text-amber-500 dark:text-amber-400" />
                       </button>
 
                       <Link
                         to={`/donations/${d.donation_id}`}
-                        className="p-2.5 rounded-xl border border-[#2a2a32] bg-[#18181b] text-neutral-400 hover:text-white transition-colors"
+                        className="p-2.5 rounded-xl border border-neutral-200 dark:border-[#2a2a32] bg-white dark:bg-[#18181b] text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors shadow-xs"
                         title="View Full Listing"
                       >
                         <Eye className="w-4 h-4" />
@@ -243,7 +243,7 @@ export default function DeliveriesPage() {
 
                       <button
                         onClick={() => setComplaintDelivery(d)}
-                        className="p-2.5 rounded-xl border border-amber-500/20 bg-[#18181b] text-amber-400 hover:text-amber-300 transition-colors"
+                        className="p-2.5 rounded-xl border border-amber-300 dark:border-amber-500/20 bg-amber-50/70 dark:bg-[#18181b] text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 transition-colors shadow-xs cursor-pointer"
                         title="Raise an Official Complaint"
                       >
                         <ShieldAlert className="w-4 h-4" />
@@ -251,7 +251,7 @@ export default function DeliveriesPage() {
 
                       <button
                         onClick={() => setIncidentDelivery(d)}
-                        className="p-2.5 rounded-xl border border-rose-500/20 bg-[#18181b] text-rose-400 hover:text-rose-300 transition-colors"
+                        className="p-2.5 rounded-xl border border-rose-300 dark:border-rose-500/20 bg-rose-50/70 dark:bg-[#18181b] text-rose-700 dark:text-rose-400 hover:text-rose-900 dark:hover:text-rose-300 transition-colors shadow-xs cursor-pointer"
                         title="Report Delivery Exception or Incident"
                       >
                         <AlertTriangle className="w-4 h-4" />
@@ -419,10 +419,10 @@ export default function DeliveriesPage() {
                         dropoffAddress: m.ngo_address,
                         title: `Route: ${m.provider_name || 'Donor'} → ${m.ngo_name || 'Shelter'}`,
                       })}
-                      className="p-2.5 rounded-xl border border-[#2a2a32] bg-[#18181b] text-neutral-400 hover:text-white transition-colors"
+                      className="p-2.5 rounded-xl border border-neutral-200 dark:border-[#2a2a32] bg-white dark:bg-[#18181b] text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors shadow-xs cursor-pointer"
                       title="Preview Route Map"
                     >
-                      <Map className="w-4 h-4 text-amber-400" />
+                      <Map className="w-4 h-4 text-amber-500 dark:text-amber-400" />
                     </button>
 
                     <button
@@ -529,20 +529,20 @@ export default function DeliveriesPage() {
       {/* Route Map Preview Modal */}
       {selectedMapMission && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-          <div className="bg-[#141416] border border-[#282830] rounded-[28px] max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-5 animate-scale-up">
-            <div className="flex items-center justify-between border-b border-[#232328] pb-4">
+          <div className="bg-white dark:bg-[#141416] border border-neutral-200 dark:border-[#282830] rounded-[28px] max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-5 animate-scale-up">
+            <div className="flex items-center justify-between border-b border-neutral-200 dark:border-[#232328] pb-4">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 dark:text-amber-400 flex items-center justify-center">
                   <Map className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-white text-base">{selectedMapMission.title || 'Mission Route Map'}</h3>
-                  <p className="text-xs text-neutral-400">Live Leaflet route and GPS navigation shortcuts</p>
+                  <h3 className="font-bold text-neutral-900 dark:text-white text-base">{selectedMapMission.title || 'Mission Route Map'}</h3>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Live Leaflet route and GPS navigation shortcuts</p>
                 </div>
               </div>
               <button
                 onClick={() => setSelectedMapMission(null)}
-                className="p-2 rounded-xl text-neutral-400 hover:text-white bg-[#18181b] border border-[#282830]"
+                className="p-2 rounded-xl text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 dark:bg-[#18181b] border border-neutral-200 dark:border-[#282830] transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>

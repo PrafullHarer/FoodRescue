@@ -68,7 +68,7 @@ const getImpactMetrics = async ({ timeRange = 'all', user = null } = {}) => {
       `SELECT
          COUNT(*) AS total_claims,
          COUNT(*) FILTER (WHERE fd.status IN ('delivered', 'completed')) AS completed_claims,
-         COUNT(*) FILTER (WHERE fd.status IN ('claimed', 'volunteer_assigned', 'collected', 'in_transit')) AS active_claims,
+         COUNT(*) FILTER (WHERE fd.status IN ('claimed', 'volunteer_assigned', 'collected')) AS active_claims,
          COALESCE(SUM(fd.quantity), 0) AS total_servings,
          COALESCE(SUM(fd.weight_kg), 0) AS total_weight_kg
        FROM donation_claims c

@@ -1,11 +1,12 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../api/client';
 import {
   ChevronLeft, Clock, CheckCircle2, AlertCircle, Search,
   X, MessageSquare, Calendar, Tag, FileText, Hash, Send,
-  Loader2, RotateCcw, ExternalLink, ShieldCheck, UserCheck, ShieldAlert
+  Loader2, RotateCcw, ExternalLink, ShieldCheck, UserCheck, ShieldAlert,
+  RefreshCw, User, HelpCircle, Truck
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { COMPLAINT_CATEGORIES } from '../../components/complaints/RaiseComplaintModal';
@@ -37,6 +38,7 @@ export default function ComplaintDetailPage() {
   const [messages, setMessages] = useState([]);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Message reply
   const [replyText, setReplyText] = useState('');
@@ -47,9 +49,13 @@ export default function ComplaintDetailPage() {
   const [reopenReason, setReopenReason] = useState('');
   const [submittingReopen, setSubmittingReopen] = useState(false);
 
-  const loadData = useCallback(async () => {
+  const messagesEndRef = useRef(null);
+
+  const loadData = useCallback(async (isSilent = false) => {
     try {
-      setLoading(true);
+      if (!isSilent) setLoading(true);
+      else setRefreshing(true);
+
       const [complaintRes, messagesRes, historyRes] = await Promise.allSettled([
         api.get(`/complaints/${id}`),
         api.get(`/complaints/${id}/messages`),
@@ -58,7 +64,7 @@ export default function ComplaintDetailPage() {
 
       if (complaintRes.status === 'fulfilled') {
         setComplaint(complaintRes.value.data?.data);
-      } else {
+      } else if (!isSilent) {
         toast.error('Failed to load complaint details');
       }
 
@@ -70,20 +76,35 @@ export default function ComplaintDetailPage() {
         setHistory(historyRes.value.data?.data || []);
       }
     } catch {
-      toast.error('Failed to load complaint data');
+      if (!isSilent) toast.error('Failed to load complaint data');
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
+      setRefreshing(false);
     }
   }, [id]);
 
   useEffect(() => {
     loadData();
+
+    // Background polling every 15 seconds to update conversation seamlessly
+    const interval = setInterval(() => {
+      loadData(true);
+    }, 15000);
+
+    return () => clearInterval(interval);
   }, [loadData]);
+
+  // Scroll to bottom whenever new messages arrive
+  useEffect(() => {
+    if (messages.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages.length]);
 
   // Handle Send Reply
   const handleSendReply = async (e) => {
-    e.preventDefault();
-    if (!replyText.trim()) return;
+    if (e) e.preventDefault();
+    if (!replyText.trim() || sendingReply) return;
 
     setSendingReply(true);
     try {
@@ -92,13 +113,21 @@ export default function ComplaintDetailPage() {
         visibility: 'user',
       });
       setReplyText('');
-      toast.success('Message sent to administrators');
+      toast.success(user?.role === 'admin' ? 'Response posted to complaint thread' : 'Message sent to administrators');
       // Reload messages & complaint (in case status auto-flipped)
-      loadData();
+      await loadData(true);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to send message');
     } finally {
       setSendingReply(false);
+    }
+  };
+
+  // Keyboard shortcut: Enter to send (Shift+Enter for newline)
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendReply(e);
     }
   };
 
@@ -123,6 +152,16 @@ export default function ComplaintDetailPage() {
     } finally {
       setSubmittingReopen(false);
     }
+  };
+
+  const formatMessageTime = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (isToday) return `Today, ${timeStr}`;
+    return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${timeStr}`;
   };
 
   if (loading) {
@@ -156,14 +195,23 @@ export default function ComplaintDetailPage() {
 
   return (
     <div className="space-y-6 animate-fade-in max-w-4xl mx-auto pb-16">
-      {/* Back Link */}
-      <div>
+      {/* Back Link & Admin Quick Toggle */}
+      <div className="flex items-center justify-between">
         <Link
           to="/complaints"
           className="inline-flex items-center gap-1.5 text-xs text-neutral-400 hover:text-white transition-colors"
         >
           <ChevronLeft className="w-3.5 h-3.5" /> Back to My Complaints
         </Link>
+
+        {user?.role === 'admin' && (
+          <Link
+            to="/admin/complaints"
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 hover:bg-emerald-500/20 transition-all"
+          >
+            <ShieldCheck className="w-3.5 h-3.5" /> Admin Complaints Console
+          </Link>
+        )}
       </div>
 
       {/* Complaint Title Card */}
@@ -190,7 +238,7 @@ export default function ComplaintDetailPage() {
             {canReopen && (
               <button
                 onClick={() => setShowReopenModal(true)}
-                className="btn btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 font-bold hover:text-amber-400 border-amber-500/20"
+                className="btn btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 font-bold hover:text-amber-400 border-amber-500/20 cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5" /> Dispute / Reopen Ticket
               </button>
@@ -202,9 +250,19 @@ export default function ComplaintDetailPage() {
           <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
             {complaint.title}
           </h1>
-          <p className="text-xs text-neutral-400 mt-1">
-            Submitted on {new Date(complaint.created_at).toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'short' })}
-          </p>
+          <div className="flex items-center gap-3 text-xs text-neutral-400 mt-1 flex-wrap">
+            <span>
+              Filed on {new Date(complaint.created_at).toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'short' })}
+            </span>
+            {complaint.incident_date && (
+              <>
+                <span>•</span>
+                <span className="text-neutral-300">
+                  Incident Date: {new Date(complaint.incident_date).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                </span>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Detailed Description */}
@@ -248,8 +306,22 @@ export default function ComplaintDetailPage() {
           </div>
         )}
 
+        {/* Action Needed Callout when Awaiting User Response */}
+        {complaint.status === 'awaiting_user_response' && (
+          <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300 space-y-1">
+            <span className="font-bold flex items-center gap-1.5 text-amber-400">
+              <AlertCircle className="w-4 h-4 text-amber-400" />
+              Administrator Action: Your Input is Requested
+            </span>
+            <p className="text-neutral-200 leading-relaxed">
+              The platform administrator has reviewed your complaint and requested clarification or additional information. Please reply in the communication thread below to continue the investigation.
+            </p>
+          </div>
+        )}
+
         {/* Meta details grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs pt-1">
+          {/* Assigned Admin */}
           <div className="p-3 bg-[#18181b] rounded-xl border border-[#27272e]">
             <span className="text-[10px] text-neutral-500 uppercase font-bold block mb-0.5">
               Assigned Administrator
@@ -259,6 +331,31 @@ export default function ComplaintDetailPage() {
             </span>
           </div>
 
+          {/* Reported User / Party */}
+          {complaint.subject_user_name ? (
+            <div className="p-3 bg-[#18181b] rounded-xl border border-[#27272e]">
+              <span className="text-[10px] text-neutral-500 uppercase font-bold block mb-0.5">
+                Reported Party
+              </span>
+              <span className="text-white font-medium block truncate">
+                {complaint.subject_user_name}
+              </span>
+              {complaint.subject_user_role && (
+                <span className="text-[10px] text-neutral-400 capitalize block">
+                  {complaint.subject_user_role}
+                </span>
+              )}
+            </div>
+          ) : (
+            <div className="p-3 bg-[#18181b] rounded-xl border border-[#27272e]">
+              <span className="text-[10px] text-neutral-500 uppercase font-bold block mb-0.5">
+                Target Entity
+              </span>
+              <span className="text-neutral-400">General platform issue</span>
+            </div>
+          )}
+
+          {/* Referenced Donation */}
           <div className="p-3 bg-[#18181b] rounded-xl border border-[#27272e]">
             <span className="text-[10px] text-neutral-500 uppercase font-bold block mb-0.5">
               Referenced Donation
@@ -268,22 +365,40 @@ export default function ComplaintDetailPage() {
                 to={`/donations/${complaint.donation_id}`}
                 className="text-white font-medium hover:underline inline-flex items-center gap-1 truncate"
               >
-                {complaint.donation_title || 'View Donation Record'}
-                <ExternalLink className="w-3 h-3 text-neutral-400" />
+                <span className="truncate">{complaint.donation_title || 'View Donation Record'}</span>
+                <ExternalLink className="w-3 h-3 text-neutral-400 flex-shrink-0" />
               </Link>
             ) : (
               <span className="text-neutral-500">None attached</span>
             )}
           </div>
 
+          {/* Delivery Mission */}
           <div className="p-3 bg-[#18181b] rounded-xl border border-[#27272e]">
             <span className="text-[10px] text-neutral-500 uppercase font-bold block mb-0.5">
               Delivery Mission
             </span>
             {complaint.delivery_id ? (
-              <span className="text-white font-mono text-[11px] truncate block">
-                {complaint.delivery_id.slice(0, 16)}...
-              </span>
+              <div className="space-y-1">
+                {user?.role === 'volunteer' ? (
+                  <Link
+                    to="/deliveries"
+                    className="text-white font-mono text-[11px] hover:underline inline-flex items-center gap-1"
+                  >
+                    <span>{complaint.delivery_id.slice(0, 14)}...</span>
+                    <ExternalLink className="w-3 h-3 text-neutral-400" />
+                  </Link>
+                ) : (
+                  <span className="text-white font-mono text-[11px] truncate block">
+                    {complaint.delivery_id.slice(0, 14)}...
+                  </span>
+                )}
+                {complaint.delivery_status && (
+                  <span className="inline-block text-[9px] uppercase font-bold px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                    {complaint.delivery_status.replace(/_/g, ' ')}
+                  </span>
+                )}
+              </div>
             ) : (
               <span className="text-neutral-500">None attached</span>
             )}
@@ -308,7 +423,7 @@ export default function ComplaintDetailPage() {
         )}
       </div>
 
-      {/* Communication Thread Section */}
+      {/* Communication Thread Section (Chat) */}
       <div className="bg-[#121214] border border-[#232328] rounded-2xl p-6 shadow-xl space-y-4">
         <div className="flex items-center justify-between border-b border-[#232328] pb-3">
           <div className="flex items-center gap-2">
@@ -317,16 +432,30 @@ export default function ComplaintDetailPage() {
               Investigation & Communication Thread
             </h3>
           </div>
-          <span className="text-xs text-neutral-400">
-            {messages.length} message{messages.length !== 1 ? 's' : ''}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-neutral-400">
+              {messages.length} message{messages.length !== 1 ? 's' : ''}
+            </span>
+            <button
+              onClick={() => loadData(true)}
+              disabled={refreshing}
+              className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-[#1c1c20] transition-colors cursor-pointer"
+              title="Refresh messages"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-emerald-400' : ''}`} />
+            </button>
+          </div>
         </div>
 
-        {/* Messages List */}
-        <div className="space-y-3 min-h-[160px] max-h-[420px] overflow-y-auto p-2">
+        {/* Messages List Feed */}
+        <div className="space-y-3 min-h-[160px] max-h-[460px] overflow-y-auto p-2">
           {messages.length === 0 ? (
-            <div className="text-center py-10 text-neutral-500 text-xs">
-              No replies yet. Use the reply box below to provide additional updates.
+            <div className="text-center py-12 text-neutral-500 text-xs space-y-1">
+              <MessageSquare className="w-8 h-8 text-neutral-600 mx-auto stroke-1 mb-2" />
+              <p className="font-semibold text-neutral-400">No replies yet</p>
+              <p className="text-[11px] text-neutral-500">
+                Messages from the administrator will appear here. Use the reply box below to send additional evidence or remarks.
+              </p>
             </div>
           ) : (
             messages.map((m) => {
@@ -345,7 +474,7 @@ export default function ComplaintDetailPage() {
                         Admin Team
                       </span>
                     )}
-                    <span>• {new Date(m.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span>• {formatMessageTime(m.created_at)}</span>
                   </div>
 
                   <div
@@ -353,7 +482,7 @@ export default function ComplaintDetailPage() {
                       m.is_me
                         ? 'bg-white text-black font-medium'
                         : isAdmin
-                        ? 'bg-[#18181b] border border-[#27272e] text-white'
+                        ? 'bg-[#18181b] border border-[#27272e] text-white shadow-sm'
                         : 'bg-[#18181b] text-neutral-200'
                     }`}
                   >
@@ -363,6 +492,7 @@ export default function ComplaintDetailPage() {
               );
             })
           )}
+          <div ref={messagesEndRef} />
         </div>
 
         {/* Reply Box */}
@@ -375,19 +505,22 @@ export default function ComplaintDetailPage() {
             <textarea
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
-              placeholder="Type your response to the administrators..."
+              onKeyDown={handleKeyDown}
+              placeholder="Type your response to the administrators... (Press Enter to send, Shift+Enter for new line)"
               rows={3}
               maxLength={2000}
               className="input text-xs w-full bg-[#18181b] border-[#27272e] text-white leading-relaxed resize-none"
             />
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <span className="text-[10px] text-neutral-500">
-                Replies automatically inform the assigned administrator.
+                {complaint.status === 'awaiting_user_response'
+                  ? '💡 Sending a reply will automatically move ticket to "Under Review".'
+                  : 'Replies automatically inform the assigned administrator.'}
               </span>
               <button
                 type="submit"
                 disabled={sendingReply || !replyText.trim()}
-                className="btn btn-primary text-xs py-2 px-4 font-bold flex items-center gap-1.5 disabled:opacity-40"
+                className="btn btn-primary text-xs py-2 px-4 font-bold flex items-center gap-1.5 disabled:opacity-40 cursor-pointer"
               >
                 {sendingReply ? (
                   <>
@@ -447,7 +580,7 @@ export default function ComplaintDetailPage() {
               </h3>
               <button
                 onClick={() => setShowReopenModal(false)}
-                className="text-neutral-400 hover:text-white"
+                className="text-neutral-400 hover:text-white cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -476,14 +609,14 @@ export default function ComplaintDetailPage() {
                 <button
                   type="button"
                   onClick={() => setShowReopenModal(false)}
-                  className="btn btn-secondary text-xs py-1.5 px-3"
+                  className="btn btn-secondary text-xs py-1.5 px-3 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submittingReopen || !reopenReason.trim()}
-                  className="btn btn-primary text-xs py-1.5 px-4 font-bold"
+                  className="btn btn-primary text-xs py-1.5 px-4 font-bold cursor-pointer"
                 >
                   {submittingReopen ? 'Reopening...' : 'Confirm Reopen'}
                 </button>
