@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { ReputationProvider } from './contexts/ReputationContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import DashboardLayout from './components/layout/DashboardLayout';
 
@@ -11,12 +12,14 @@ import LandingPage from './pages/landing/LandingPage';
 // Auth Pages
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
+import CompleteProfilePage from './pages/auth/CompleteProfilePage';
 
 // Main Pages
 import DashboardPage from './pages/dashboard/DashboardPage';
 import DonationsPage from './pages/donations/DonationsPage';
 import CreateDonationPage from './pages/donations/CreateDonationPage';
 import DonationDetailPage from './pages/donations/DonationDetailPage';
+import MyReviewsPage from './pages/reviews/MyReviewsPage';
 
 // NGO Pages
 import BrowseDonationsPage from './pages/ngo/BrowseDonationsPage';
@@ -30,39 +33,50 @@ import QRScanPage from './pages/volunteer/QRScanPage';
 import NotificationsPage from './pages/notifications/NotificationsPage';
 import AnalyticsPage from './pages/analytics/AnalyticsPage';
 import ProfilePage from './pages/profile/ProfilePage';
+import MyComplaintsPage from './pages/complaints/MyComplaintsPage';
+import ComplaintDetailPage from './pages/complaints/ComplaintDetailPage';
 
 // Admin Pages
 import VerificationsPage from './pages/admin/VerificationsPage';
 import UsersPage from './pages/admin/UsersPage';
 import ComplaintsPage from './pages/admin/ComplaintsPage';
 import AuditLogsPage from './pages/admin/AuditLogsPage';
+import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
+import IncidentsPage from './pages/admin/IncidentsPage';
+import AdminFeedbackPage from './pages/admin/AdminFeedbackPage';
+
+// Public Feedback Page
+import FeedbackPage from './pages/feedback/FeedbackPage';
 
 export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <BrowserRouter>
-          <Toaster
+        <ReputationProvider>
+          <BrowserRouter>
+            <Toaster
             position="top-right"
             toastOptions={{
               duration: 4000,
               style: {
-                background: '#1e293b',
-                color: '#fff',
+                background: 'var(--color-surface)',
+                color: 'var(--color-text)',
+                border: '1px solid var(--color-border)',
                 fontSize: '14px',
                 borderRadius: '12px',
                 padding: '12px 16px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
               },
               success: {
                 iconTheme: {
-                  primary: '#22c55e',
-                  secondary: '#fff',
+                  primary: 'var(--color-success)',
+                  secondary: 'var(--color-surface)',
                 },
               },
               error: {
                 iconTheme: {
-                  primary: '#ef4444',
-                  secondary: '#fff',
+                  primary: 'var(--color-error)',
+                  secondary: 'var(--color-surface)',
                 },
               },
             }}
@@ -70,8 +84,10 @@ export default function App() {
           <Routes>
             {/* Public Landing & Auth Routes */}
             <Route path="/" element={<LandingPage />} />
+            <Route path="/feedback" element={<FeedbackPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/complete-profile" element={<CompleteProfilePage />} />
 
             {/* Protected Dashboard Routes */}
             <Route
@@ -136,8 +152,42 @@ export default function App() {
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route
+                path="/reviews"
+                element={
+                  <ProtectedRoute allowedRoles={['provider', 'ngo', 'volunteer']}>
+                    <MyReviewsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/complaints" element={<MyComplaintsPage />} />
+              <Route path="/complaints/:id" element={<ComplaintDetailPage />} />
 
               {/* Admin Routes */}
+              <Route
+                path="/admin/analytics"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminAnalyticsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/hotspots"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminAnalyticsPage defaultTab="overview" />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/incidents"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <IncidentsPage />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="/admin/verifications"
                 element={
@@ -170,13 +220,22 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/admin/feedback"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminFeedbackPage />
+                  </ProtectedRoute>
+                }
+              />
             </Route>
 
             {/* Catch-all redirect */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </BrowserRouter>
-      </AuthProvider>
-    </ThemeProvider>
-  );
+      </ReputationProvider>
+    </AuthProvider>
+  </ThemeProvider>
+);
 }

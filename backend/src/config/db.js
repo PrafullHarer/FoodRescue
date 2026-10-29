@@ -30,7 +30,7 @@ async function getPool() {
         min: 2, // Maintain 2 pre-warmed persistent connections to eliminate 1.5s TCP/TLS handshakes
         max: 15,
         idleTimeoutMillis: 300000, // Keep idle connections alive for 5 minutes
-        connectionTimeoutMillis: 10000,
+        connectionTimeoutMillis: 30000,
         keepAlive: true,
         keepAliveInitialDelayMillis: 10000,
       };

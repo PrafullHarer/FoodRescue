@@ -44,6 +44,22 @@ export function AuthProvider({ children }) {
     return data.data.user;
   };
 
+  const loginWithGoogle = async (credential) => {
+    const { data } = await api.post('/auth/google', { credential });
+    localStorage.setItem('accessToken', data.data.accessToken);
+    localStorage.setItem('refreshToken', data.data.refreshToken);
+    setUser(data.data.user);
+    return data.data;
+  };
+
+  const completeProfile = async (formData) => {
+    const { data } = await api.post('/auth/complete-profile', formData);
+    localStorage.setItem('accessToken', data.data.accessToken);
+    localStorage.setItem('refreshToken', data.data.refreshToken);
+    setUser(data.data.user);
+    return data.data;
+  };
+
   const logout = async () => {
     try {
       const refreshToken = localStorage.getItem('refreshToken');
@@ -58,7 +74,18 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, fetchUser }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        register,
+        loginWithGoogle,
+        completeProfile,
+        logout,
+        fetchUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

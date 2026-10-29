@@ -76,8 +76,9 @@ const acceptDelivery = async (deliveryId, userId) => {
 
 /**
  * Update delivery status.
+ * Strictly verifies that only the assigned volunteer (or admin) can advance delivery status.
  */
-const updateDeliveryStatus = async (deliveryId, status, userId) => {
+const updateDeliveryStatus = async (deliveryId, status, userId, userRole = 'volunteer') => {
   const validTransitions = {
     pending: ['accepted'],
     accepted: ['picked_up', 'failed'],
@@ -88,6 +89,15 @@ const updateDeliveryStatus = async (deliveryId, status, userId) => {
   };
 
   const delivery = await getDeliveryById(deliveryId);
+
+  // Ownership verification: Volunteers can only update deliveries assigned to them
+  if (userRole === 'volunteer') {
+    if (delivery.volunteer_user_id && delivery.volunteer_user_id !== userId) {
+      const err = new Error('Access denied. You can only update deliveries assigned to you.');
+      err.statusCode = 403;
+      throw err;
+    }
+  }
 
   const allowed = validTransitions[delivery.status];
   if (!allowed || !allowed.includes(status)) {
@@ -142,13 +152,37 @@ const updateDeliveryStatus = async (deliveryId, status, userId) => {
 };
 
 /**
- * Get delivery by ID.
+ * Get delivery by ID with strict ownership validation.
  */
-const getDeliveryById = async (deliveryId) => {
+const getDeliveryById = async (deliveryId, user = null) => {
   const { rows } = await db.query(
-    `SELECT d.*, fd.title AS donation_title, fd.pickup_address
+    `SELECT d.*,
+            fd.title AS donation_title,
+            fd.category AS donation_category,
+            fd.quantity AS donation_quantity,
+            fd.unit AS donation_unit,
+            fd.pickup_address,
+            fd.expiry_time,
+            fp.id AS provider_id,
+            fp.user_id AS provider_user_id,
+            fp.business_name AS provider_name,
+            fp.is_verified AS provider_verified,
+            ng.id AS ngo_id,
+            ng.user_id AS ngo_user_id,
+            ng.organization_name AS ngo_name,
+            ng.is_verified AS ngo_verified,
+            ng.address AS ngo_address,
+            vo.id AS volunteer_id,
+            v_user.id AS volunteer_user_id,
+            v_user.full_name AS volunteer_name,
+            vo.vehicle_type AS volunteer_vehicle_type,
+            vo.rating AS volunteer_rating
      FROM deliveries d
      JOIN food_donations fd ON fd.id = d.donation_id
+     JOIN food_providers fp ON fp.id = fd.provider_id
+     JOIN ngos ng ON ng.id = d.ngo_id
+     LEFT JOIN volunteers vo ON vo.id = d.volunteer_id
+     LEFT JOIN users v_user ON v_user.id = vo.user_id
      WHERE d.id = $1`,
     [deliveryId]
   );
@@ -159,43 +193,110 @@ const getDeliveryById = async (deliveryId) => {
     throw err;
   }
 
-  return rows[0];
+  const delivery = rows[0];
+
+  // Ownership verification
+  if (user) {
+    if (user.role === 'volunteer') {
+      if (delivery.volunteer_id && delivery.volunteer_user_id !== user.id) {
+        const err = new Error('Access denied. You can only view deliveries assigned to you.');
+        err.statusCode = 403;
+        throw err;
+      }
+    } else if (user.role === 'ngo') {
+      if (delivery.ngo_user_id !== user.id) {
+        const err = new Error('Access denied. You can only view deliveries for your organization.');
+        err.statusCode = 403;
+        throw err;
+      }
+    } else if (user.role === 'provider') {
+      if (delivery.provider_user_id !== user.id) {
+        const err = new Error('Access denied. You can only view deliveries for your own donations.');
+        err.statusCode = 403;
+        throw err;
+      }
+    }
+  }
+
+  return delivery;
 };
 
 /**
- * Get all deliveries (with filters).
+ * Get all deliveries with role-based isolation.
  */
-const getDeliveries = async ({ page = 1, limit = 20, status, volunteerId }) => {
+const getDeliveries = async ({ page = 1, limit = 20, status, volunteerId, user = null }) => {
   const offset = (page - 1) * limit;
   const params = [];
   const conditions = [];
+
+  // Role-based scoping
+  if (user?.role === 'volunteer') {
+    params.push(user.id);
+    conditions.push(`v_user.id = $${params.length}`);
+  } else if (user?.role === 'ngo') {
+    params.push(user.id);
+    conditions.push(`ng.user_id = $${params.length}`);
+  } else if (user?.role === 'provider') {
+    params.push(user.id);
+    conditions.push(`fp.user_id = $${params.length}`);
+  } else if (user?.role === 'admin') {
+    if (volunteerId) {
+      params.push(volunteerId);
+      conditions.push(`d.volunteer_id = $${params.length}`);
+    }
+  }
 
   if (status) {
     params.push(status);
     conditions.push(`d.status = $${params.length}`);
   }
 
-  if (volunteerId) {
-    params.push(volunteerId);
-    conditions.push(`d.volunteer_id = $${params.length}`);
-  }
-
   const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
 
   const countResult = await db.query(
-    `SELECT COUNT(*) FROM deliveries d ${whereClause}`,
+    `SELECT COUNT(*) FROM deliveries d
+     JOIN food_donations fd ON fd.id = d.donation_id
+     JOIN food_providers fp ON fp.id = fd.provider_id
+     JOIN ngos ng ON ng.id = d.ngo_id
+     LEFT JOIN volunteers vo ON vo.id = d.volunteer_id
+     LEFT JOIN users v_user ON v_user.id = vo.user_id
+     ${whereClause}`,
     params
   );
-  const total = parseInt(countResult.rows[0].count, 10);
+  const total = parseInt(countResult.rows[0]?.count || 0, 10);
 
   const dataParams = [...params];
   dataParams.push(limit);
   dataParams.push(offset);
 
   const { rows } = await db.query(
-    `SELECT d.*, fd.title AS donation_title
+    `SELECT d.*,
+            fd.title AS donation_title,
+            fd.category AS donation_category,
+            fd.quantity AS donation_quantity,
+            fd.unit AS donation_unit,
+            fd.pickup_address,
+            fd.expiry_time,
+            fp.id AS provider_id,
+            fp.user_id AS provider_user_id,
+            fp.business_name AS provider_name,
+            fp.is_verified AS provider_verified,
+            ng.id AS ngo_id,
+            ng.user_id AS ngo_user_id,
+            ng.organization_name AS ngo_name,
+            ng.is_verified AS ngo_verified,
+            ng.address AS ngo_address,
+            vo.id AS volunteer_id,
+            v_user.id AS volunteer_user_id,
+            v_user.full_name AS volunteer_name,
+            vo.vehicle_type AS volunteer_vehicle_type,
+            vo.rating AS volunteer_rating
      FROM deliveries d
      JOIN food_donations fd ON fd.id = d.donation_id
+     JOIN food_providers fp ON fp.id = fd.provider_id
+     JOIN ngos ng ON ng.id = d.ngo_id
+     LEFT JOIN volunteers vo ON vo.id = d.volunteer_id
+     LEFT JOIN users v_user ON v_user.id = vo.user_id
      ${whereClause}
      ORDER BY d.created_at DESC
      LIMIT $${dataParams.length - 1} OFFSET $${dataParams.length}`,
@@ -204,7 +305,7 @@ const getDeliveries = async ({ page = 1, limit = 20, status, volunteerId }) => {
 
   return {
     deliveries: rows,
-    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) || 1 },
   };
 };
 

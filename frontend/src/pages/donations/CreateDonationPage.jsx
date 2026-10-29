@@ -129,26 +129,26 @@ export default function CreateDonationPage() {
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#1b1b1f] hover:bg-[#26262c] text-xs font-medium text-neutral-400 hover:text-white transition-all"
+          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-700 dark:bg-[#1b1b1f] dark:hover:bg-[#26262c] text-xs font-medium dark:text-neutral-400 dark:hover:text-white transition-all"
         >
           <ArrowLeft className="w-3.5 h-3.5" /> Back
         </button>
 
-        <span className="text-xs text-neutral-400 font-medium flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+        <span className="text-xs text-neutral-500 dark:text-neutral-400 font-medium flex items-center gap-1.5">
+          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
           Instant Shelter Notification Active
         </span>
       </div>
 
-      <div className="bg-[#121214] border border-[#232328] rounded-[24px] p-6 sm:p-9 shadow-2xl shadow-black/80 space-y-8">
+      <div className="bg-white dark:bg-[#121214] border border-neutral-200 dark:border-[#232328] rounded-[24px] p-6 sm:p-9 shadow-xl shadow-neutral-200/40 dark:shadow-black/80 space-y-8">
         {/* Header */}
-        <div className="flex items-center gap-4 border-b border-[#232328] pb-6">
-          <div className="w-12 h-12 rounded-2xl bg-white text-black flex items-center justify-center flex-shrink-0 shadow-md shadow-white/5">
+        <div className="flex items-center gap-4 border-b border-neutral-200 dark:border-[#232328] pb-6">
+          <div className="w-12 h-12 rounded-2xl bg-neutral-900 text-white dark:bg-white dark:text-black flex items-center justify-center flex-shrink-0 shadow-md">
             <Package className="w-6 h-6 stroke-[2.2]" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">Post Surplus Food Donation</h1>
-            <p className="text-xs sm:text-sm text-neutral-400 mt-0.5">
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white tracking-tight">Post Surplus Food Donation</h1>
+            <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
               Instantly broadcast excess meals to verified local shelters & community kitchens
             </p>
           </div>
@@ -157,14 +157,14 @@ export default function CreateDonationPage() {
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* ─── SECTION 1: FOOD DETAILS ──────────────────────────── */}
           <div className="space-y-4">
-            <h3 className="font-bold text-neutral-300 text-xs uppercase tracking-wider flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-white text-black text-[11px] font-bold flex items-center justify-center">1</span>
+            <h3 className="font-bold text-neutral-800 dark:text-neutral-200 text-xs uppercase tracking-wider flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-black text-[11px] font-bold flex items-center justify-center">1</span>
               Food Information
             </h3>
 
             <div>
-              <label className="text-xs font-semibold text-neutral-300 block mb-1.5">
-                Donation Title <span className="text-red-400">*</span>
+              <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 block mb-1.5">
+                Donation Title <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -178,7 +178,7 @@ export default function CreateDonationPage() {
 
             {/* Category Cards Selector */}
             <div>
-              <label className="text-xs font-semibold text-neutral-300 block mb-2">Food Category</label>
+              <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 block mb-2">Food Category</label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 {categories.map((c) => {
                   const Icon = c.icon;
@@ -190,13 +190,13 @@ export default function CreateDonationPage() {
                       onClick={() => update('category', c.value)}
                       className={`p-3 rounded-xl border text-left transition-all duration-150 flex flex-col justify-between ${
                         isSelected
-                          ? 'border-white bg-[#1c1c20] text-white shadow-md shadow-white/5 ring-1 ring-white/20'
-                          : 'border-[#232328] bg-[#0c0c0e] text-neutral-400 hover:border-[#383842] hover:text-white'
+                          ? 'border-neutral-900 bg-neutral-100 text-neutral-900 dark:border-white dark:bg-[#1c1c20] dark:text-white shadow-sm ring-1 ring-neutral-900/10 dark:ring-white/20'
+                          : 'border-neutral-200 bg-neutral-50 text-neutral-600 hover:border-neutral-400 hover:text-neutral-900 dark:border-[#232328] dark:bg-[#0c0c0e] dark:text-neutral-400 dark:hover:border-[#383842] dark:hover:text-white'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1.5">
-                        <Icon className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-neutral-400'}`} />
-                        {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+                        <Icon className={`w-4 h-4 ${isSelected ? 'text-neutral-900 dark:text-white' : 'text-neutral-500 dark:text-neutral-400'}`} />
+                        {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-neutral-900 dark:text-white" />}
                       </div>
                       <div>
                         <p className="text-xs font-bold leading-tight">{c.label}</p>
@@ -210,7 +210,7 @@ export default function CreateDonationPage() {
 
             {/* Dietary Flags */}
             <div>
-              <label className="text-xs font-semibold text-neutral-300 block mb-2">Dietary & Allergen Badges</label>
+              <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 block mb-2">Dietary & Allergen Badges</label>
               <div className="flex flex-wrap gap-1.5">
                 {dietaryTagsList.map((tag) => {
                   const isSelected = selectedTags.includes(tag);
@@ -221,8 +221,8 @@ export default function CreateDonationPage() {
                       onClick={() => toggleTag(tag)}
                       className={`px-3 py-1 rounded-full text-xs font-semibold transition-all flex items-center gap-1 ${
                         isSelected
-                          ? 'bg-white text-black shadow-xs font-bold'
-                          : 'bg-[#18181b] border border-[#232328] text-neutral-400 hover:text-white'
+                          ? 'bg-neutral-900 text-white dark:bg-white dark:text-black shadow-xs font-bold'
+                          : 'bg-neutral-100 border border-neutral-200 text-neutral-600 hover:text-neutral-900 dark:bg-[#18181b] dark:border-[#232328] dark:text-neutral-400 dark:hover:text-white'
                       }`}
                     >
                       {isSelected && <CheckCircle2 className="w-3 h-3" />}
@@ -236,8 +236,8 @@ export default function CreateDonationPage() {
             {/* Quantity & Units */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
               <div>
-                <label className="text-xs font-semibold text-neutral-300 block mb-1.5">
-                  Quantity <span className="text-red-400">*</span>
+                <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 block mb-1.5">
+                  Quantity <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
@@ -251,7 +251,7 @@ export default function CreateDonationPage() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-neutral-300 block mb-1.5">Unit of Measure</label>
+                <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 block mb-1.5">Unit of Measure</label>
                 <select
                   value={form.unit}
                   onChange={(e) => update('unit', e.target.value)}
@@ -265,7 +265,7 @@ export default function CreateDonationPage() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-neutral-300 block mb-1.5">Approx. Total Weight (kg)</label>
+                <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 block mb-1.5">Approx. Total Weight (kg)</label>
                 <input
                   type="number"
                   value={form.weight_kg}
@@ -278,7 +278,7 @@ export default function CreateDonationPage() {
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-neutral-300 block mb-1.5">Description & Ingredients</label>
+              <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 block mb-1.5">Description & Ingredients</label>
               <textarea
                 value={form.description}
                 onChange={(e) => update('description', e.target.value)}
@@ -289,16 +289,16 @@ export default function CreateDonationPage() {
           </div>
 
           {/* ─── SECTION 2: PICKUP LOCATION ───────────────────────── */}
-          <div className="space-y-4 border-t border-[#232328] pt-6">
+          <div className="space-y-4 border-t border-neutral-200 dark:border-[#232328] pt-6">
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-neutral-300 text-xs uppercase tracking-wider flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-white text-black text-[11px] font-bold flex items-center justify-center">2</span>
+              <h3 className="font-bold text-neutral-800 dark:text-neutral-200 text-xs uppercase tracking-wider flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-black text-[11px] font-bold flex items-center justify-center">2</span>
                 Pickup Location & Map Pin
               </h3>
               <button
                 type="button"
                 onClick={() => setMapPickerOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white text-black font-bold text-xs hover:bg-neutral-200 transition-all shadow-sm"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-900 text-white dark:bg-white dark:text-black font-bold text-xs hover:opacity-90 transition-all shadow-sm"
               >
                 <Compass className="w-3.5 h-3.5" />
                 <span>Pick on Interactive Map</span>
@@ -306,8 +306,8 @@ export default function CreateDonationPage() {
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-neutral-300 block mb-1.5">
-                Exact Pickup Address <span className="text-red-400">*</span>
+              <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 block mb-1.5">
+                Exact Pickup Address <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <input
@@ -323,18 +323,18 @@ export default function CreateDonationPage() {
             </div>
 
             {/* Selected Coordinates Status Pill */}
-            <div className="flex items-center justify-between p-3 bg-[#0c0c0e] rounded-xl border border-[#232328] text-xs">
-              <div className="flex items-center gap-2 text-neutral-400">
-                <Navigation className="w-3.5 h-3.5 text-white flex-shrink-0" />
+            <div className="flex items-center justify-between p-3 bg-neutral-50 dark:bg-[#0c0c0e] rounded-xl border border-neutral-200 dark:border-[#232328] text-xs">
+              <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
+                <Navigation className="w-3.5 h-3.5 text-neutral-900 dark:text-white flex-shrink-0" />
                 <span>GPS Coordinates for Volunteers & NGOs:</span>
-                <span className="font-mono text-white bg-[#18181b] px-2 py-0.5 rounded border border-[#282830]">
+                <span className="font-mono text-neutral-900 dark:text-white bg-neutral-200/70 dark:bg-[#18181b] px-2 py-0.5 rounded border border-neutral-300 dark:border-[#282830]">
                   {form.latitude?.toFixed(4)}, {form.longitude?.toFixed(4)}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setMapPickerOpen(true)}
-                className="text-[11px] font-semibold text-white hover:underline"
+                className="text-[11px] font-semibold text-neutral-900 dark:text-white hover:underline cursor-pointer"
               >
                 Change Pin
               </button>
@@ -342,14 +342,14 @@ export default function CreateDonationPage() {
           </div>
 
           {/* ─── SECTION 3: ATTRACTIVE CUSTOM DATE & TIME PICKERS ─── */}
-          <div className="space-y-4 border-t border-[#232328] pt-6">
+          <div className="space-y-4 border-t border-neutral-200 dark:border-[#232328] pt-6">
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-neutral-300 text-xs uppercase tracking-wider flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-white text-black text-[11px] font-bold flex items-center justify-center">3</span>
+              <h3 className="font-bold text-neutral-800 dark:text-neutral-200 text-xs uppercase tracking-wider flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-black text-[11px] font-bold flex items-center justify-center">3</span>
                 Pickup Window & Expiry Timings
               </h3>
-              <span className="text-[11px] text-neutral-400 flex items-center gap-1">
-                <Clock className="w-3 h-3 text-white" />
+              <span className="text-[11px] text-neutral-500 dark:text-neutral-400 flex items-center gap-1">
+                <Clock className="w-3 h-3 text-neutral-700 dark:text-white" />
                 Live Countdown Enabled
               </span>
             </div>
@@ -401,9 +401,9 @@ export default function CreateDonationPage() {
           </div>
 
           {/* ─── SECTION 4: SPECIAL INSTRUCTIONS ───────────────────── */}
-          <div className="space-y-4 border-t border-[#232328] pt-6">
-            <h3 className="font-bold text-neutral-300 text-xs uppercase tracking-wider flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-white text-black text-[11px] font-bold flex items-center justify-center">4</span>
+          <div className="space-y-4 border-t border-neutral-200 dark:border-[#232328] pt-6">
+            <h3 className="font-bold text-neutral-800 dark:text-neutral-200 text-xs uppercase tracking-wider flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-black text-[11px] font-bold flex items-center justify-center">4</span>
               Special Handling Instructions (Optional)
             </h3>
             <textarea
@@ -415,17 +415,17 @@ export default function CreateDonationPage() {
           </div>
 
           {/* Submit Button */}
-          <div className="pt-4 border-t border-[#232328]">
+          <div className="pt-4 border-t border-neutral-200 dark:border-[#232328]">
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-white hover:bg-neutral-200 text-black font-bold py-4 rounded-2xl text-sm sm:text-base transition-all duration-150 flex items-center justify-center gap-2.5 shadow-xl shadow-white/10 disabled:opacity-50 active:scale-[0.99] cursor-pointer"
+              className="btn btn-primary w-full py-4 rounded-2xl text-base font-bold shadow-lg shadow-[#39FF14]/30 disabled:opacity-50 active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2.5 tracking-wide"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
               ) : (
                 <>
-                  <Save className="w-4 h-4" />
+                  <Save className="w-5 h-5 stroke-[2.5]" />
                   <span>Publish Donation Listing Now</span>
                 </>
               )}

@@ -3,10 +3,14 @@ const analyticsService = require('./analytics.service');
 /**
  * GET /api/analytics/impact
  */
+/**
+ * GET /api/analytics/impact
+ */
 const getImpactMetrics = async (req, res, next) => {
   try {
     const metrics = await analyticsService.getImpactMetrics({
       timeRange: req.query.range || req.query.timeRange || 'all',
+      user: req.user,
     });
     res.json({ success: true, data: metrics });
   } catch (error) {

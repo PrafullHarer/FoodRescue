@@ -6,11 +6,19 @@ const roleGuard = require('../../middleware/roleGuard');
 const validate = require('../../middleware/validate');
 const { createDonationSchema, updateDonationSchema } = require('./donation.schema');
 
-// Public: list and view donations
-router.get('/', donationController.getDonations);
-router.get('/:id', donationController.getDonationById);
+// List donations (optional auth for role-specific isolation)
+router.get('/', authenticate.optional, donationController.getDonations);
 
-// Protected: create / update / cancel (provider only)
+// Protected: Food Provider's own donations
+router.get('/my', authenticate, roleGuard('provider'), donationController.getMyDonations);
+
+// Protected: NGO's own claimed donations
+router.get('/my-claims', authenticate, roleGuard('ngo'), donationController.getMyClaims);
+
+// Detail view (optional auth: strictly verifies ownership so users only see authorized listings)
+router.get('/:id', authenticate.optional, donationController.getDonationById);
+
+// Protected: create / update / delete / cancel (provider only)
 router.post(
   '/',
   authenticate,
@@ -25,6 +33,13 @@ router.put(
   roleGuard('provider'),
   validate({ body: updateDonationSchema }),
   donationController.updateDonation
+);
+
+router.delete(
+  '/:id',
+  authenticate,
+  roleGuard('provider'),
+  donationController.deleteDonation
 );
 
 router.post(

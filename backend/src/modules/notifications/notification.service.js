@@ -20,14 +20,111 @@ const getTransporter = () => {
 };
 
 /**
+ * Helper to identify if a notification is a donation/rescue workflow notification.
+ * Operational alerts (incidents, complaints, verifications) are NOT donation notifications.
+ */
+const isDonationRelated = ({ title, body, data }) => {
+  let parsedData = data;
+  if (typeof parsedData === 'string') {
+    try {
+      parsedData = JSON.parse(parsedData);
+    } catch {
+      parsedData = null;
+    }
+  }
+
+  // Explicit administrative operational alerts are NOT donation notifications
+  if (
+    parsedData?.incident_id ||
+    parsedData?.incidentId ||
+    parsedData?.complaint_id ||
+    parsedData?.complaintId ||
+    parsedData?.verification_id ||
+    parsedData?.type?.startsWith?.('complaint') ||
+    parsedData?.type?.startsWith?.('incident') ||
+    parsedData?.type?.startsWith?.('verification')
+  ) {
+    return false;
+  }
+
+  const titleStr = (title || '').toLowerCase();
+  const bodyStr = (body || '').toLowerCase();
+
+  // If title indicates an operational administrative item, keep it allowed for admins
+  if (
+    titleStr.includes('incident') ||
+    titleStr.includes('escalation') ||
+    titleStr.includes('complaint') ||
+    titleStr.includes('verification')
+  ) {
+    return false;
+  }
+
+  // Check data payload for donation/delivery/claim workflow indicators
+  if (parsedData && typeof parsedData === 'object') {
+    if (
+      parsedData.donation_id ||
+      parsedData.donationId ||
+      parsedData.delivery_id ||
+      parsedData.deliveryId ||
+      parsedData.claim_id ||
+      parsedData.claimId
+    ) {
+      return true;
+    }
+
+    if ([
+      'new_donation',
+      'delivery_available',
+      'donation_claimed',
+      'donation_status',
+      'donation_matched',
+      'pickup',
+      'delivery'
+    ].includes(parsedData.type)) {
+      return true;
+    }
+  }
+
+  const combined = `${titleStr} ${bodyStr}`;
+  const donationKeywords = [
+    'donation',
+    'surplus food',
+    'pickup mission',
+    'food collected',
+    'food in transit',
+    'food delivered',
+    'food delivery confirmed',
+    'rescue completed',
+    'volunteer assigned to pickup',
+    'delivery confirmed'
+  ];
+
+  return donationKeywords.some(kw => combined.includes(kw));
+};
+
+/**
  * Create an in-app notification.
  */
 const createNotification = async ({ userId, title, body, type = 'in_app', data = null }) => {
+  // Enforce rule: Admins must NEVER receive donation-related notifications
+  try {
+    const { rows: userRows } = await db.query('SELECT role FROM users WHERE id = $1', [userId]);
+    if (userRows.length > 0 && userRows[0].role === 'admin') {
+      if (isDonationRelated({ title, body, data })) {
+        console.log(`[NOTIFY] Suppressed donation-related notification for admin ${userId}: "${title}"`);
+        return null;
+      }
+    }
+  } catch (err) {
+    console.warn('[NOTIFY] Admin check warning:', err.message);
+  }
+
   const { rows } = await db.query(
     `INSERT INTO notifications (user_id, type, title, body, data)
      VALUES ($1, $2, $3, $4, $5)
      RETURNING *`,
-    [userId, type, title, body, data ? JSON.stringify(data) : null]
+    [userId, type, title, body, data ? (typeof data === 'string' ? data : JSON.stringify(data)) : null]
   );
 
   return rows[0];
@@ -38,6 +135,16 @@ const createNotification = async ({ userId, title, body, type = 'in_app', data =
  * (Wrapper — actual FCM/APNs call would go through Expo's API)
  */
 const sendPushNotification = async (userId, title, body, data = {}) => {
+  // If user is admin and notification is donation-related, skip
+  try {
+    const { rows: userRows } = await db.query('SELECT role FROM users WHERE id = $1', [userId]);
+    if (userRows.length > 0 && userRows[0].role === 'admin' && isDonationRelated({ title, body, data })) {
+      return null;
+    }
+  } catch {
+    // continue
+  }
+
   // Get device tokens for user
   const { rows: tokens } = await db.query(
     'SELECT token, platform FROM device_tokens WHERE user_id = $1 AND is_active = TRUE',
@@ -88,7 +195,7 @@ const sendEmail = async (to, subject, html) => {
  */
 const notifyStatusChange = async (donationId, newStatus) => {
   const donation = await db.query(
-    `SELECT fd.*, fp.user_id AS provider_user_id, u.full_name AS provider_name
+    `SELECT fd.*, fp.user_id AS provider_user_id, u.full_name AS provider_name, u.role AS provider_role
      FROM food_donations fd
      JOIN food_providers fp ON fp.id = fd.provider_id
      JOIN users u ON u.id = fp.user_id
@@ -99,6 +206,9 @@ const notifyStatusChange = async (donationId, newStatus) => {
   if (donation.rows.length === 0) return;
 
   const d = donation.rows[0];
+
+  // Admins must not receive donation status notifications
+  if (d.provider_role === 'admin') return;
 
   const messages = {
     matched:            { title: 'Donation Matched!', body: `Your donation "${d.title}" has been matched with NGOs.` },
@@ -140,6 +250,46 @@ const getUserNotifications = async (userId, { page = 1, limit = 20, unreadOnly =
   const offset = (page - 1) * limit;
   const params = [userId];
   let whereClause = 'WHERE user_id = $1';
+
+  // Check if target user is admin. If so, completely exclude any donation-related notifications.
+  const { rows: userRows } = await db.query('SELECT role FROM users WHERE id = $1', [userId]);
+  const isAdmin = userRows[0]?.role === 'admin';
+
+  if (isAdmin) {
+    whereClause += ` AND NOT (
+      (
+        data IS NOT NULL AND (
+          data->>'incident_id' IS NULL AND
+          data->>'complaint_id' IS NULL AND
+          data->>'verification_id' IS NULL AND
+          (data->>'type' IS NULL OR NOT (data->>'type' LIKE 'complaint%' OR data->>'type' LIKE 'incident%'))
+        ) AND (
+          data->>'donation_id' IS NOT NULL OR
+          data->>'donationId' IS NOT NULL OR
+          data->>'delivery_id' IS NOT NULL OR
+          data->>'deliveryId' IS NOT NULL OR
+          data->>'claim_id' IS NOT NULL OR
+          data->>'claimId' IS NOT NULL OR
+          data->>'type' IN ('new_donation', 'delivery_available', 'donation_claimed', 'donation_status', 'donation_matched', 'pickup', 'delivery')
+        )
+      )
+      OR (
+        title NOT ILIKE '%incident%' AND
+        title NOT ILIKE '%escalation%' AND
+        title NOT ILIKE '%complaint%' AND
+        title NOT ILIKE '%verification%' AND
+        (
+          title ILIKE '%donation%' OR
+          title ILIKE '%pickup mission%' OR
+          title ILIKE '%food in transit%' OR
+          title ILIKE '%rescue completed%' OR
+          title ILIKE '%delivery confirmed%' OR
+          title ILIKE '%food delivery confirmed%' OR
+          body ILIKE '%donation%'
+        )
+      )
+    )`;
+  }
 
   if (unreadOnly) {
     whereClause += ' AND is_read = FALSE';
@@ -217,11 +367,11 @@ const registerDeviceToken = async (userId, token, platform) => {
  */
 const notifyNgosOfNewDonation = async (donation) => {
   try {
-    // Find all active NGO users
+    // Find all active NGO users (explicitly exclude admins)
     const { rows: ngoUsers } = await db.query(
       `SELECT id AS user_id
        FROM users
-       WHERE role = 'ngo' AND (status IS NULL OR status = 'active')`
+       WHERE role = 'ngo' AND role != 'admin' AND (status IS NULL OR status = 'active')`
     );
 
     if (ngoUsers.length === 0) {
@@ -288,7 +438,7 @@ const notifyVolunteersOfPickupMission = async (donation, deliveryId) => {
       `SELECT u.id AS user_id
        FROM volunteers v
        JOIN users u ON u.id = v.user_id
-       WHERE (u.status IS NULL OR u.status = 'active')`
+       WHERE u.role != 'admin' AND (u.status IS NULL OR u.status = 'active')`
     );
 
     if (volunteerUsers.length === 0) return;

@@ -39,6 +39,11 @@ const createDonation = async (req, res, next) => {
 
 /**
  * GET /api/donations
+ * Role-aware donation retrieval:
+ * - Providers: strictly scoped to own donations.
+ * - NGOs: available uncompleted surplus (or own claims if my_claims=true).
+ * - Volunteers: active delivery missions and assigned donations.
+ * - Public: strictly posted and unexpired donations with redacted contact info.
  */
 const getDonations = async (req, res, next) => {
   try {
@@ -48,6 +53,8 @@ const getDonations = async (req, res, next) => {
       status: req.query.status,
       category: req.query.category,
       providerId: req.query.provider_id,
+      myClaimsOnly: req.query.my_claims === 'true',
+      user: req.user,
       lat: req.query.lat,
       lng: req.query.lng,
       radiusKm: req.query.radius_km,
@@ -60,12 +67,89 @@ const getDonations = async (req, res, next) => {
 };
 
 /**
+ * GET /api/donations/my
+ * Dedicated endpoint for food providers to view only their own donations.
+ */
+const getMyDonations = async (req, res, next) => {
+  try {
+    const { rows } = await db.query(
+      'SELECT id FROM food_providers WHERE user_id = $1',
+      [req.user.id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Provider profile not found.',
+      });
+    }
+
+    const result = await donationService.getDonations({
+      page: req.query.page ? parseInt(req.query.page, 10) : 1,
+      limit: req.query.limit ? parseInt(req.query.limit, 10) : 20,
+      status: req.query.status,
+      category: req.query.category,
+      providerId: rows[0].id,
+      user: req.user,
+    });
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/donations/my-claims
+ * Dedicated endpoint for NGOs to view only their accepted claims.
+ */
+const getMyClaims = async (req, res, next) => {
+  try {
+    const result = await donationService.getMyClaims(req.user.id, {
+      page: req.query.page ? parseInt(req.query.page, 10) : 1,
+      limit: req.query.limit ? parseInt(req.query.limit, 10) : 50,
+      status: req.query.status,
+    });
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * GET /api/donations/:id
+ * Strictly verifies ownership so providers only view their own listings, NGOs only view available or claimed listings.
  */
 const getDonationById = async (req, res, next) => {
   try {
-    const donation = await donationService.getDonationById(req.params.id);
+    const donation = await donationService.getDonationById(req.params.id, req.user);
     res.json({ success: true, data: donation });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * DELETE /api/donations/:id
+ * Food Provider deletes an uncollected donation.
+ */
+const deleteDonation = async (req, res, next) => {
+  try {
+    const { rows } = await db.query(
+      'SELECT id FROM food_providers WHERE user_id = $1',
+      [req.user.id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Provider profile not found.',
+      });
+    }
+
+    const result = await donationService.deleteDonation(req.params.id, rows[0].id);
+    res.json(result);
   } catch (error) {
     next(error);
   }
@@ -201,8 +285,11 @@ const cancelDonation = async (req, res, next) => {
 module.exports = {
   createDonation,
   getDonations,
+  getMyDonations,
+  getMyClaims,
   getDonationById,
   updateDonation,
+  deleteDonation,
   claimDonation,
   updatePickupType,
   cancelDonation,

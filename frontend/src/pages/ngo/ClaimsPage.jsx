@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ReviewModal from '../../components/common/ReviewModal';
+import UserReputationLink from '../../components/reviews/UserReputationLink';
+import ReviewEligibilityIndicator from '../../components/reviews/ReviewEligibilityIndicator';
 
 export default function ClaimsPage() {
   const [claims, setClaims] = useState([]);
@@ -20,18 +22,13 @@ export default function ClaimsPage() {
   const loadClaimsAndReviews = useCallback(async () => {
     try {
       setLoading(true);
-      // Fetch claimed donations
+      // Fetch strictly scoped NGO claimed donations
       const [donationsRes, reviewsRes] = await Promise.all([
-        api.get('/donations', { params: { limit: 100 } }),
+        api.get('/donations/my-claims', { params: { limit: 100 } }),
         api.get('/reviews/my').catch(() => ({ data: { data: [] } })),
       ]);
 
-      const allDonations = donationsRes.data.data?.donations || [];
-      // Filter donations that are claimed, volunteer_assigned, collected, delivered, completed
-      const claimedDonations = allDonations.filter(d =>
-        ['claimed', 'volunteer_assigned', 'collected', 'delivered', 'completed'].includes(d.status) || d.claim_id
-      );
-
+      const claimedDonations = donationsRes.data.data?.donations || [];
       setClaims(claimedDonations);
 
       // Map my reviews by donation_id
@@ -258,9 +255,14 @@ export default function ClaimsPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <p className="text-sm font-bold text-white">
-                        {d.provider_name || 'Donor Provider'}
-                      </p>
+                      <div className="pt-0.5">
+                        <UserReputationLink
+                          userId={d.provider_user_id}
+                          name={d.provider_name || 'Donor Provider'}
+                          isVerified={d.provider_is_verified}
+                          showBadge={true}
+                        />
+                      </div>
 
                       {d.provider_contact && (
                         <div className="flex items-center gap-2 text-xs text-neutral-300">
@@ -349,15 +351,11 @@ export default function ClaimsPage() {
                     ) : hasVolunteer ? (
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <p className="text-sm font-bold text-white">
-                            {d.volunteer_name || 'Assigned Volunteer'}
-                          </p>
-                          {d.volunteer_rating > 0 && (
-                            <span className="flex items-center gap-1 text-xs font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-lg border border-amber-400/20">
-                              <Star className="w-3 h-3 fill-amber-400" />
-                              {Number(d.volunteer_rating).toFixed(1)}
-                            </span>
-                          )}
+                          <UserReputationLink
+                            userId={d.volunteer_user_id}
+                            name={d.volunteer_name || 'Assigned Volunteer'}
+                            showBadge={true}
+                          />
                         </div>
 
                         {d.volunteer_phone && (

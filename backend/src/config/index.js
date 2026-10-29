@@ -1,4 +1,6 @@
+const path = require('path');
 require('dotenv').config();
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -52,6 +54,10 @@ module.exports = {
 
   maps: {
     apiKey: process.env.MAPS_API_KEY,
+  },
+
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID,
   },
 
   ai: {

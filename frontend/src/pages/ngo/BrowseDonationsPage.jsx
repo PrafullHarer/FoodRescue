@@ -4,6 +4,7 @@ import { Package, MapPin, Clock, Search, CheckCircle2, Map, LayoutGrid } from 'l
 import toast from 'react-hot-toast';
 import DonationMapView from '../../components/common/DonationMapView';
 import ClaimDonationModal from '../../components/common/ClaimDonationModal';
+import UserReputationLink from '../../components/reviews/UserReputationLink';
 
 export default function BrowseDonationsPage() {
   const [donations, setDonations] = useState([]);
@@ -123,7 +124,15 @@ export default function BrowseDonationsPage() {
                   </span>
                 </div>
                 {d.provider_name && (
-                  <p className="text-xs text-neutral-400 mb-2">by <span className="text-white font-medium">{d.provider_name}</span></p>
+                  <div className="flex items-center gap-1.5 text-xs text-neutral-400 mb-2">
+                    <span>by</span>
+                    <UserReputationLink
+                      userId={d.provider_user_id}
+                      name={d.provider_name}
+                      isVerified={d.provider_is_verified}
+                      showBadge={true}
+                    />
+                  </div>
                 )}
                 <p className="text-xs text-neutral-400 mb-4 line-clamp-2 leading-relaxed">
                   {d.description || 'Prepared surplus food ready for immediate distribution.'}

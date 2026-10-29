@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../api/client';
-import { Package, Plus, Search, MapPin, Clock } from 'lucide-react';
+import { Package, Plus, Search, MapPin, Clock, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function DonationsPage() {
   const [donations, setDonations] = useState([]);
@@ -17,10 +18,24 @@ export default function DonationsPage() {
     try {
       const params = { page, limit: 12 };
       if (statusFilter) params.status = statusFilter;
-      const { data } = await api.get('/donations', { params });
+      const { data } = await api.get('/donations/my', { params });
       setDonations(data.data?.donations || []);
       setPagination(data.data?.pagination || {});
     } catch { /* ignore */ } finally { setLoading(false); }
+  };
+
+  const handleDeleteDonation = async (e, donationId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!window.confirm('Are you sure you want to delete this listing? This action cannot be undone.')) return;
+
+    try {
+      await api.delete(`/donations/${donationId}`);
+      toast.success('Listing deleted successfully');
+      setDonations(prev => prev.filter(d => d.id !== donationId));
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete donation');
+    }
   };
 
   const filtered = donations.filter((d) =>
@@ -90,12 +105,24 @@ export default function DonationsPage() {
                   <h3 className="font-bold text-white text-base group-hover:underline underline-offset-2">
                     {d.title}
                   </h3>
-                  <span className={`badge uppercase text-[10px] font-bold flex-shrink-0 ${
-                    d.status === 'delivered' || d.status === 'completed' ? 'badge-primary' :
-                    d.status === 'claimed' ? 'badge-warning' : 'badge-neutral'
-                  }`}>
-                    {d.status?.replace('_',' ')}
-                  </span>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <span className={`badge uppercase text-[10px] font-bold ${
+                      d.status === 'delivered' || d.status === 'completed' ? 'badge-primary' :
+                      d.status === 'claimed' ? 'badge-warning' : 'badge-neutral'
+                    }`}>
+                      {d.status?.replace('_',' ')}
+                    </span>
+                    {['posted', 'cancelled'].includes(d.status) && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteDonation(e, d.id)}
+                        className="p-1 rounded-lg text-neutral-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                        title="Delete listing"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <p className="text-xs text-neutral-400 mb-4 line-clamp-2 leading-relaxed">
                   {d.description || 'Prepared surplus food ready for immediate pickup.'}

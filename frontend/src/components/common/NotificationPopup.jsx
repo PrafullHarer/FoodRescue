@@ -36,6 +36,34 @@ const saveSeenIds = (userId, seenSet) => {
   }
 };
 
+const isDonationNotification = (n) => {
+  let data = n.data;
+  if (typeof data === 'string') {
+    try {
+      data = JSON.parse(data);
+    } catch {
+      data = null;
+    }
+  }
+  if (
+    data?.incident_id ||
+    data?.complaint_id ||
+    data?.verification_id ||
+    data?.type?.startsWith?.('complaint') ||
+    data?.type?.startsWith?.('incident')
+  ) {
+    return false;
+  }
+  const titleLower = (n.title || '').toLowerCase();
+  if (titleLower.includes('incident') || titleLower.includes('complaint') || titleLower.includes('escalation')) {
+    return false;
+  }
+  if (data?.donation_id || data?.donationId || data?.delivery_id || data?.claim_id) return true;
+  if (['new_donation', 'delivery_available', 'donation_claimed', 'donation_status', 'donation_matched'].includes(data?.type)) return true;
+  const bodyLower = (n.body || n.message || '').toLowerCase();
+  return titleLower.includes('donation') || titleLower.includes('pickup mission') || bodyLower.includes('donation');
+};
+
 /**
  * Bottom-right notification popup for users (NGOs, Providers, Volunteers).
  * Polls for unread notifications and displays them as slide-in cards with auto-dismiss.
@@ -62,7 +90,12 @@ export default function NotificationPopup() {
         params: { unread: 'true', limit: 5 },
       });
 
-      const notifications = data?.data?.notifications || [];
+      let notifications = data?.data?.notifications || [];
+      // Admins should not receive any donation-related notification popups
+      if (user?.role === 'admin') {
+        notifications = notifications.filter(n => !isDonationNotification(n));
+      }
+
       if (notifications.length === 0) return;
 
       const seenSet = getSeenIds(user.id);
@@ -138,6 +171,27 @@ export default function NotificationPopup() {
 
     dismissPopup(popup._popupId, popup.id);
 
+    const titleLower = (popup.title || '').toLowerCase();
+    const isIncident = notifData?.incident_id || popup.type === 'incident' || titleLower.includes('incident') || titleLower.includes('escalation');
+    const isVerification = notifData?.verification_id || popup.type === 'verification' || titleLower.includes('verification');
+    const isComplaint = notifData?.complaint_id || popup.type === 'complaint' || titleLower.includes('complaint');
+
+    if (isIncident && user?.role === 'admin') {
+      navigate('/admin/incidents');
+      return;
+    }
+
+    if (isVerification && user?.role === 'admin') {
+      navigate('/admin/verifications');
+      return;
+    }
+
+    if (isComplaint) {
+      if (user?.role === 'admin') navigate('/admin/complaints');
+      else navigate('/complaints');
+      return;
+    }
+
     const donationId = notifData?.donation_id || notifData?.donationId || popup.donation_id;
     const isValidUUID = donationId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(donationId);
 
@@ -205,11 +259,11 @@ export default function NotificationPopup() {
                 </div>
               </Alert>
             ) : (
-              <Alert className="max-w-md shadow-2xl backdrop-blur-xl relative bg-[#121214] border-[#232328] text-white">
-                <CheckCircle2Icon className="text-white" />
+              <Alert className="max-w-md shadow-xl backdrop-blur-xl relative bg-white dark:bg-[#121214] border-neutral-200 dark:border-[#232328] text-neutral-900 dark:text-white">
+                <CheckCircle2Icon className="text-emerald-600 dark:text-[#39FF14]" />
                 <div className="flex-1 min-w-0 pr-6">
                   <div className="flex items-center justify-between gap-2 mb-1">
-                    <AlertTitle className="text-xs font-bold leading-snug text-white">
+                    <AlertTitle className="text-xs font-bold leading-snug text-neutral-900 dark:text-white">
                       {popup.title}
                     </AlertTitle>
                     <button
@@ -217,18 +271,18 @@ export default function NotificationPopup() {
                         e.stopPropagation();
                         dismissPopup(popup._popupId, popup.id);
                       }}
-                      className="absolute top-2.5 right-2.5 p-1 rounded-md text-neutral-400 hover:text-white hover:bg-[#1f1f24] transition-colors"
+                      className="absolute top-2.5 right-2.5 p-1 rounded-md text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 dark:hover:text-white dark:hover:bg-[#1f1f24] transition-colors cursor-pointer"
                       aria-label="Dismiss alert"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  <AlertDescription className="text-[11px] leading-relaxed text-neutral-300 mb-2.5">
+                  <AlertDescription className="text-[11px] leading-relaxed text-neutral-600 dark:text-neutral-300 mb-2.5">
                     {popup.body}
                   </AlertDescription>
                   <button
                     onClick={() => handleClick(popup)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-bold bg-white text-black hover:bg-neutral-200 shadow-xs transition-all"
+                    className="btn btn-primary py-1 px-3 text-[11px] font-bold rounded-lg inline-flex items-center gap-1.5 shadow-xs cursor-pointer"
                   >
                     <span>View Details</span>
                     <ChevronRight className="w-3 h-3" />

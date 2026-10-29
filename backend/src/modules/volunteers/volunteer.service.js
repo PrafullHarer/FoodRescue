@@ -97,8 +97,10 @@ const getMyDeliveries = async (userId) => {
             fd.pickup_address, fd.pickup_window_start, fd.pickup_window_end, fd.expiry_time,
             fd.special_instructions, fd.status AS donation_status,
             fp.business_name AS provider_name, fp.address AS provider_address,
+            fp.user_id AS provider_user_id, fp.is_verified AS provider_is_verified,
             u_p.full_name AS provider_contact_name, u_p.phone AS provider_phone,
             n.organization_name AS ngo_name, n.address AS ngo_address,
+            n.user_id AS ngo_user_id, n.is_verified AS ngo_is_verified,
             u_n.full_name AS ngo_contact_name, u_n.phone AS ngo_phone,
             qr_p.code AS pickup_qr_code, qr_p.is_scanned AS pickup_qr_scanned,
             qr_d.code AS delivery_qr_code, qr_d.is_scanned AS delivery_qr_scanned
@@ -147,8 +149,10 @@ const getAvailableMissions = async (userId) => {
             fd.pickup_window_start, fd.pickup_window_end, fd.expiry_time,
             fd.special_instructions, fd.status AS donation_status,
             fp.business_name AS provider_name, fp.address AS provider_address,
+            fp.user_id AS provider_user_id, fp.is_verified AS provider_is_verified,
             u_p.full_name AS provider_contact_name, u_p.phone AS provider_phone,
             n.organization_name AS ngo_name, n.address AS ngo_address,
+            n.user_id AS ngo_user_id, n.is_verified AS ngo_is_verified,
             u_n.full_name AS ngo_contact_name, u_n.phone AS ngo_phone
      FROM deliveries d
      JOIN food_donations fd ON fd.id = d.donation_id

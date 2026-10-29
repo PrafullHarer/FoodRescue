@@ -1,30 +1,174 @@
 const db = require('../../config/db');
 
 /**
- * Get overall platform impact metrics.
+ * Get impact metrics with strict role-based data isolation.
+ * When authenticated as a provider/ngo/volunteer, computes metrics strictly for that user.
+ * When admin or public, computes platform-wide aggregate metrics.
  */
-const getImpactMetrics = async ({ timeRange = 'all' } = {}) => {
+const getImpactMetrics = async ({ timeRange = 'all', user = null } = {}) => {
   let timeFilter = '';
   if (timeRange === 'month') {
-    timeFilter = `AND created_at >= NOW() - INTERVAL '30 days'`;
+    timeFilter = `AND fd.created_at >= NOW() - INTERVAL '30 days'`;
   } else if (timeRange === 'year') {
-    timeFilter = `AND created_at >= NOW() - INTERVAL '365 days'`;
+    timeFilter = `AND fd.created_at >= NOW() - INTERVAL '365 days'`;
   }
 
-  // Rescued/active donation statuses
-  const rescuedCondition = `status IN ('claimed', 'matched', 'volunteer_assigned', 'collected', 'delivered', 'completed')`;
+  const rescuedCondition = `fd.status IN ('claimed', 'matched', 'volunteer_assigned', 'collected', 'delivered', 'completed')`;
+
+  // 1. PROVIDER ISOLATION: Calculate metrics strictly for this food provider
+  if (user?.role === 'provider') {
+    const provRes = await db.query(
+      'SELECT id FROM food_providers WHERE user_id = $1',
+      [user.id]
+    );
+    const providerId = provRes.rows[0]?.id || '00000000-0000-0000-0000-000000000000';
+
+    const donationsResult = await db.query(
+      `SELECT
+         COUNT(*) AS total_donations,
+         COUNT(*) FILTER (WHERE ${rescuedCondition}) AS completed_donations,
+         COUNT(*) FILTER (WHERE fd.status = 'posted') AS active_donations,
+         COALESCE(SUM(fd.quantity), 0) AS total_servings,
+         COALESCE(SUM(fd.quantity) FILTER (WHERE ${rescuedCondition}), 0) AS rescued_servings,
+         COALESCE(SUM(fd.weight_kg), 0) AS total_weight_kg,
+         COALESCE(SUM(fd.weight_kg) FILTER (WHERE ${rescuedCondition}), 0) AS rescued_weight_kg
+       FROM food_donations fd
+       WHERE fd.provider_id = $1 ${timeFilter}`,
+      [providerId]
+    );
+
+    const d = donationsResult.rows[0];
+    const totalWeight = parseFloat(d.rescued_weight_kg) || parseFloat(d.total_weight_kg) || 0;
+    const totalServings = parseInt(d.rescued_servings, 10) || parseInt(d.total_servings, 10) || 0;
+    const kg_rescued = Math.round(totalWeight * 10) / 10;
+    const co2_prevented_kg = Math.round(kg_rescued * 2.0 * 10) / 10;
+
+    return {
+      meals_saved: totalServings,
+      kg_rescued,
+      co2_prevented_kg,
+      active_volunteers: 0,
+      donations_completed: parseInt(d.completed_donations, 10) || 0,
+      donations_total: parseInt(d.total_donations, 10) || 0,
+      donations: d,
+      users: { provider: 1 },
+      deliveries: { total_deliveries: parseInt(d.completed_donations, 10) || 0 },
+    };
+  }
+
+  // 2. NGO ISOLATION: Calculate metrics strictly for this NGO
+  if (user?.role === 'ngo') {
+    const ngoRes = await db.query(
+      'SELECT id FROM ngos WHERE user_id = $1',
+      [user.id]
+    );
+    const ngoId = ngoRes.rows[0]?.id || '00000000-0000-0000-0000-000000000000';
+
+    const claimsResult = await db.query(
+      `SELECT
+         COUNT(*) AS total_claims,
+         COUNT(*) FILTER (WHERE fd.status IN ('delivered', 'completed')) AS completed_claims,
+         COUNT(*) FILTER (WHERE fd.status IN ('claimed', 'volunteer_assigned', 'collected', 'in_transit')) AS active_claims,
+         COALESCE(SUM(fd.quantity), 0) AS total_servings,
+         COALESCE(SUM(fd.weight_kg), 0) AS total_weight_kg
+       FROM donation_claims c
+       JOIN food_donations fd ON fd.id = c.donation_id
+       WHERE c.ngo_id = $1 AND c.status = 'accepted' ${timeFilter}`,
+      [ngoId]
+    );
+
+    const c = claimsResult.rows[0];
+    const totalWeight = parseFloat(c.total_weight_kg) || 0;
+    const totalServings = parseInt(c.total_servings, 10) || 0;
+    const kg_rescued = Math.round(totalWeight * 10) / 10;
+    const co2_prevented_kg = Math.round(kg_rescued * 2.0 * 10) / 10;
+
+    return {
+      meals_saved: totalServings,
+      kg_rescued,
+      co2_prevented_kg,
+      active_volunteers: 0,
+      donations_completed: parseInt(c.completed_claims, 10) || 0,
+      donations_total: parseInt(c.total_claims, 10) || 0,
+      donations: {
+        total_donations: parseInt(c.total_claims, 10) || 0,
+        completed_donations: parseInt(c.completed_claims, 10) || 0,
+        active_donations: parseInt(c.active_claims, 10) || 0,
+        total_servings: totalServings,
+        rescued_servings: totalServings,
+      },
+      users: { ngo: 1 },
+      deliveries: { total_deliveries: parseInt(c.completed_claims, 10) || 0 },
+    };
+  }
+
+  // 3. VOLUNTEER ISOLATION: Calculate metrics strictly for this volunteer
+  if (user?.role === 'volunteer') {
+    const volRes = await db.query(
+      'SELECT id, total_deliveries FROM volunteers WHERE user_id = $1',
+      [user.id]
+    );
+    const volunteerId = volRes.rows[0]?.id || '00000000-0000-0000-0000-000000000000';
+
+    const deliveriesResult = await db.query(
+      `SELECT
+         COUNT(*) AS total_deliveries,
+         COUNT(*) FILTER (WHERE d.status = 'delivered') AS completed_deliveries,
+         COUNT(*) FILTER (WHERE d.status IN ('accepted', 'picked_up', 'in_transit')) AS active_deliveries,
+         COALESCE(SUM(d.distance_km), 0) AS total_distance_km,
+         COALESCE(SUM(fd.quantity), 0) AS total_servings,
+         COALESCE(SUM(fd.weight_kg), 0) AS total_weight_kg
+       FROM deliveries d
+       JOIN food_donations fd ON fd.id = d.donation_id
+       WHERE d.volunteer_id = $1`,
+      [volunteerId]
+    );
+
+    const del = deliveriesResult.rows[0];
+    const totalWeight = parseFloat(del.total_weight_kg) || 0;
+    const totalServings = parseInt(del.total_servings, 10) || 0;
+    const kg_rescued = Math.round(totalWeight * 10) / 10;
+    const co2_prevented_kg = Math.round(kg_rescued * 2.0 * 10) / 10;
+
+    return {
+      meals_saved: totalServings,
+      kg_rescued,
+      co2_prevented_kg,
+      active_volunteers: 1,
+      donations_completed: parseInt(del.completed_deliveries, 10) || 0,
+      donations_total: parseInt(del.total_deliveries, 10) || 0,
+      donations: {
+        total_donations: parseInt(del.total_deliveries, 10) || 0,
+        completed_donations: parseInt(del.completed_deliveries, 10) || 0,
+        active_donations: parseInt(del.active_deliveries, 10) || 0,
+        total_servings: totalServings,
+        rescued_servings: totalServings,
+      },
+      users: { volunteer: 1 },
+      deliveries: del,
+    };
+  }
+
+  // 4. ADMIN & PUBLIC (Platform-wide totals)
+  let publicTimeFilter = '';
+  if (timeRange === 'month') {
+    publicTimeFilter = `AND created_at >= NOW() - INTERVAL '30 days'`;
+  } else if (timeRange === 'year') {
+    publicTimeFilter = `AND created_at >= NOW() - INTERVAL '365 days'`;
+  }
+  const publicRescuedCondition = `status IN ('claimed', 'matched', 'volunteer_assigned', 'collected', 'delivered', 'completed')`;
 
   const donationsResult = await db.query(
     `SELECT
        COUNT(*) AS total_donations,
-       COUNT(*) FILTER (WHERE ${rescuedCondition}) AS completed_donations,
+       COUNT(*) FILTER (WHERE ${publicRescuedCondition}) AS completed_donations,
        COUNT(*) FILTER (WHERE status = 'posted') AS active_donations,
        COALESCE(SUM(quantity), 0) AS total_servings,
-       COALESCE(SUM(quantity) FILTER (WHERE ${rescuedCondition}), 0) AS rescued_servings,
+       COALESCE(SUM(quantity) FILTER (WHERE ${publicRescuedCondition}), 0) AS rescued_servings,
        COALESCE(SUM(weight_kg), 0) AS total_weight_kg,
-       COALESCE(SUM(weight_kg) FILTER (WHERE ${rescuedCondition}), 0) AS rescued_weight_kg
+       COALESCE(SUM(weight_kg) FILTER (WHERE ${publicRescuedCondition}), 0) AS rescued_weight_kg
      FROM food_donations
-     WHERE 1=1 ${timeFilter}`
+     WHERE 1=1 ${publicTimeFilter}`
   );
 
   const d = donationsResult.rows[0];

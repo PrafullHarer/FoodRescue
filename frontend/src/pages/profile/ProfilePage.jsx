@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useReputation } from '../../contexts/ReputationContext';
 import api from '../../api/client';
 import {
   User, Mail, Phone, MapPin, Building2, Calendar,
-  Shield, Edit3, Check, X, Loader2, Briefcase, Truck, Hash
+  Shield, Edit3, Check, X, Loader2, Briefcase, Truck, Hash,
+  Star, Award, ExternalLink
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import UserRatingBadge from '../../components/reviews/UserRatingBadge';
 
 const roleLabel = {
   provider: 'Food Provider',
@@ -23,6 +27,7 @@ const roleBadgeClass = {
 
 export default function ProfilePage() {
   const { user, fetchUser } = useAuth();
+  const { openReputation } = useReputation();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -346,6 +351,47 @@ export default function ProfilePage() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Trust, Ratings & Reliability Card (Hidden for Administrators) */}
+      {user?.role !== 'admin' && (
+        <div className="bg-[#121214] rounded-2xl border border-[#232328] p-5 sm:p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#232328] pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-400/10 border border-amber-400/20 text-amber-400 flex items-center justify-center flex-shrink-0">
+                <Star className="w-5 h-5 fill-amber-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  Ratings & Trust Profile
+                </h3>
+                <p className="text-xs text-neutral-400">
+                  Verified community feedback and reliability metrics across completed rescues.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => openReputation(user?.id)}
+                className="px-3.5 py-1.5 rounded-xl border border-[#282830] bg-[#1a1a1e] hover:bg-[#25252a] text-neutral-300 hover:text-white text-xs font-semibold transition-colors flex items-center gap-1.5"
+              >
+                <ExternalLink className="w-3.5 h-3.5" /> Preview Public Reputation
+              </button>
+              <Link
+                to="/reviews"
+                className="btn btn-primary text-xs py-1.5 px-3.5 flex items-center gap-1.5"
+              >
+                <Award className="w-3.5 h-3.5" /> Full Reputation Hub
+              </Link>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-xs text-neutral-400">Current Rating Badge:</span>
+            {user?.id && <UserRatingBadge userId={user.id} showCount={true} size="md" />}
           </div>
         </div>
       )}

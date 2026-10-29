@@ -21,9 +21,13 @@ const analyticsRoutes = require('./modules/analytics/analytics.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
 const reviewRoutes = require('./modules/reviews/review.routes');
 const complaintRoutes = require('./modules/complaints/complaint.routes');
+const incidentRoutes = require('./modules/incidents/incident.routes');
+const feedbackRoutes = require('./modules/feedback/feedback.routes');
 
 // Import background jobs
 const { startExpiryChecker } = require('./jobs/expiry-checker.cron');
+const { startIncidentDetector } = require('./jobs/incident-detector.cron');
+const { startComplaintEscalator } = require('./jobs/complaint-escalator.cron');
 
 const app = express();
 
@@ -111,6 +115,7 @@ const apiLimiter = rateLimit({
 app.use('/api', apiLimiter);
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/google', authLimiter);
 app.use('/api/auth/refresh', authLimiter);
 
 // ─── 6. Health Check ─────────────────────────────────────────
@@ -136,6 +141,8 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/complaints', complaintRoutes);
+app.use('/api/incidents', incidentRoutes);
+app.use('/api/feedback', feedbackRoutes);
 
 // ─── 8. 404 Handler ──────────────────────────────────────────
 app.use((req, res) => {
@@ -158,6 +165,8 @@ app.listen(PORT, () => {
 
   // Start background jobs
   startExpiryChecker();
+  startIncidentDetector();
+  startComplaintEscalator();
 });
 
 // ─── Process Error Handlers ──────────────────────────────────

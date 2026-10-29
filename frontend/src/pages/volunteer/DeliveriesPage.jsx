@@ -4,10 +4,15 @@ import api from '../../api/client';
 import {
   Truck, CheckCircle2, Clock, MapPin, ArrowRight, QrCode,
   ShieldCheck, AlertCircle, Sparkles, User, Phone, Mail,
-  Check, RefreshCw, ChevronRight, Eye, Map, X
+  Check, RefreshCw, ChevronRight, Eye, Map, X, AlertTriangle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import StaticRouteMap from '../../components/common/StaticRouteMap';
+import UserReputationLink from '../../components/reviews/UserReputationLink';
+import ReviewEligibilityIndicator from '../../components/reviews/ReviewEligibilityIndicator';
+import ReportIncidentModal from '../../components/incidents/ReportIncidentModal';
+import RaiseComplaintModal from '../../components/complaints/RaiseComplaintModal';
+import { ShieldAlert } from 'lucide-react';
 
 export default function DeliveriesPage() {
   const [activeTab, setActiveTab] = useState('my'); // 'my' | 'available'
@@ -17,6 +22,8 @@ export default function DeliveriesPage() {
   const [claimingId, setClaimingId] = useState(null);
   const [selectedQrDelivery, setSelectedQrDelivery] = useState(null);
   const [selectedMapMission, setSelectedMapMission] = useState(null);
+  const [incidentDelivery, setIncidentDelivery] = useState(null);
+  const [complaintDelivery, setComplaintDelivery] = useState(null);
 
   const [hasSetInitialTab, setHasSetInitialTab] = useState(false);
 
@@ -233,6 +240,22 @@ export default function DeliveriesPage() {
                       >
                         <Eye className="w-4 h-4" />
                       </Link>
+
+                      <button
+                        onClick={() => setComplaintDelivery(d)}
+                        className="p-2.5 rounded-xl border border-amber-500/20 bg-[#18181b] text-amber-400 hover:text-amber-300 transition-colors"
+                        title="Raise an Official Complaint"
+                      >
+                        <ShieldAlert className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        onClick={() => setIncidentDelivery(d)}
+                        className="p-2.5 rounded-xl border border-rose-500/20 bg-[#18181b] text-rose-400 hover:text-rose-300 transition-colors"
+                        title="Report Delivery Exception or Incident"
+                      >
+                        <AlertTriangle className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
 
@@ -252,7 +275,14 @@ export default function DeliveriesPage() {
                           <span className="text-amber-400">Pending Scan</span>
                         )}
                       </div>
-                      <p className="text-white font-bold text-sm">{d.provider_name || 'Food Donor'}</p>
+                      <div className="pt-0.5">
+                        <UserReputationLink
+                          userId={d.provider_user_id}
+                          name={d.provider_name || 'Food Donor'}
+                          isVerified={d.provider_is_verified}
+                          showBadge={true}
+                        />
+                      </div>
                       <p className="text-neutral-400 text-xs">{d.pickup_address || 'Address pending'}</p>
                       {d.provider_phone && (
                         <p className="text-neutral-500 text-[11px] flex items-center gap-1.5 pt-1">
@@ -275,7 +305,14 @@ export default function DeliveriesPage() {
                           <span className="text-blue-400">Awaiting Dropoff</span>
                         )}
                       </div>
-                      <p className="text-white font-bold text-sm">{d.ngo_name || 'NGO Shelter'}</p>
+                      <div className="pt-0.5">
+                        <UserReputationLink
+                          userId={d.ngo_user_id}
+                          name={d.ngo_name || 'NGO Shelter'}
+                          isVerified={d.ngo_is_verified}
+                          showBadge={true}
+                        />
+                      </div>
                       <p className="text-neutral-400 text-xs">{d.ngo_address || 'Address pending'}</p>
                       {d.ngo_phone && (
                         <p className="text-neutral-500 text-[11px] flex items-center gap-1.5 pt-1">
@@ -309,6 +346,13 @@ export default function DeliveriesPage() {
                           "{checklist.notes}"
                         </p>
                       )}
+                    </div>
+                  )}
+
+                  {/* Completed Delivery Reviews & Rating Trigger */}
+                  {isDelivered && (
+                    <div className="pt-1">
+                      <ReviewEligibilityIndicator deliveryId={d.id} onReviewSubmitted={loadData} />
                     </div>
                   )}
 
@@ -402,7 +446,14 @@ export default function DeliveriesPage() {
                     <span className="text-[10px] uppercase font-bold text-neutral-500 block">
                       📍 1. Food Donor Pickup
                     </span>
-                    <p className="text-white font-bold">{m.provider_name || 'Donor Provider'}</p>
+                    <div className="pt-0.5">
+                      <UserReputationLink
+                        userId={m.provider_user_id}
+                        name={m.provider_name || 'Donor Provider'}
+                        isVerified={m.provider_is_verified}
+                        showBadge={true}
+                      />
+                    </div>
                     <p className="text-neutral-400 text-xs">{m.pickup_address}</p>
                   </div>
 
@@ -410,7 +461,14 @@ export default function DeliveriesPage() {
                     <span className="text-[10px] uppercase font-bold text-neutral-500 block">
                       🏢 2. Shelter Destination
                     </span>
-                    <p className="text-white font-bold">{m.ngo_name || 'NGO Shelter'}</p>
+                    <div className="pt-0.5">
+                      <UserReputationLink
+                        userId={m.ngo_user_id}
+                        name={m.ngo_name || 'NGO Shelter'}
+                        isVerified={m.ngo_is_verified}
+                        showBadge={true}
+                      />
+                    </div>
                     <p className="text-neutral-400 text-xs">{m.ngo_address}</p>
                   </div>
                 </div>
@@ -511,6 +569,27 @@ export default function DeliveriesPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Report Incident Modal */}
+      {incidentDelivery && (
+        <ReportIncidentModal
+          isOpen={Boolean(incidentDelivery)}
+          onClose={() => setIncidentDelivery(null)}
+          deliveryId={incidentDelivery.id}
+          donationId={incidentDelivery.donation_id}
+          defaultTitle={`Delivery exception: ${incidentDelivery.donation_title || 'Active mission'}`}
+        />
+      )}
+
+      {/* Raise Complaint Modal */}
+      {complaintDelivery && (
+        <RaiseComplaintModal
+          isOpen={Boolean(complaintDelivery)}
+          onClose={() => setComplaintDelivery(null)}
+          prefillDeliveryId={complaintDelivery.id}
+          prefillDonationId={complaintDelivery.donation_id}
+        />
       )}
     </div>
   );

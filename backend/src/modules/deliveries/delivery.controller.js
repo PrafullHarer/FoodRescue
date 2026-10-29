@@ -36,7 +36,8 @@ const updateDeliveryStatus = async (req, res, next) => {
     const delivery = await deliveryService.updateDeliveryStatus(
       req.params.id,
       req.body.status,
-      req.user.id
+      req.user.id,
+      req.user.role
     );
     res.json({ success: true, data: delivery });
   } catch (error) {
@@ -49,7 +50,7 @@ const updateDeliveryStatus = async (req, res, next) => {
  */
 const getDeliveryById = async (req, res, next) => {
   try {
-    const delivery = await deliveryService.getDeliveryById(req.params.id);
+    const delivery = await deliveryService.getDeliveryById(req.params.id, req.user);
     res.json({ success: true, data: delivery });
   } catch (error) {
     next(error);
@@ -66,6 +67,7 @@ const getDeliveries = async (req, res, next) => {
       limit: req.query.limit ? parseInt(req.query.limit, 10) : 20,
       status: req.query.status,
       volunteerId: req.query.volunteer_id,
+      user: req.user,
     });
     res.json({ success: true, data: result });
   } catch (error) {

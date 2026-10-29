@@ -2,17 +2,21 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   LayoutDashboard, Package, Users, Truck, QrCode, Bell,
-  BarChart3, Shield, LogOut, ChevronLeft, Menu, X, Box, User
+  BarChart3, Shield, LogOut, ChevronLeft, Menu, X, User, Star, ShieldAlert,
+  MessageSquareQuote, MapPin
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import api from '../../api/client';
 import ThemeToggle from '../common/ThemeToggle';
+import Logo from '../common/Logo';
 
 const roleNavItems = {
   provider: [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/donations', icon: Package, label: 'My Donations' },
     { to: '/donations/new', icon: Package, label: 'Post Donation' },
+    { to: '/reviews', icon: Star, label: 'Ratings & Trust' },
+    { to: '/complaints', icon: ShieldAlert, label: 'My Complaints' },
     { to: '/notifications', icon: Bell, label: 'Notifications', hasBadge: true },
     { to: '/analytics', icon: BarChart3, label: 'Impact' },
   ],
@@ -20,6 +24,8 @@ const roleNavItems = {
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/browse', icon: Package, label: 'Browse Donations' },
     { to: '/claims', icon: Package, label: 'My Claims' },
+    { to: '/reviews', icon: Star, label: 'Ratings & Trust' },
+    { to: '/complaints', icon: ShieldAlert, label: 'My Complaints' },
     { to: '/qr-scan', icon: QrCode, label: 'Verify Dropoff QR' },
     { to: '/notifications', icon: Bell, label: 'Notifications', hasBadge: true },
     { to: '/analytics', icon: BarChart3, label: 'Impact' },
@@ -27,17 +33,23 @@ const roleNavItems = {
   volunteer: [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/deliveries', icon: Truck, label: 'My Deliveries' },
+    { to: '/reviews', icon: Star, label: 'Ratings & Trust' },
+    { to: '/complaints', icon: ShieldAlert, label: 'My Complaints' },
     { to: '/qr-scan', icon: QrCode, label: 'Scan QR' },
     { to: '/notifications', icon: Bell, label: 'Notifications', hasBadge: true },
     { to: '/analytics', icon: BarChart3, label: 'Impact' },
   ],
   admin: [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { to: '/notifications', icon: Bell, label: 'Notifications', hasBadge: true },
+    { to: '/admin/hotspots', icon: MapPin, label: 'Donation Hotspots' },
+    { to: '/admin/analytics', icon: BarChart3, label: 'Analytics' },
+    { to: '/admin/incidents', icon: ShieldAlert, label: 'Incidents' },
     { to: '/admin/verifications', icon: Shield, label: 'Verifications' },
     { to: '/admin/users', icon: Users, label: 'Users' },
     { to: '/admin/complaints', icon: Shield, label: 'Complaints' },
+    { to: '/admin/feedback', icon: MessageSquareQuote, label: 'Feedback' },
     { to: '/admin/audit-logs', icon: Shield, label: 'Audit Logs' },
-    { to: '/analytics', icon: BarChart3, label: 'Analytics' },
   ],
 };
 
@@ -93,27 +105,22 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
   return (
     <>
       {/* Mobile Top Navigation Bar (Visible only on screens < lg) */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-[#0c0c0e]/95 backdrop-blur-md border-b border-[#232328] z-30 px-4 flex items-center justify-between">
+      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white/95 dark:bg-[#0c0c0e]/95 backdrop-blur-md border-b border-[#E5E7EB] dark:border-[#232328] z-30 px-4 flex items-center justify-between transition-colors">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setMobileOpen?.(!mobileOpen)}
             aria-label="Toggle navigation menu"
-            className="p-2 rounded-xl bg-[#18181b] border border-[#232328] text-white hover:bg-[#232328] active:scale-95 transition-all"
+            className="p-2 rounded-xl bg-neutral-100 dark:bg-[#18181b] border border-neutral-200 dark:border-[#232328] text-neutral-800 dark:text-white hover:bg-neutral-200 dark:hover:bg-[#232328] active:scale-95 transition-all"
           >
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
 
-          <Link to="/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-white text-black flex items-center justify-center font-bold shadow-sm">
-              <Box className="w-4 h-4 stroke-[2.5]" />
-            </div>
-            <div>
-              <span className="font-bold text-sm text-white tracking-tight leading-none block">FoodRescue</span>
-              <span className="text-[10px] text-neutral-400 font-medium leading-none block mt-0.5">
-                {roleLabel[user?.role] || 'Member'}
-              </span>
-            </div>
-          </Link>
+          <Logo
+            to="/dashboard"
+            size="sm"
+            showText={true}
+            subtitle={roleLabel[user?.role] || 'Member'}
+          />
         </div>
 
         <div className="flex items-center gap-2">
@@ -121,11 +128,11 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
 
           <Link
             to="/notifications"
-            className="relative p-2 rounded-xl bg-[#18181b] border border-[#232328] text-neutral-300 hover:text-white transition-colors"
+            className="relative p-2 rounded-xl bg-neutral-100 dark:bg-[#18181b] border border-neutral-200 dark:border-[#232328] text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors"
           >
             <Bell className="w-4 h-4" />
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 px-1.5 py-0.2 text-[9px] font-bold bg-white text-black rounded-full shadow-sm animate-pulse">
+              <span className="absolute -top-1 -right-1 px-1.5 py-0.2 text-[9px] font-bold bg-[#39FF14] text-black rounded-full shadow-xs animate-pulse">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
@@ -134,7 +141,7 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
           <button
             onClick={handleLogout}
             title="Sign Out"
-            className="p-2 rounded-xl bg-[#18181b] border border-[#232328] text-neutral-400 hover:text-red-400 transition-colors"
+            className="p-2 rounded-xl bg-neutral-100 dark:bg-[#18181b] border border-neutral-200 dark:border-[#232328] text-neutral-500 dark:text-neutral-400 hover:text-red-500 transition-colors cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
           </button>
@@ -151,22 +158,19 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
 
       {/* Sidebar: Drawer on mobile (< lg), Fixed sidebar on desktop (>= lg) */}
       <aside
-        className={`fixed left-0 top-0 h-screen bg-[#0c0c0e] border-r border-[#232328] flex flex-col transition-all duration-300 z-50
+        className={`fixed left-0 top-0 h-screen bg-white dark:bg-[#0c0c0e] border-r border-[#E5E7EB] dark:border-[#232328] text-neutral-900 dark:text-white flex flex-col transition-all duration-300 z-50
           ${mobileOpen ? 'translate-x-0 shadow-2xl shadow-black/80' : '-translate-x-full lg:translate-x-0'}
           ${collapsed ? 'lg:w-20 w-72' : 'w-72 lg:w-64'}
         `}
       >
         {/* Logo Section */}
-        <div className={`flex ${collapsed?"flex-col":"flex-row"} items-center gap-3 px-5 py-5 border-b border-[#232328]`}>
-          <div className="w-10 h-10 rounded-xl bg-white text-black flex items-center justify-center flex-shrink-0 font-bold shadow-md shadow-white/5">
-            <Box className="w-5 h-5 text-black stroke-[2.5]" />
-          </div>
-          {(!collapsed || mobileOpen) && (
-            <div className="animate-fade-in min-w-0 flex-1">
-              <h1 className="font-bold text-base text-white tracking-tight truncate">FoodRescue</h1>
-              <p className="text-[11px] text-neutral-400 font-medium truncate">{roleLabel[user?.role] || 'Member'}</p>
-            </div>
-          )}
+        <div className={`flex ${collapsed ? 'flex-col justify-center' : 'flex-row justify-between'} items-center gap-2 px-4 py-4 border-b border-[#E5E7EB] dark:border-[#232328]`}>
+          <Logo
+            to="/dashboard"
+            size="md"
+            showText={!collapsed || mobileOpen}
+            subtitle={roleLabel[user?.role] || 'Member'}
+          />
           
           {/* Desktop collapse button */}
           <button
@@ -207,14 +211,14 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
                 <div className="relative flex items-center">
                   <item.icon className="w-4 h-4 flex-shrink-0" />
                   {item.hasBadge && unreadCount > 0 && collapsed && !mobileOpen && (
-                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-white rounded-full ring-2 ring-[#0c0c0e]" />
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-[#39FF14] rounded-full ring-2 ring-white dark:ring-[#0c0c0e]" />
                   )}
                 </div>
                 {(!collapsed || mobileOpen) && (
                   <div className="flex items-center justify-between flex-1 min-w-0">
                     <span className="animate-fade-in text-sm font-medium">{item.label}</span>
                     {item.hasBadge && unreadCount > 0 && (
-                      <span className="px-1.5 py-0.5 text-[10px] font-bold bg-white text-black rounded-full shadow-sm animate-pulse">
+                      <span className="px-1.5 py-0.5 text-[10px] font-bold bg-[#39FF14] text-black rounded-full shadow-xs animate-pulse">
                         {unreadCount > 99 ? '99+' : unreadCount}
                       </span>
                     )}
@@ -226,12 +230,14 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
         </nav>
 
         {/* User profile & Footer */}
-        <div className="border-t border-[#232328] px-3 py-4 bg-[#0a0a0c] space-y-1">
+        <div className="border-t border-[#E5E7EB] dark:border-[#232328] px-3 py-3 bg-neutral-50 dark:bg-[#0a0a0c] space-y-1 transition-colors">
           <Link
             to="/profile"
             onClick={() => setMobileOpen?.(false)}
             className={`sidebar-link w-full ${
-              location.pathname === '/profile' ? 'active' : 'text-neutral-400 hover:text-white hover:bg-[#1c1c20]'
+              location.pathname === '/profile'
+                ? 'active'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-[#1c1c20]'
             } ${collapsed && !mobileOpen ? 'lg:justify-center lg:px-3' : ''}`}
             title="Profile"
           >
@@ -249,12 +255,12 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
           {/* Logout Button */}
           <button
             onClick={handleLogout}
-            className={`sidebar-link w-full text-neutral-400 hover:text-white hover:bg-[#1c1c20] ${
+            className={`sidebar-link w-full text-neutral-600 dark:text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 cursor-pointer ${
               collapsed && !mobileOpen ? 'lg:justify-center lg:px-3' : ''
             }`}
             title="Sign Out"
           >
-            <LogOut className="w-4 h-4 flex-shrink-0 text-neutral-400" />
+            <LogOut className="w-4 h-4 flex-shrink-0" />
             {(!collapsed || mobileOpen) && <span className="text-xs font-medium">Sign Out</span>}
           </button>
         </div>

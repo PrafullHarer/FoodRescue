@@ -6,12 +6,16 @@ import {
   ArrowLeft, Package, Clock, MapPin, CheckCircle2,
   AlertTriangle, QrCode, Share2, Check, Phone, Mail,
   User, Truck, ShieldCheck, Star, Sparkles, ThumbsUp,
-  UserCheck, RefreshCw
+  UserCheck, RefreshCw, Trash2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ReviewModal from '../../components/common/ReviewModal';
 import StaticRouteMap from '../../components/common/StaticRouteMap';
 import ClaimDonationModal from '../../components/common/ClaimDonationModal';
+import UserReputationLink from '../../components/reviews/UserReputationLink';
+import ReviewEligibilityIndicator from '../../components/reviews/ReviewEligibilityIndicator';
+import ReportIncidentModal from '../../components/incidents/ReportIncidentModal';
+import RaiseComplaintModal from '../../components/complaints/RaiseComplaintModal';
 
 export default function DonationDetailPage() {
   const { id } = useParams();
@@ -23,6 +27,8 @@ export default function DonationDetailPage() {
   const [claiming, setClaiming] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showClaimModal, setShowClaimModal] = useState(false);
+  const [showIncidentModal, setShowIncidentModal] = useState(false);
+  const [showComplaintModal, setShowComplaintModal] = useState(false);
   const [switchingPickupType, setSwitchingPickupType] = useState(false);
 
   const fetchDonation = async () => {
@@ -81,6 +87,17 @@ export default function DonationDetailPage() {
       navigate('/donations');
     } catch {
       toast.error('Failed to cancel donation');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm('Are you sure you want to permanently delete this donation? This action cannot be undone.')) return;
+    try {
+      await api.delete(`/donations/${id}`);
+      toast.success('Donation deleted successfully');
+      navigate('/donations');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete donation');
     }
   };
 
@@ -232,6 +249,15 @@ export default function DonationDetailPage() {
               </button>
             )}
 
+            {isOwner && ['posted', 'cancelled'].includes(donation.status) && (
+              <button
+                onClick={handleDelete}
+                className="btn border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 text-xs flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Delete Donation
+              </button>
+            )}
+
             {/* NGO Direct Self-Pickup Actions */}
             {isNgo && donation.status === 'claimed' && donation.pickup_type === 'self_pickup' && (
               <>
@@ -333,6 +359,24 @@ export default function DonationDetailPage() {
               >
                 <ThumbsUp className="w-3.5 h-3.5" /> Rate & Review
               </button>
+            )}
+
+            {!isAvailable && (
+              <>
+                <button
+                  onClick={() => setShowComplaintModal(true)}
+                  className="btn btn-secondary text-xs flex items-center gap-1.5 text-amber-400 hover:text-amber-300 border-amber-500/20 hover:border-amber-500/40"
+                  title="Raise an official complaint"
+                >
+                  <ShieldAlert className="w-3.5 h-3.5" /> Raise Complaint
+                </button>
+                <button
+                  onClick={() => setShowIncidentModal(true)}
+                  className="btn btn-secondary text-xs flex items-center gap-1.5 text-rose-400 hover:text-rose-300 border-rose-500/20 hover:border-rose-500/40"
+                >
+                  <AlertTriangle className="w-3.5 h-3.5" /> Report Issue
+                </button>
+              </>
             )}
           </div>
 
@@ -478,7 +522,14 @@ export default function DonationDetailPage() {
           <div className="space-y-2.5 text-xs">
             <div>
               <span className="text-neutral-500 uppercase text-[10px] font-bold block">Business / Organization</span>
-              <p className="text-white font-bold text-sm mt-0.5">{donation.provider_name || 'Donor Provider'}</p>
+              <div className="mt-1">
+                <UserReputationLink
+                  userId={donation.provider_user_id}
+                  name={donation.provider_name || 'Donor Provider'}
+                  isVerified={donation.provider_is_verified}
+                  showBadge={true}
+                />
+              </div>
             </div>
 
             {donation.provider_contact && (
@@ -540,7 +591,14 @@ export default function DonationDetailPage() {
             <div className="space-y-3 text-xs">
               <div>
                 <span className="text-neutral-500 uppercase text-[10px] font-bold block">Collecting Shelter</span>
-                <p className="text-white font-bold text-sm mt-0.5">{donation.ngo_name || 'Claiming Shelter NGO'}</p>
+                <div className="mt-1">
+                  <UserReputationLink
+                    userId={donation.ngo_user_id}
+                    name={donation.ngo_name || 'Claiming Shelter NGO'}
+                    isVerified={donation.ngo_is_verified}
+                    showBadge={true}
+                  />
+                </div>
               </div>
 
               {donation.ngo_contact && (
@@ -569,14 +627,14 @@ export default function DonationDetailPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-neutral-500 uppercase text-[10px] font-bold block">Volunteer Name</span>
-                  <p className="text-white font-bold text-sm mt-0.5">{donation.volunteer_name || 'Assigned Volunteer'}</p>
+                  <div className="mt-1">
+                    <UserReputationLink
+                      userId={donation.volunteer_user_id}
+                      name={donation.volunteer_name || 'Assigned Volunteer'}
+                      showBadge={true}
+                    />
+                  </div>
                 </div>
-                {donation.volunteer_rating > 0 && (
-                  <span className="flex items-center gap-1 text-xs font-bold text-amber-400 bg-amber-400/10 px-2 py-1 rounded-lg border border-amber-400/20">
-                    <Star className="w-3.5 h-3.5 fill-amber-400" />
-                    {Number(donation.volunteer_rating).toFixed(1)}
-                  </span>
-                )}
               </div>
 
               {donation.volunteer_phone && (
@@ -624,16 +682,15 @@ export default function DonationDetailPage() {
             <h3 className="text-base font-bold text-white tracking-tight">Claim Feedback & Reviews</h3>
             <span className="text-xs text-neutral-400">({reviews.length})</span>
           </div>
-
-          {isNgo && (
-            <button
-              onClick={() => setShowReviewModal(true)}
-              className="px-3.5 py-1.5 rounded-xl bg-white text-black hover:bg-neutral-200 text-xs font-bold transition-all flex items-center gap-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5" /> Write Review
-            </button>
-          )}
         </div>
+
+        {/* Dynamic Verification & Review Actions */}
+        {donation.delivery_id && (
+          <ReviewEligibilityIndicator
+            deliveryId={donation.delivery_id}
+            onReviewSubmitted={() => fetchDonation()}
+          />
+        )}
 
         {reviews.length === 0 ? (
           <div className="py-8 text-center space-y-2">
@@ -649,9 +706,13 @@ export default function DonationDetailPage() {
               <div key={rev.id} className="pt-4 first:pt-0 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-white">{rev.reviewer_name || 'NGO Reviewer'}</span>
+                    <UserReputationLink
+                      userId={rev.reviewer_id}
+                      name={rev.reviewer_name || 'Reviewer'}
+                      showBadge={false}
+                    />
                     <span className="text-[10px] text-neutral-500 uppercase px-1.5 py-0.2 rounded bg-[#1c1c20] border border-[#27272e]">
-                      {rev.reviewer_role || 'NGO'}
+                      {rev.reviewer_role || 'Verified User'}
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
@@ -703,6 +764,27 @@ export default function DonationDetailPage() {
           donation={donation}
           onConfirmClaim={handleConfirmClaim}
           isClaiming={claiming}
+        />
+      )}
+
+      {/* Incident Report Modal */}
+      {showIncidentModal && (
+        <ReportIncidentModal
+          isOpen={showIncidentModal}
+          onClose={() => setShowIncidentModal(false)}
+          donationId={donation?.id}
+          deliveryId={qrData?.delivery_id || donation?.delivery_id}
+          defaultTitle={donation?.title ? `Issue with: ${donation.title}` : ''}
+        />
+      )}
+
+      {/* Raise Complaint Modal */}
+      {showComplaintModal && (
+        <RaiseComplaintModal
+          isOpen={showComplaintModal}
+          onClose={() => setShowComplaintModal(false)}
+          prefillDonationId={donation?.id}
+          prefillDeliveryId={qrData?.delivery_id || donation?.delivery_id}
         />
       )}
     </div>

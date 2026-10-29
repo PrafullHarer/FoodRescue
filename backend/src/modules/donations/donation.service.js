@@ -41,21 +41,73 @@ const createDonation = async (providerId, data) => {
 };
 
 /**
- * Get all donations with optional filters.
+ * Get all donations with role-based data isolation and optional filters.
  */
-const getDonations = async ({ page = 1, limit = 20, status, category, providerId, lat, lng, radiusKm }) => {
+const getDonations = async ({
+  page = 1,
+  limit = 20,
+  status,
+  category,
+  providerId,
+  myClaimsOnly = false,
+  user = null,
+  lat,
+  lng,
+  radiusKm,
+}) => {
   const offset = (page - 1) * limit;
   const params = [];
   const conditions = [];
 
+  // 1. Enforce strict role-based data ownership
+  if (user?.role === 'provider') {
+    // Food provider CAN ONLY view their own donations
+    const provRes = await db.query(
+      'SELECT id FROM food_providers WHERE user_id = $1',
+      [user.id]
+    );
+    const myProviderId = provRes.rows[0]?.id || '00000000-0000-0000-0000-000000000000';
+    params.push(myProviderId);
+    conditions.push(`fd.provider_id = $${params.length}`);
+  } else if (user?.role === 'ngo') {
+    if (myClaimsOnly) {
+      // NGO viewing only their claimed donations
+      const ngoRes = await db.query(
+        'SELECT id FROM ngos WHERE user_id = $1',
+        [user.id]
+      );
+      const myNgoId = ngoRes.rows[0]?.id || '00000000-0000-0000-0000-000000000000';
+      params.push(myNgoId);
+      conditions.push(`c.ngo_id = $${params.length} AND c.status = 'accepted'`);
+    } else {
+      // NGO browsing available donations: only show active/unclaimed/unexpired donations
+      conditions.push(`fd.status IN ('posted', 'matched') AND fd.expiry_time > NOW()`);
+    }
+  } else if (user?.role === 'volunteer') {
+    if (!status) {
+      conditions.push(`fd.status IN ('claimed', 'posted', 'matched', 'volunteer_assigned', 'collected')`);
+    }
+  } else if (user?.role === 'admin') {
+    // Admins can filter by specific providerId if supplied
+    if (providerId) {
+      params.push(providerId);
+      conditions.push(`fd.provider_id = $${params.length}`);
+    }
+  } else {
+    // Public / unauthenticated: strictly posted and unexpired
+    conditions.push(`fd.status = 'posted' AND fd.expiry_time > NOW()`);
+  }
+
   let selectFields = `
     fd.*,
+    fp.user_id AS provider_user_id,
     fp.business_name AS provider_name,
     fp.business_type AS provider_business_type,
     fp.address AS provider_address,
     fp.is_verified AS provider_is_verified,
     fp.total_donations AS provider_total_donations,
     fp.operating_hours AS provider_operating_hours,
+    u.id AS donor_user_id,
     u.full_name AS provider_contact,
     u.phone AS provider_phone,
     u.email AS provider_email,
@@ -67,6 +119,8 @@ const getDonations = async ({ page = 1, limit = 20, status, category, providerId
     del.delivery_time AS delivery_completed_time,
     del.notes AS delivery_notes,
     del.distance_km AS delivery_distance_km,
+    v.id AS volunteer_id,
+    v_user.id AS volunteer_user_id,
     v_user.full_name AS volunteer_name,
     v_user.phone AS volunteer_phone,
     v_user.email AS volunteer_email,
@@ -75,7 +129,10 @@ const getDonations = async ({ page = 1, limit = 20, status, category, providerId
     v.total_deliveries AS volunteer_total_deliveries,
     c.id AS claim_id,
     c.status AS claim_status,
+    c.pickup_type AS claim_pickup_type,
     c.claimed_at AS claim_time,
+    ngo.id AS ngo_id,
+    ngo_u.id AS ngo_user_id,
     ngo.organization_name AS ngo_name,
     ngo_u.phone AS ngo_phone,
     ngo_u.email AS ngo_email
@@ -93,7 +150,7 @@ const getDonations = async ({ page = 1, limit = 20, status, category, providerId
     LEFT JOIN users ngo_u ON ngo_u.id = ngo.user_id
   `;
 
-  if (status) {
+  if (status && (user?.role === 'provider' || user?.role === 'admin' || myClaimsOnly)) {
     params.push(status);
     conditions.push(`fd.status = $${params.length}`);
   }
@@ -101,11 +158,6 @@ const getDonations = async ({ page = 1, limit = 20, status, category, providerId
   if (category) {
     params.push(category);
     conditions.push(`fd.category = $${params.length}`);
-  }
-
-  if (providerId) {
-    params.push(providerId);
-    conditions.push(`fd.provider_id = $${params.length}`);
   }
 
   // Geo-filtering using Haversine approximation
@@ -126,9 +178,11 @@ const getDonations = async ({ page = 1, limit = 20, status, category, providerId
 
   const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
 
-  // Run lean count and data query concurrently to eliminate multi-second latency
+  // Run lean count and data query concurrently
   const countPromise = db.query(
-    `SELECT COUNT(*) FROM food_donations fd ${whereClause}`,
+    `SELECT COUNT(*) FROM food_donations fd
+     LEFT JOIN donation_claims c ON c.donation_id = fd.id AND c.status = 'accepted'
+     ${whereClause}`,
     params
   );
 
@@ -150,6 +204,16 @@ const getDonations = async ({ page = 1, limit = 20, status, category, providerId
   const total = parseInt(countResult.rows[0]?.count || 0, 10);
   const rows = dataResult.rows;
 
+  // Redact sensitive contact info for unauthenticated visitors
+  if (!user) {
+    rows.forEach((r) => {
+      r.provider_phone = null;
+      r.provider_email = null;
+      r.ngo_phone = null;
+      r.ngo_email = null;
+    });
+  }
+
   return {
     donations: rows,
     pagination: { page, limit, total, totalPages: Math.ceil(total / limit) || 1 },
@@ -158,8 +222,9 @@ const getDonations = async ({ page = 1, limit = 20, status, category, providerId
 
 /**
  * Get a single donation by ID with comprehensive Provider, Volunteer, Delivery and Review details.
+ * Strictly verifies ownership so providers only view their own listings, NGOs only view available or claimed listings.
  */
-const getDonationById = async (donationId) => {
+const getDonationById = async (donationId, user = null) => {
   const { rows } = await db.query(
     `SELECT
       fd.*,
@@ -196,6 +261,7 @@ const getDonationById = async (donationId) => {
       c.pickup_type AS claim_pickup_type,
       c.claimed_at AS claim_time,
       ngo.id AS ngo_id,
+      ngo_u.id AS ngo_user_id,
       ngo.organization_name AS ngo_name,
       ngo.address AS ngo_address,
       ngo_u.full_name AS ngo_contact,
@@ -222,6 +288,42 @@ const getDonationById = async (donationId) => {
 
   const donation = rows[0];
 
+  // Role-based data ownership verification
+  if (user) {
+    if (user.role === 'provider') {
+      if (donation.provider_user_id !== user.id) {
+        const err = new Error('Access denied. You can only view your own donation listings.');
+        err.statusCode = 403;
+        throw err;
+      }
+    } else if (user.role === 'ngo') {
+      const isAvailable = ['posted', 'matched'].includes(donation.status);
+      const isClaimedByMe = donation.ngo_user_id === user.id;
+      if (!isAvailable && !isClaimedByMe) {
+        const err = new Error('Access denied. This donation was claimed by another organization.');
+        err.statusCode = 403;
+        throw err;
+      }
+    } else if (user.role === 'volunteer') {
+      const isOpenMission = !donation.volunteer_id && ['claimed', 'posted', 'matched'].includes(donation.status);
+      const isAssignedToMe = donation.volunteer_user_id === user.id;
+      if (!isOpenMission && !isAssignedToMe) {
+        const err = new Error('Access denied. This delivery is assigned to another volunteer.');
+        err.statusCode = 403;
+        throw err;
+      }
+    }
+  } else {
+    // Unauthenticated: only public 'posted' donations
+    if (donation.status !== 'posted') {
+      const err = new Error('Donation not found or not publicly accessible.');
+      err.statusCode = 404;
+      throw err;
+    }
+    donation.provider_phone = null;
+    donation.provider_email = null;
+  }
+
   // Fetch reviews for this donation
   const { rows: reviews } = await db.query(
     `SELECT r.*, u.full_name AS reviewer_name, u.role AS reviewer_role
@@ -235,6 +337,44 @@ const getDonationById = async (donationId) => {
   donation.reviews = reviews;
 
   return donation;
+};
+
+/**
+ * Get all donations claimed by an NGO.
+ */
+const getMyClaims = async (userId, { page = 1, limit = 50, status } = {}) => {
+  return getDonations({
+    page,
+    limit,
+    status,
+    myClaimsOnly: true,
+    user: { id: userId, role: 'ngo' },
+  });
+};
+
+/**
+ * Delete a donation (only by the provider who created it, while status is 'posted' or 'cancelled').
+ */
+const deleteDonation = async (donationId, providerId) => {
+  const existing = await getDonationById(donationId);
+
+  if (existing.provider_id !== providerId) {
+    const err = new Error('You can only delete your own donations.');
+    err.statusCode = 403;
+    throw err;
+  }
+
+  const nonDeletable = ['claimed', 'volunteer_assigned', 'collected', 'delivered', 'completed'];
+  if (nonDeletable.includes(existing.status)) {
+    const err = new Error(
+      `Cannot delete donation with status "${existing.status}". Active claims or deliveries are in progress. Cancel it instead if needed.`
+    );
+    err.statusCode = 400;
+    throw err;
+  }
+
+  await db.query('DELETE FROM food_donations WHERE id = $1', [donationId]);
+  return { success: true, message: 'Donation deleted successfully.' };
 };
 
 /**
@@ -510,7 +650,9 @@ module.exports = {
   createDonation,
   getDonations,
   getDonationById,
+  getMyClaims,
   updateDonation,
+  deleteDonation,
   transitionStatus,
   claimDonation,
   updatePickupType,

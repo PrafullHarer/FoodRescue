@@ -191,6 +191,21 @@ const validateQRCodePreview = async (code) => {
   };
 };
 
+const recordFailedQRAttempt = async (code, scannedByUserId, failureReason, deliveryId = null) => {
+  try {
+    const clean = (code || '').trim().toUpperCase();
+    const prefix = clean.slice(0, 10) || 'UNKNOWN';
+    const hash = crypto.createHash('sha256').update(clean).digest('hex');
+    await db.query(
+      `INSERT INTO qr_scan_attempts (code_prefix, code_hash, scanned_by, delivery_id, failure_reason, attempted_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())`,
+      [prefix, hash, scannedByUserId || null, deliveryId || null, failureReason.slice(0, 250)]
+    );
+  } catch {
+    // Non-blocking
+  }
+};
+
 /**
  * Scan / Validate a QR code and advance the delivery workflow.
  * - Pickup QR: Scanned by Volunteer at Food Provider location with Quality Inspection checklist.
@@ -219,6 +234,7 @@ const scanQRCode = async (code, scannedByUserId, qualityChecklist = null) => {
   );
 
   if (rows.length === 0) {
+    await recordFailedQRAttempt(cleanCode, scannedByUserId, 'Invalid QR code');
     const err = new Error('Invalid QR code.');
     err.statusCode = 404;
     throw err;
@@ -227,15 +243,87 @@ const scanQRCode = async (code, scannedByUserId, qualityChecklist = null) => {
   const qrCode = rows[0];
 
   if (qrCode.is_scanned) {
+    await recordFailedQRAttempt(cleanCode, scannedByUserId, 'Code already scanned', qrCode.delivery_id);
     const err = new Error('This QR code has already been scanned and verified.');
     err.statusCode = 400;
     throw err;
   }
 
   if (new Date(qrCode.expires_at) < new Date()) {
+    await recordFailedQRAttempt(cleanCode, scannedByUserId, 'Code expired', qrCode.delivery_id);
     const err = new Error('QR code has expired.');
     err.statusCode = 400;
     throw err;
+  }
+
+  const isNgoDirectPickup = qrCode.scanner_role === 'ngo' || qrCode.pickup_type === 'self_pickup';
+
+  // --- Strict Sequence & Status Validation ---
+  if (qrCode.type === 'pickup') {
+    if (['delivered', 'completed'].includes(qrCode.delivery_status)) {
+      const err = new Error('Cannot verify pickup: This delivery is already completed.');
+      err.statusCode = 400;
+      throw err;
+    }
+    if (['in_transit', 'collected'].includes(qrCode.delivery_status)) {
+      const err = new Error('Pickup has already been verified. Food is currently in transit to shelter.');
+      err.statusCode = 400;
+      throw err;
+    }
+    if (['failed', 'cancelled'].includes(qrCode.delivery_status)) {
+      const err = new Error(`Cannot verify pickup: Delivery is ${qrCode.delivery_status}.`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // Role & Participant Authorization
+    if (isNgoDirectPickup) {
+      if (scannedByUserId !== qrCode.ngo_user_id && qrCode.scanner_role !== 'admin') {
+        const err = new Error('Only the designated NGO recipient (or admin) can verify direct self-pickup.');
+        err.statusCode = 403;
+        throw err;
+      }
+    } else {
+      if (!qrCode.volunteer_user_id) {
+        const err = new Error('No volunteer has claimed this delivery mission yet.');
+        err.statusCode = 400;
+        throw err;
+      }
+      if (scannedByUserId !== qrCode.volunteer_user_id && qrCode.scanner_role !== 'admin') {
+        const err = new Error('You are not the assigned volunteer for this delivery mission.');
+        err.statusCode = 403;
+        throw err;
+      }
+    }
+  } else if (qrCode.type === 'delivery') {
+    // Dropoff QR sequence checks
+    if (['pending', 'accepted'].includes(qrCode.delivery_status)) {
+      const err = new Error('Cannot confirm delivery dropoff: Food has not been picked up from donor yet. The pickup inspection QR must be scanned first.');
+      err.statusCode = 400;
+      throw err;
+    }
+    if (['delivered', 'completed'].includes(qrCode.delivery_status)) {
+      const err = new Error('This delivery has already been marked as completed.');
+      err.statusCode = 400;
+      throw err;
+    }
+    if (qrCode.delivery_status !== 'in_transit') {
+      const err = new Error(`Cannot confirm delivery dropoff: Delivery is not in transit (current status: ${qrCode.delivery_status}).`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // Role & Participant Authorization for Dropoff
+    if (scannedByUserId === qrCode.volunteer_user_id) {
+      const err = new Error('The dropoff QR must be scanned by the receiving NGO shelter to confirm receipt, not the delivering volunteer.');
+      err.statusCode = 400;
+      throw err;
+    }
+    if (scannedByUserId !== qrCode.ngo_user_id && qrCode.scanner_role !== 'admin') {
+      const err = new Error('Only authorized staff of the receiving NGO shelter (or admin) can verify delivery receipt.');
+      err.statusCode = 403;
+      throw err;
+    }
   }
 
   const client = await db.getClient();
@@ -248,8 +336,6 @@ const scanQRCode = async (code, scannedByUserId, qualityChecklist = null) => {
       `UPDATE qr_codes SET is_scanned = TRUE, scanned_at = NOW(), scanned_by = $1 WHERE id = $2`,
       [scannedByUserId, qrCode.id]
     );
-
-    const isNgoDirectPickup = qrCode.scanner_role === 'ngo' || qrCode.pickup_type === 'self_pickup';
 
     if (qrCode.type === 'pickup') {
       const checklistPayload = qualityChecklist || {
@@ -271,6 +357,14 @@ const scanQRCode = async (code, scannedByUserId, qualityChecklist = null) => {
            SET status = 'delivered', pickup_time = NOW(), delivery_time = NOW(), quality_checklist = $1
            WHERE id = $2`,
           [JSON.stringify(checklistPayload), qrCode.delivery_id]
+        );
+
+        // Also mark the dropoff QR as completed so it cannot be used
+        await client.query(
+          `UPDATE qr_codes
+           SET is_scanned = TRUE, scanned_at = NOW(), scanned_by = $1
+           WHERE delivery_id = $2 AND type = 'delivery'`,
+          [scannedByUserId, qrCode.delivery_id]
         );
 
         await client.query(
@@ -437,20 +531,60 @@ const scanQRCode = async (code, scannedByUserId, qualityChecklist = null) => {
 };
 
 /**
- * Get QR codes for a delivery.
+ * Get QR codes for a delivery with strict party ownership validation.
  */
-const getQRCodesForDelivery = async (deliveryId) => {
+const getQRCodesForDelivery = async (deliveryId, user = null) => {
+  const { rows } = await db.query(
+    `SELECT d.id, fp.user_id AS provider_user_id, n.user_id AS ngo_user_id, v_user.id AS volunteer_user_id
+     FROM deliveries d
+     JOIN food_donations fd ON fd.id = d.donation_id
+     JOIN food_providers fp ON fp.id = fd.provider_id
+     JOIN ngos n ON n.id = d.ngo_id
+     LEFT JOIN volunteers v ON v.id = d.volunteer_id
+     LEFT JOIN users v_user ON v_user.id = v.user_id
+     WHERE d.id = $1`,
+    [deliveryId]
+  );
+
+  if (rows.length === 0) {
+    const err = new Error('Delivery not found.');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const delivery = rows[0];
+
+  if (user && user.role !== 'admin') {
+    const isProvider = delivery.provider_user_id === user.id;
+    const isNgo = delivery.ngo_user_id === user.id;
+    const isVolunteer = delivery.volunteer_user_id === user.id;
+
+    if (!isProvider && !isNgo && !isVolunteer) {
+      const err = new Error('Access denied. You do not have permission to view verification QR codes for this delivery.');
+      err.statusCode = 403;
+      throw err;
+    }
+  }
+
   return generateQRCodes(deliveryId);
 };
 
 /**
- * Get QR codes by donation ID (convenient lookup for Food Provider, Volunteer, and NGO).
+ * Get QR codes by donation ID with strict party ownership validation.
  */
-const getQRCodesByDonationId = async (donationId) => {
+const getQRCodesByDonationId = async (donationId, user = null) => {
   const { rows } = await db.query(
     `SELECT d.id AS delivery_id, d.status AS delivery_status, d.quality_checklist,
-            d.volunteer_id, d.ngo_id
+            d.volunteer_id, d.ngo_id,
+            fp.user_id AS provider_user_id,
+            n.user_id AS ngo_user_id,
+            v_user.id AS volunteer_user_id
      FROM deliveries d
+     JOIN food_donations fd ON fd.id = d.donation_id
+     JOIN food_providers fp ON fp.id = fd.provider_id
+     JOIN ngos n ON n.id = d.ngo_id
+     LEFT JOIN volunteers v ON v.id = d.volunteer_id
+     LEFT JOIN users v_user ON v_user.id = v.user_id
      WHERE d.donation_id = $1`,
     [donationId]
   );
@@ -460,6 +594,19 @@ const getQRCodesByDonationId = async (donationId) => {
   }
 
   const delivery = rows[0];
+
+  if (user && user.role !== 'admin') {
+    const isProvider = delivery.provider_user_id === user.id;
+    const isNgo = delivery.ngo_user_id === user.id;
+    const isVolunteer = delivery.volunteer_user_id === user.id;
+
+    if (!isProvider && !isNgo && !isVolunteer) {
+      const err = new Error('Access denied. You do not have permission to view verification QR codes for this donation.');
+      err.statusCode = 403;
+      throw err;
+    }
+  }
+
   const qrs = await generateQRCodes(delivery.delivery_id);
 
   return {

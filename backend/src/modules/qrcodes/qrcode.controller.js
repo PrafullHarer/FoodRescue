@@ -47,7 +47,7 @@ const scanQRCode = async (req, res, next) => {
  */
 const getQRCodesForDelivery = async (req, res, next) => {
   try {
-    const codes = await qrcodeService.getQRCodesForDelivery(req.params.deliveryId);
+    const codes = await qrcodeService.getQRCodesForDelivery(req.params.deliveryId, req.user);
     res.json({ success: true, data: codes });
   } catch (error) {
     next(error);
@@ -59,7 +59,7 @@ const getQRCodesForDelivery = async (req, res, next) => {
  */
 const getQRCodesByDonationId = async (req, res, next) => {
   try {
-    const codes = await qrcodeService.getQRCodesByDonationId(req.params.donationId);
+    const codes = await qrcodeService.getQRCodesByDonationId(req.params.donationId, req.user);
     res.json({ success: true, data: codes });
   } catch (error) {
     next(error);

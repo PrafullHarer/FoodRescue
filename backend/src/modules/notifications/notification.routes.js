@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const notificationController = require('./notification.controller');
 const authenticate = require('../../middleware/auth');
+const ensureProfileCompleted = require('../../middleware/ensureProfileCompleted');
 
 router.use(authenticate);
+router.use(ensureProfileCompleted);
 
 router.get('/', notificationController.getNotifications);
 router.patch('/:id/read', notificationController.markAsRead);

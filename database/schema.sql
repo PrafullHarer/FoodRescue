@@ -95,16 +95,19 @@ CREATE TYPE food_category AS ENUM (
 
 -- 1. Users (all roles share this table)
 CREATE TABLE users (
-  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  email         VARCHAR(255) UNIQUE NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
-  role          user_role NOT NULL,
-  status        user_status NOT NULL DEFAULT 'pending',
-  full_name     VARCHAR(255) NOT NULL,
-  phone         VARCHAR(20),
-  avatar_url    TEXT,
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  email             VARCHAR(255) UNIQUE NOT NULL,
+  password_hash     VARCHAR(255),
+  role              user_role,
+  status            user_status NOT NULL DEFAULT 'pending',
+  full_name         VARCHAR(255) NOT NULL,
+  phone             VARCHAR(20),
+  avatar_url        TEXT,
+  google_id         VARCHAR(255) UNIQUE,
+  auth_provider     VARCHAR(50) NOT NULL DEFAULT 'local',
+  profile_completed BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- 2. Food Providers (extends users)
@@ -317,6 +320,26 @@ CREATE TABLE refresh_tokens (
   created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- 17. Reviews (Trust, Ratings & Reliability System)
+CREATE TABLE reviews (
+  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  donation_id       UUID NOT NULL REFERENCES food_donations(id) ON DELETE CASCADE,
+  delivery_id       UUID REFERENCES deliveries(id) ON DELETE CASCADE,
+  claim_id          UUID REFERENCES donation_claims(id) ON DELETE CASCADE,
+  reviewer_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  reviewee_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  reviewer_role     VARCHAR(50) NOT NULL DEFAULT 'ngo',
+  reviewed_role     VARCHAR(50) NOT NULL DEFAULT 'provider',
+  review_type       VARCHAR(50) NOT NULL DEFAULT 'claim',
+  rating            INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  comment           TEXT,
+  tags              TEXT[],
+  moderation_status VARCHAR(50) NOT NULL DEFAULT 'approved',
+  flag_reason       TEXT,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- -------------------------
 -- Indexes
 -- -------------------------
@@ -364,6 +387,17 @@ CREATE INDEX idx_qr_codes_code ON qr_codes(code);
 CREATE INDEX idx_notifications_user ON notifications(user_id);
 CREATE INDEX idx_notifications_unread ON notifications(user_id, is_read) WHERE is_read = FALSE;
 
+-- Reviews
+CREATE INDEX idx_reviews_donation_id ON reviews(donation_id);
+CREATE INDEX idx_reviews_delivery_id ON reviews(delivery_id);
+CREATE INDEX idx_reviews_reviewer_id ON reviews(reviewer_id);
+CREATE INDEX idx_reviews_reviewee_id ON reviews(reviewee_id);
+CREATE INDEX idx_reviews_rating ON reviews(rating);
+CREATE INDEX idx_reviews_moderation ON reviews(moderation_status);
+CREATE INDEX idx_reviews_created_at ON reviews(created_at DESC);
+CREATE UNIQUE INDEX idx_reviews_unique_delivery_reviewer_reviewee ON reviews (delivery_id, reviewer_id, reviewee_id, review_type) WHERE delivery_id IS NOT NULL;
+CREATE UNIQUE INDEX idx_reviews_unique_donation_reviewer_reviewee ON reviews (donation_id, reviewer_id, reviewee_id, review_type) WHERE delivery_id IS NULL;
+
 -- Audit Logs
 CREATE INDEX idx_audit_logs_actor ON audit_logs(actor_id);
 CREATE INDEX idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
@@ -372,6 +406,29 @@ CREATE INDEX idx_audit_logs_created ON audit_logs(created_at);
 -- Refresh Tokens
 CREATE INDEX idx_refresh_tokens_user ON refresh_tokens(user_id);
 CREATE INDEX idx_refresh_tokens_hash ON refresh_tokens(token_hash);
+
+-- -------------------------
+-- Public Feedback
+-- -------------------------
+CREATE TABLE IF NOT EXISTS feedback (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  name VARCHAR(255),
+  email VARCHAR(255),
+  feedback_type VARCHAR(50) NOT NULL DEFAULT 'general',
+  rating INTEGER CHECK (rating IS NULL OR (rating >= 1 AND rating <= 5)),
+  subject VARCHAR(200) NOT NULL,
+  message TEXT NOT NULL,
+  is_anonymous BOOLEAN DEFAULT false,
+  status VARCHAR(50) DEFAULT 'NEW',
+  admin_notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_feedback_status ON feedback(status);
+CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_feedback_type ON feedback(feedback_type);
 
 -- -------------------------
 -- Triggers

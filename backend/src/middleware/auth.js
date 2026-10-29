@@ -55,7 +55,7 @@ const authenticate = async (req, res, next) => {
     // 2. Query DB only on cache miss
     if (!user) {
       const { rows } = await db.query(
-        'SELECT id, email, role, status FROM users WHERE id = $1',
+        'SELECT id, email, role, status, profile_completed FROM users WHERE id = $1',
         [decoded.id]
       );
 
@@ -82,6 +82,7 @@ const authenticate = async (req, res, next) => {
       email: user.email,
       role: user.role,
       status: user.status,
+      profile_completed: user.profile_completed !== false,
     };
 
     next();
@@ -102,6 +103,54 @@ const authenticate = async (req, res, next) => {
   }
 };
 
+/**
+ * Optional authentication middleware.
+ * If Bearer token is provided and valid, attaches req.user.
+ * If not provided, leaves req.user = null and continues without error.
+ */
+const optionalAuthenticate = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    req.user = null;
+    return next();
+  }
+
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, config.jwt.secret);
+
+    let user = getCachedUser(decoded.id);
+    if (!user) {
+      const { rows } = await db.query(
+        'SELECT id, email, role, status, profile_completed FROM users WHERE id = $1',
+        [decoded.id]
+      );
+      if (rows.length > 0) {
+        user = rows[0];
+        setCachedUser(decoded.id, user);
+      }
+    }
+
+    if (user && user.status !== 'blocked' && user.status !== 'suspended') {
+      req.user = {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        profile_completed: user.profile_completed !== false,
+      };
+    } else {
+      req.user = null;
+    }
+    next();
+  } catch {
+    req.user = null;
+    next();
+  }
+};
+
+authenticate.optional = optionalAuthenticate;
 authenticate.invalidateUserCache = invalidateUserCache;
 
 module.exports = authenticate;
+

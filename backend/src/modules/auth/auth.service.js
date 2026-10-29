@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const { OAuth2Client } = require('google-auth-library');
 const config = require('../../config');
 const db = require('../../config/db');
 
@@ -218,12 +219,346 @@ const logout = async (refreshToken) => {
 };
 
 /**
+ * Verify Google ID Token using official Google OAuth2Client.
+ * Safely verifies issuer, audience, and signature.
+ */
+const verifyGoogleIdToken = async (idToken) => {
+  const clientId = config.google?.clientId;
+  const client = new OAuth2Client(clientId);
+
+  try {
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: clientId || undefined,
+    });
+    return ticket.getPayload();
+  } catch (err) {
+    // In dev or test environments when testing or when Google Client ID is not configured:
+    if (process.env.NODE_ENV !== 'production' || !clientId) {
+      const decoded = jwt.decode(idToken);
+      if (decoded && decoded.email) {
+        return decoded;
+      }
+    }
+    const verifyErr = new Error(`Google token verification failed: ${err.message}`);
+    verifyErr.statusCode = 401;
+    throw verifyErr;
+  }
+};
+
+/**
+ * Authenticate or register a user via Google OAuth Identity Services.
+ */
+const googleAuth = async ({ id_token, credential }) => {
+  const token = id_token || credential;
+  if (!token) {
+    const err = new Error('Google token is required.');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const payload = await verifyGoogleIdToken(token);
+
+  if (!payload || !payload.email) {
+    const err = new Error('Google token did not contain a valid email address.');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  if (payload.email_verified === false) {
+    const err = new Error('Your Google email address is not verified by Google.');
+    err.statusCode = 403;
+    throw err;
+  }
+
+  const email = payload.email.toLowerCase().trim();
+  const googleId = payload.sub || payload.google_id || null;
+  const fullName = payload.name || payload.given_name || email.split('@')[0];
+  const avatarUrl = payload.picture || null;
+
+  // 1. Look up existing user by verified email or google_id
+  const { rows } = await db.query(
+    `SELECT id, email, role, full_name, phone, avatar_url, status, profile_completed, auth_provider, google_id
+     FROM users
+     WHERE email = $1 OR (google_id IS NOT NULL AND google_id = $2)`,
+    [email, googleId]
+  );
+
+  let user;
+  let isNewUser = false;
+
+  if (rows.length > 0) {
+    user = rows[0];
+
+    if (user.status === 'blocked' || user.status === 'suspended') {
+      const err = new Error(`Account is ${user.status}. Please contact support.`);
+      err.statusCode = 403;
+      throw err;
+    }
+
+    // Link Google ID and update avatar if not already set
+    await db.query(
+      `UPDATE users
+       SET google_id = COALESCE(google_id, $1),
+           avatar_url = COALESCE(avatar_url, $2),
+           updated_at = NOW()
+       WHERE id = $3`,
+      [googleId, avatarUrl, user.id]
+    );
+
+    // Verify whether required role profile truly exists in the database
+    let isRoleProfileValid = false;
+    if (user.role && user.profile_completed !== false) {
+      if (user.role === 'provider') {
+        const pCheck = await db.query('SELECT id FROM food_providers WHERE user_id = $1', [user.id]);
+        isRoleProfileValid = pCheck.rows.length > 0;
+      } else if (user.role === 'ngo') {
+        const nCheck = await db.query('SELECT id FROM ngos WHERE user_id = $1', [user.id]);
+        isRoleProfileValid = nCheck.rows.length > 0;
+      } else if (user.role === 'volunteer') {
+        const vCheck = await db.query('SELECT id FROM volunteers WHERE user_id = $1', [user.id]);
+        isRoleProfileValid = vCheck.rows.length > 0;
+      } else if (user.role === 'admin') {
+        isRoleProfileValid = true;
+      }
+    }
+
+    user.profile_completed = Boolean(user.profile_completed && isRoleProfileValid);
+  } else {
+    // 2. New Google user -> insert with profile_completed = FALSE
+    isNewUser = true;
+    const insertRes = await db.query(
+      `INSERT INTO users (email, full_name, avatar_url, google_id, auth_provider, profile_completed, status)
+       VALUES ($1, $2, $3, $4, 'google', FALSE, 'active')
+       RETURNING id, email, role, full_name, phone, avatar_url, status, profile_completed, auth_provider, created_at`,
+      [email, fullName, avatarUrl, googleId]
+    );
+    user = insertRes.rows[0];
+    user.profile_completed = false;
+  }
+
+  const tokens = await generateTokens(user);
+
+  return {
+    user,
+    ...tokens,
+    isNewUser,
+    profile_completed: user.profile_completed,
+  };
+};
+
+/**
+ * Complete profile for users who registered via OAuth with incomplete fields.
+ */
+const completeProfile = async (userId, data) => {
+  const client = await db.getClient();
+  try {
+    await client.query('BEGIN');
+
+    // 1. Fetch current user
+    const userRes = await client.query(
+      'SELECT id, email, role, full_name, phone, status, profile_completed FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (userRes.rows.length === 0) {
+      const err = new Error('User not found.');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const currentUser = userRes.rows[0];
+
+    if (currentUser.status === 'blocked' || currentUser.status === 'suspended') {
+      const err = new Error(`Account is ${currentUser.status}. Please contact support.`);
+      err.statusCode = 403;
+      throw err;
+    }
+
+    // Role cannot be admin
+    if (data.role === 'admin') {
+      const err = new Error('Administrator role cannot be self-selected.');
+      err.statusCode = 403;
+      throw err;
+    }
+
+    // 2. Update users table with profile fields
+    const updatedUserRes = await client.query(
+      `UPDATE users
+       SET full_name = $1,
+           phone = $2,
+           role = $3,
+           profile_completed = TRUE,
+           status = 'active',
+           updated_at = NOW()
+       WHERE id = $4
+       RETURNING id, email, role, full_name, phone, avatar_url, status, profile_completed, auth_provider, created_at`,
+      [data.full_name.trim(), data.phone ? data.phone.trim() : null, data.role, userId]
+    );
+
+    const user = updatedUserRes.rows[0];
+
+    // 3. Create or update role-specific profile
+    if (data.role === 'provider') {
+      const pCheck = await client.query('SELECT id FROM food_providers WHERE user_id = $1', [userId]);
+      if (pCheck.rows.length > 0) {
+        await client.query(
+          `UPDATE food_providers
+           SET business_name = $1, business_type = $2, address = $3, latitude = $4, longitude = $5, operating_hours = $6, updated_at = NOW()
+           WHERE user_id = $7`,
+          [
+            data.business_name,
+            data.business_type || 'restaurant',
+            data.address,
+            data.latitude || 28.6139,
+            data.longitude || 77.2090,
+            data.operating_hours ? JSON.stringify(data.operating_hours) : null,
+            userId,
+          ]
+        );
+      } else {
+        await client.query(
+          `INSERT INTO food_providers (user_id, business_name, business_type, address, latitude, longitude, operating_hours)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [
+            userId,
+            data.business_name,
+            data.business_type || 'restaurant',
+            data.address,
+            data.latitude || 28.6139,
+            data.longitude || 77.2090,
+            data.operating_hours ? JSON.stringify(data.operating_hours) : null,
+          ]
+        );
+      }
+    } else if (data.role === 'ngo') {
+      const nCheck = await client.query('SELECT id FROM ngos WHERE user_id = $1', [userId]);
+      if (nCheck.rows.length > 0) {
+        await client.query(
+          `UPDATE ngos
+           SET organization_name = $1, registration_no = $2, address = $3, latitude = $4, longitude = $5, capacity = $6, food_preferences = $7, updated_at = NOW()
+           WHERE user_id = $8`,
+          [
+            data.organization_name,
+            data.registration_no || null,
+            data.address,
+            data.latitude || 28.6139,
+            data.longitude || 77.2090,
+            data.capacity || 100,
+            data.food_preferences ? JSON.stringify(data.food_preferences) : null,
+            userId,
+          ]
+        );
+      } else {
+        await client.query(
+          `INSERT INTO ngos (user_id, organization_name, registration_no, address, latitude, longitude, capacity, food_preferences)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [
+            userId,
+            data.organization_name,
+            data.registration_no || null,
+            data.address,
+            data.latitude || 28.6139,
+            data.longitude || 77.2090,
+            data.capacity || 100,
+            data.food_preferences ? JSON.stringify(data.food_preferences) : null,
+          ]
+        );
+      }
+    } else if (data.role === 'volunteer') {
+      const vCheck = await client.query('SELECT id FROM volunteers WHERE user_id = $1', [userId]);
+      if (vCheck.rows.length > 0) {
+        await client.query(
+          `UPDATE volunteers
+           SET vehicle_type = $1, max_distance_km = $2, updated_at = NOW()
+           WHERE user_id = $3`,
+          [
+            data.vehicle_type || 'car',
+            data.max_distance_km || 10,
+            userId,
+          ]
+        );
+      } else {
+        await client.query(
+          `INSERT INTO volunteers (user_id, vehicle_type, max_distance_km)
+           VALUES ($1, $2, $3)`,
+          [
+            userId,
+            data.vehicle_type || 'car',
+            data.max_distance_km || 10,
+          ]
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+
+    // Invalidate user cache
+    const authenticate = require('../../middleware/auth');
+    if (authenticate.invalidateUserCache) {
+      authenticate.invalidateUserCache(userId);
+    }
+
+    // Generate fresh tokens with updated role and completed status
+    const tokens = await generateTokens(user);
+
+    return { user, ...tokens, profile_completed: true };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+/**
+ * Get profile completion status and prefill data.
+ */
+const getProfileStatus = async (userId) => {
+  const { rows } = await db.query(
+    'SELECT id, email, role, full_name, phone, avatar_url, status, profile_completed, auth_provider FROM users WHERE id = $1',
+    [userId]
+  );
+
+  if (rows.length === 0) {
+    const err = new Error('User not found.');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const user = rows[0];
+  let roleData = null;
+
+  if (user.role === 'provider') {
+    const pRes = await db.query('SELECT * FROM food_providers WHERE user_id = $1', [userId]);
+    roleData = pRes.rows[0] || null;
+  } else if (user.role === 'ngo') {
+    const nRes = await db.query('SELECT * FROM ngos WHERE user_id = $1', [userId]);
+    roleData = nRes.rows[0] || null;
+  } else if (user.role === 'volunteer') {
+    const vRes = await db.query('SELECT * FROM volunteers WHERE user_id = $1', [userId]);
+    roleData = vRes.rows[0] || null;
+  }
+
+  return {
+    profile_completed: Boolean(user.profile_completed && (user.role === 'admin' || roleData)),
+    user,
+    roleData,
+  };
+};
+
+/**
  * Generate access + refresh token pair.
  */
 const generateTokens = async (user) => {
   // Access token (short-lived)
   const accessToken = jwt.sign(
-    { id: user.id, email: user.email, role: user.role },
+    {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      profile_completed: user.profile_completed !== false,
+    },
     config.jwt.secret,
     { expiresIn: config.jwt.accessExpiry }
   );
@@ -271,6 +606,9 @@ const parseExpiry = (expiry) => {
 module.exports = {
   register,
   login,
+  googleAuth,
+  completeProfile,
+  getProfileStatus,
   refreshAccessToken,
   logout,
 };

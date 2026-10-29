@@ -8,7 +8,7 @@ export default function DashboardLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white flex flex-col lg:flex-row overflow-x-hidden">
+    <div className="min-h-screen bg-[#F9FAFB] dark:bg-[#050505] text-neutral-900 dark:text-white flex flex-col lg:flex-row overflow-x-hidden transition-colors duration-200">
       <Sidebar
         collapsed={collapsed}
         setCollapsed={setCollapsed}

@@ -3,9 +3,11 @@ const router = express.Router();
 const userController = require('./user.controller');
 const authenticate = require('../../middleware/auth');
 const roleGuard = require('../../middleware/roleGuard');
+const ensureProfileCompleted = require('../../middleware/ensureProfileCompleted');
 
-// All user routes require authentication
+// All user routes require authentication and completed profile
 router.use(authenticate);
+router.use(ensureProfileCompleted);
 
 // Admin-only: list all platform users
 router.get('/', roleGuard('admin'), userController.getUsers);
