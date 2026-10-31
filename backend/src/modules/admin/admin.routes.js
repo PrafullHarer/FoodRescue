@@ -8,7 +8,16 @@ const roleGuard = require('../../middleware/roleGuard');
 // All admin routes require admin role
 router.use(authenticate, roleGuard('admin'));
 
-// Verifications
+// User Verification Workflow
+router.get('/verifications', adminController.getVerifications);
+router.get('/verifications/:userId', adminController.getVerificationDetail);
+router.post('/verifications/:userId/documents', adminController.addVerificationDocument);
+router.patch('/verifications/:userId/approve', adminController.approveVerification);
+router.patch('/verifications/:userId/reject', adminController.rejectVerification);
+router.patch('/verifications/:userId/request-info', adminController.requestVerificationInfo);
+router.patch('/verifications/:userId/suspend', adminController.suspendUser);
+
+// Legacy Verifications
 router.get('/pending-verifications', adminController.getPendingVerifications);
 router.post('/verify/:type/:id', adminController.verifyEntity);
 

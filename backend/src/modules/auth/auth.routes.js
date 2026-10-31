@@ -18,6 +18,8 @@ router.post('/login', validate({ body: loginSchema }), authController.login);
 router.post('/google', validate({ body: googleAuthSchema }), authController.googleLogin);
 router.post('/refresh', validate({ body: refreshTokenSchema }), authController.refreshToken);
 router.post('/logout', authController.logout);
+router.get('/verification-status', authController.getVerificationStatus);
+router.post('/verification-status', authController.getVerificationStatus);
 
 // Protected routes (exempt from complete-profile restriction so users can check status and complete profile)
 router.get('/me', authenticate, authController.getMe);

@@ -347,9 +347,14 @@ const getComplaintById = async (complaintId, userId, userRole) => {
 
   const complaint = rows[0];
 
-  // Access check: Only administrators or the complainant can view this complaint
-  const isComplainant = (complaint.complainant_user_id === userId || complaint.reporter_id === userId);
-  if (userRole !== 'admin' && !isComplainant) {
+  // Access check: Only administrators or involved parties (complainant or reported user) can view this complaint
+  const isParticipant = (
+    complaint.complainant_user_id === userId ||
+    complaint.reporter_id === userId ||
+    complaint.subject_user_id === userId ||
+    complaint.reported_user_id === userId
+  );
+  if (userRole !== 'admin' && !isParticipant) {
     const err = new Error('Access denied to this complaint.');
     err.statusCode = 403;
     throw err;

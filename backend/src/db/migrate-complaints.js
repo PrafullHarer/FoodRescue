@@ -64,6 +64,7 @@ async function migrateComplaints() {
       `ALTER TABLE complaints ADD COLUMN IF NOT EXISTS complainant_user_id UUID REFERENCES users(id) ON DELETE SET NULL;`,
       `ALTER TABLE complaints ADD COLUMN IF NOT EXISTS subject_user_id UUID REFERENCES users(id) ON DELETE SET NULL;`,
       `ALTER TABLE complaints ADD COLUMN IF NOT EXISTS delivery_id UUID REFERENCES deliveries(id) ON DELETE SET NULL;`,
+      `ALTER TABLE complaints ADD COLUMN IF NOT EXISTS category VARCHAR(100) NOT NULL DEFAULT 'other';`,
       `ALTER TABLE complaints ADD COLUMN IF NOT EXISTS title VARCHAR(255);`,
       `ALTER TABLE complaints ADD COLUMN IF NOT EXISTS priority VARCHAR(20) NOT NULL DEFAULT 'medium';`,
       `ALTER TABLE complaints ADD COLUMN IF NOT EXISTS assigned_admin_user_id UUID REFERENCES users(id) ON DELETE SET NULL;`,

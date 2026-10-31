@@ -8,7 +8,7 @@ module.exports = {
     matched:            ['claimed', 'expired', 'cancelled'],
     claimed:            ['volunteer_assigned', 'expired', 'cancelled'],
     volunteer_assigned: ['collected', 'expired', 'cancelled'],
-    collected:          ['delivered', 'cancelled'],
+    collected:          ['delivered', 'completed', 'cancelled'],
     delivered:          ['completed'],
     completed:          [],
     expired:            [],

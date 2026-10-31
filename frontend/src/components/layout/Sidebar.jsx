@@ -44,7 +44,7 @@ const roleNavItems = {
     { to: '/notifications', icon: Bell, label: 'Notifications', hasBadge: true },
     { to: '/admin/analytics', icon: BarChart3, label: 'Analytics' },
     { to: '/admin/incidents', icon: ShieldAlert, label: 'Incidents' },
-    { to: '/admin/verifications', icon: Shield, label: 'Verifications' },
+    { to: '/admin/verifications', icon: Shield, label: 'Verifications', isVerification: true },
     { to: '/admin/users', icon: Users, label: 'Users' },
     { to: '/admin/complaints', icon: Shield, label: 'Complaints' },
     { to: '/admin/feedback', icon: MessageSquareQuote, label: 'Feedback' },
@@ -57,11 +57,12 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
   const navigate = useNavigate();
   const location = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [pendingVerifications, setPendingVerifications] = useState(0);
 
   useEffect(() => {
     if (!user) return;
 
-    const fetchUnreadCount = async () => {
+    const fetchCounts = async () => {
       if (typeof document !== 'undefined' && document.hidden) return;
       try {
         const res = await api.get('/notifications', {
@@ -72,10 +73,21 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
       } catch {
         // ignore
       }
+
+      if (user.role === 'admin') {
+        try {
+          const vRes = await api.get('/admin/verifications', {
+            params: { status: 'PENDING', limit: 1 },
+          });
+          setPendingVerifications(vRes.data?.data?.stats?.pending ?? 0);
+        } catch {
+          // ignore
+        }
+      }
     };
 
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 60000); // 60 seconds
+    fetchCounts();
+    const interval = setInterval(fetchCounts, 30000); // 30 seconds
     return () => clearInterval(interval);
   }, [user, location.pathname]);
 
@@ -205,12 +217,25 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
                 to={item.to}
                 onClick={() => setMobileOpen?.(false)}
                 className={`sidebar-link relative ${isActive ? 'active' : ''} ${collapsed && !mobileOpen ? 'lg:justify-center lg:px-3' : ''}`}
-                title={collapsed && !mobileOpen ? `${item.label} ${item.hasBadge && unreadCount > 0 ? `(${unreadCount})` : ''}` : undefined}
+                title={
+                  collapsed && !mobileOpen
+                    ? `${item.label} ${
+                        item.hasBadge && unreadCount > 0
+                          ? `(${unreadCount})`
+                          : item.isVerification && pendingVerifications > 0
+                          ? `(${pendingVerifications} pending)`
+                          : ''
+                      }`
+                    : undefined
+                }
               >
                 <div className="relative flex items-center">
                   <item.icon className="w-4 h-4 flex-shrink-0" />
                   {item.hasBadge && unreadCount > 0 && collapsed && !mobileOpen && (
                     <span className="absolute -top-1 -right-1 w-2 h-2 bg-[#39FF14] rounded-full ring-2 ring-white dark:ring-[#0c0c0e]" />
+                  )}
+                  {item.isVerification && pendingVerifications > 0 && collapsed && !mobileOpen && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-amber-500 rounded-full ring-2 ring-white dark:ring-[#0c0c0e] animate-pulse" />
                   )}
                 </div>
                 {(!collapsed || mobileOpen) && (
@@ -219,6 +244,11 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
                     {item.hasBadge && unreadCount > 0 && (
                       <span className="px-1.5 py-0.5 text-[10px] font-bold bg-[#39FF14] text-black rounded-full shadow-xs animate-pulse">
                         {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
+                    {item.isVerification && pendingVerifications > 0 && (
+                      <span className="px-1.5 py-0.5 text-[10px] font-bold bg-amber-500 text-black rounded-full shadow-xs animate-pulse">
+                        {pendingVerifications > 99 ? '99+' : pendingVerifications}
                       </span>
                     )}
                   </div>

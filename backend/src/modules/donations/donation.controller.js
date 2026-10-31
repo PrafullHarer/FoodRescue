@@ -282,6 +282,58 @@ const cancelDonation = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /api/donations/:id/timeline
+ * Retrieve complete verified lifecycle event timeline.
+ */
+const getDonationTimeline = async (req, res, next) => {
+  try {
+    const donationEmailService = require('./donation-email.service');
+    const timeline = await donationEmailService.buildDonationTimeline(req.params.id);
+    res.json({
+      success: true,
+      data: timeline,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/donations/:id/completion-emails
+ * Retrieve completion email delivery statuses (Admin or participants).
+ */
+const getCompletionEmails = async (req, res, next) => {
+  try {
+    const donationEmailService = require('./donation-email.service');
+    const emails = await donationEmailService.getDonationEmailStatus(req.params.id);
+    res.json({
+      success: true,
+      data: emails,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/donations/:id/completion-emails/retry
+ * Retry sending failed completion emails.
+ */
+const retryCompletionEmails = async (req, res, next) => {
+  try {
+    const donationEmailService = require('./donation-email.service');
+    const result = await donationEmailService.retryFailedCompletionEmails(req.params.id);
+    res.json({
+      success: true,
+      message: 'Retried failed completion emails.',
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createDonation,
   getDonations,
@@ -293,4 +345,7 @@ module.exports = {
   claimDonation,
   updatePickupType,
   cancelDonation,
+  getDonationTimeline,
+  getCompletionEmails,
+  retryCompletionEmails,
 };

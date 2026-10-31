@@ -39,6 +39,8 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
+  const [registrationSubmitted, setRegistrationSubmitted] = useState(false);
+  const [registeredRole, setRegisteredRole] = useState('provider');
   const [form, setForm] = useState({
     email: '',
     password: '',
@@ -133,9 +135,23 @@ export default function RegisterPage() {
         payload.max_distance_km = parseFloat(form.max_distance_km) || 10;
       }
 
-      const user = await register(payload);
-      toast.success(`Welcome, ${user.full_name || 'User'}! Account created.`);
-      navigate('/dashboard');
+      const res = await register(payload);
+      sessionStorage.setItem('foodrescue_pending_email', form.email.trim());
+      toast.success(
+        res?.message ||
+        'Registration submitted! Your account is currently awaiting administrator verification.',
+        { duration: 6000 }
+      );
+      navigate('/verification-pending', {
+        state: {
+          email: form.email.trim(),
+          role: form.role,
+          full_name: form.full_name.trim(),
+          organization_name: form.business_name || form.organization_name || '',
+          status: 'PENDING',
+          verification_status: 'PENDING',
+        },
+      });
     } catch (err) {
       const errorMsg =
         err.response?.data?.errors?.[0]?.message ||
@@ -146,6 +162,95 @@ export default function RegisterPage() {
       setLoading(false);
     }
   };
+
+  if (registrationSubmitted) {
+    return (
+      <div className="min-h-screen w-full bg-[#F9FAFB] dark:bg-[#050505] text-neutral-900 dark:text-white flex items-center justify-center p-4 sm:p-6 font-sans transition-colors duration-200">
+        <div className="w-full max-w-xl bg-white dark:bg-[#121214] border border-neutral-200 dark:border-[#232328] rounded-2xl sm:rounded-[28px] p-6 sm:p-10 shadow-2xl space-y-6 animate-fade-in relative transition-colors text-center">
+          {/* Header */}
+          <div className="flex items-center justify-between pb-4 border-b border-neutral-200 dark:border-[#232328]">
+            <Logo to="/" size="md" showText={true} />
+            <ThemeToggle variant="icon" />
+          </div>
+
+          {/* Verification Badge & Icon */}
+          <div className="flex flex-col items-center pt-2">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center mb-4 shadow-sm">
+              <ShieldCheck className="w-9 h-9" />
+            </div>
+
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-500 border border-amber-500/20 uppercase tracking-wider mb-2">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              Awaiting Admin Verification
+            </span>
+
+            <h2 className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white tracking-tight">
+              Registration Submitted Successfully
+            </h2>
+            <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 mt-2 max-w-md mx-auto leading-relaxed">
+              Your FoodRescue account has been created successfully. Your account is currently awaiting admin verification. You will receive a notification once your application is reviewed.
+            </p>
+          </div>
+
+          {/* Details Card */}
+          <div className="bg-neutral-50 dark:bg-[#16161a] border border-neutral-200 dark:border-[#232328] rounded-xl p-4 text-left text-xs space-y-2">
+            <div className="flex items-center justify-between py-1 border-b border-neutral-200 dark:border-[#232328]">
+              <span className="text-neutral-500">Applicant Name</span>
+              <span className="font-semibold text-neutral-900 dark:text-white">{form.full_name}</span>
+            </div>
+            <div className="flex items-center justify-between py-1 border-b border-neutral-200 dark:border-[#232328]">
+              <span className="text-neutral-500">Email Address</span>
+              <span className="font-semibold text-neutral-900 dark:text-white">{form.email}</span>
+            </div>
+            <div className="flex items-center justify-between py-1 border-b border-neutral-200 dark:border-[#232328]">
+              <span className="text-neutral-500">Applied Role</span>
+              <span className="font-semibold text-neutral-900 dark:text-white capitalize">
+                {registeredRole === 'provider' ? 'Food Provider' : registeredRole === 'ngo' ? 'NGO / Shelter' : 'Volunteer Courier'}
+              </span>
+            </div>
+            {(form.business_name || form.organization_name) && (
+              <div className="flex items-center justify-between py-1 border-b border-neutral-200 dark:border-[#232328]">
+                <span className="text-neutral-500">Entity / Organization</span>
+                <span className="font-semibold text-neutral-900 dark:text-white">
+                  {form.business_name || form.organization_name}
+                </span>
+              </div>
+            )}
+            <div className="flex items-center justify-between py-1">
+              <span className="text-neutral-500">Verification Status</span>
+              <span className="font-bold text-amber-500">PENDING</span>
+            </div>
+          </div>
+
+          {/* Steps Notice */}
+          <div className="text-left text-xs bg-amber-500/5 border border-amber-500/15 rounded-xl p-4 space-y-1.5 text-neutral-700 dark:text-neutral-300">
+            <div className="font-semibold text-amber-600 dark:text-amber-400">What happens next?</div>
+            <p className="text-[11px] text-neutral-500 leading-normal">
+              1. An administrator reviews your submitted registration details and credentials.<br />
+              2. Once approved, your account status changes to <strong>APPROVED</strong>.<br />
+              3. You can then sign in using your credentials to access your FoodRescue dashboard.
+            </p>
+          </div>
+
+          {/* Action buttons */}
+          <div className="pt-2 flex flex-col sm:flex-row gap-3">
+            <button
+              onClick={() => navigate('/login')}
+              className="btn btn-primary w-full py-2.5 text-xs font-bold"
+            >
+              Go to Sign In
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="btn btn-secondary w-full py-2.5 text-xs font-medium"
+            >
+              Return to Homepage
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-full bg-[#F9FAFB] dark:bg-[#050505] text-neutral-900 dark:text-white flex items-center justify-center p-3 sm:p-6 lg:p-8 font-sans transition-colors duration-200">
@@ -227,7 +332,96 @@ export default function RegisterPage() {
                   {roleOptions.map((opt) => {
                     const Icon = opt.icon;
                     const isSelected = form.role === opt.value;
-                    return (
+                    if (registrationSubmitted) {
+    return (
+      <div className="min-h-screen w-full bg-[#F9FAFB] dark:bg-[#050505] text-neutral-900 dark:text-white flex items-center justify-center p-4 sm:p-6 font-sans transition-colors duration-200">
+        <div className="w-full max-w-xl bg-white dark:bg-[#121214] border border-neutral-200 dark:border-[#232328] rounded-2xl sm:rounded-[28px] p-6 sm:p-10 shadow-2xl space-y-6 animate-fade-in relative transition-colors text-center">
+          {/* Header */}
+          <div className="flex items-center justify-between pb-4 border-b border-neutral-200 dark:border-[#232328]">
+            <Logo to="/" size="md" showText={true} />
+            <ThemeToggle variant="icon" />
+          </div>
+
+          {/* Verification Badge & Icon */}
+          <div className="flex flex-col items-center pt-2">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center mb-4 shadow-sm">
+              <ShieldCheck className="w-9 h-9" />
+            </div>
+
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-500 border border-amber-500/20 uppercase tracking-wider mb-2">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              Awaiting Admin Verification
+            </span>
+
+            <h2 className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white tracking-tight">
+              Registration Submitted Successfully
+            </h2>
+            <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 mt-2 max-w-md mx-auto leading-relaxed">
+              Your FoodRescue account has been created successfully. Your account is currently awaiting admin verification. You will receive a notification once your application is reviewed.
+            </p>
+          </div>
+
+          {/* Details Card */}
+          <div className="bg-neutral-50 dark:bg-[#16161a] border border-neutral-200 dark:border-[#232328] rounded-xl p-4 text-left text-xs space-y-2">
+            <div className="flex items-center justify-between py-1 border-b border-neutral-200 dark:border-[#232328]">
+              <span className="text-neutral-500">Applicant Name</span>
+              <span className="font-semibold text-neutral-900 dark:text-white">{form.full_name}</span>
+            </div>
+            <div className="flex items-center justify-between py-1 border-b border-neutral-200 dark:border-[#232328]">
+              <span className="text-neutral-500">Email Address</span>
+              <span className="font-semibold text-neutral-900 dark:text-white">{form.email}</span>
+            </div>
+            <div className="flex items-center justify-between py-1 border-b border-neutral-200 dark:border-[#232328]">
+              <span className="text-neutral-500">Applied Role</span>
+              <span className="font-semibold text-neutral-900 dark:text-white capitalize">
+                {registeredRole === 'provider' ? 'Food Provider' : registeredRole === 'ngo' ? 'NGO / Shelter' : 'Volunteer Courier'}
+              </span>
+            </div>
+            {(form.business_name || form.organization_name) && (
+              <div className="flex items-center justify-between py-1 border-b border-neutral-200 dark:border-[#232328]">
+                <span className="text-neutral-500">Entity / Organization</span>
+                <span className="font-semibold text-neutral-900 dark:text-white">
+                  {form.business_name || form.organization_name}
+                </span>
+              </div>
+            )}
+            <div className="flex items-center justify-between py-1">
+              <span className="text-neutral-500">Verification Status</span>
+              <span className="font-bold text-amber-500">PENDING</span>
+            </div>
+          </div>
+
+          {/* Steps Notice */}
+          <div className="text-left text-xs bg-amber-500/5 border border-amber-500/15 rounded-xl p-4 space-y-1.5 text-neutral-700 dark:text-neutral-300">
+            <div className="font-semibold text-amber-600 dark:text-amber-400">What happens next?</div>
+            <p className="text-[11px] text-neutral-500 leading-normal">
+              1. An administrator reviews your submitted registration details and credentials.<br />
+              2. Once approved, your account status changes to <strong>APPROVED</strong>.<br />
+              3. You can then sign in using your credentials to access your FoodRescue dashboard.
+            </p>
+          </div>
+
+          {/* Action buttons */}
+          <div className="pt-2 flex flex-col sm:flex-row gap-3">
+            <button
+              onClick={() => navigate('/login')}
+              className="btn btn-primary w-full py-2.5 text-xs font-bold"
+            >
+              Go to Sign In
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="btn btn-secondary w-full py-2.5 text-xs font-medium"
+            >
+              Return to Homepage
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
                       <button
                         key={opt.value}
                         type="button"

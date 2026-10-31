@@ -6,7 +6,7 @@ import {
   ArrowLeft, Package, Clock, MapPin, CheckCircle2,
   AlertTriangle, QrCode, Share2, Check, Phone, Mail,
   User, Truck, ShieldCheck, Star, ThumbsUp,
-  UserCheck, Trash2, ShieldAlert, Calendar, Building2
+  UserCheck, Trash2, ShieldAlert, Calendar, Building2, RefreshCw
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ReviewModal from '../../components/common/ReviewModal';
@@ -30,6 +30,20 @@ export default function DonationDetailPage() {
   const [showIncidentModal, setShowIncidentModal] = useState(false);
   const [showComplaintModal, setShowComplaintModal] = useState(false);
   const [switchingPickupType, setSwitchingPickupType] = useState(false);
+  const [retryingEmails, setRetryingEmails] = useState(false);
+
+  const handleRetryEmails = async () => {
+    try {
+      setRetryingEmails(true);
+      await api.post(`/donations/${id}/completion-emails/retry`);
+      toast.success('Retried failed completion emails!');
+      fetchDonation();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to retry emails');
+    } finally {
+      setRetryingEmails(false);
+    }
+  };
 
   const fetchDonation = async () => {
     try {
@@ -892,6 +906,107 @@ export default function DonationDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Complete Recorded Donation Lifecycle Timeline */}
+      {donation.timeline && donation.timeline.length > 0 && (
+        <div className="bg-[#121214] rounded-[24px] border border-[#232328] p-6 sm:p-8 space-y-5 shadow-xl">
+          <div className="flex items-center justify-between border-b border-[#232328] pb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-lime-500/10 text-lime-400 border border-lime-500/20 flex items-center justify-center">
+                <Clock className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white tracking-tight">Verified Donation Timeline</h3>
+                <p className="text-xs text-neutral-400">Database system of record for all verified milestones</p>
+              </div>
+            </div>
+            <span className="badge badge-neutral uppercase text-[10px] font-bold">
+              {donation.timeline.length} Recorded Events
+            </span>
+          </div>
+
+          <div className="relative pl-6 space-y-4 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-[#232328]">
+            {donation.timeline.map((event, idx) => (
+              <div key={idx} className="relative flex items-start gap-3 text-xs">
+                <div className="absolute -left-6 top-1 w-3 h-3 rounded-full bg-lime-400 border-2 border-[#121214] ring-2 ring-lime-400/20" />
+                <div className="flex-1 p-3 rounded-xl bg-[#16161a] border border-[#232328]">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="font-bold text-white">{event.label}</span>
+                    <span className="text-[11px] text-neutral-400 font-mono">{event.timestamp}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Admin Email Delivery Visibility */}
+      {user?.role === 'admin' && (
+        <div className="bg-[#121214] rounded-[24px] border border-[#232328] p-6 sm:p-8 space-y-5 shadow-xl">
+          <div className="flex items-center justify-between border-b border-[#232328] pb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center justify-center">
+                <Mail className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white tracking-tight">Automated Completion Emails (Admin Visibility)</h3>
+                <p className="text-xs text-neutral-400">Confirmation dispatch status to Food Provider &amp; NGO</p>
+              </div>
+            </div>
+            {donation.completion_emails?.some(e => e.status === 'FAILED') && (
+              <button
+                type="button"
+                onClick={handleRetryEmails}
+                disabled={retryingEmails}
+                className="btn btn-secondary text-xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${retryingEmails ? 'animate-spin' : ''}`} />
+                <span>{retryingEmails ? 'Retrying...' : 'Retry Failed Emails'}</span>
+              </button>
+            )}
+          </div>
+
+          {donation.completion_emails && donation.completion_emails.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {donation.completion_emails.map((emailRecord) => (
+                <div key={emailRecord.id} className="p-4 rounded-xl bg-[#16161a] border border-[#232328] space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="uppercase font-bold text-[10px] text-neutral-400">
+                      {emailRecord.recipient_type === 'provider' ? 'Food Provider Notification' : 'NGO Shelter Notification'}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                      emailRecord.status === 'SENT'
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                        : emailRecord.status === 'FAILED'
+                        ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                        : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                    }`}>
+                      {emailRecord.status}
+                    </span>
+                  </div>
+                  <div className="font-semibold text-white">{emailRecord.recipient_name || emailRecord.recipient_email}</div>
+                  <div className="text-neutral-400 text-[11px] truncate">To: {emailRecord.recipient_email}</div>
+                  <div className="text-neutral-500 text-[10px] pt-1">
+                    {emailRecord.sent_at ? `Sent on ${new Date(emailRecord.sent_at).toLocaleString()}` : `Last attempt: ${new Date(emailRecord.last_attempt_at || emailRecord.created_at).toLocaleString()}`}
+                  </div>
+                  {emailRecord.failure_reason && (
+                    <div className="p-2 rounded bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[11px]">
+                      Reason: {emailRecord.failure_reason}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-4 rounded-xl bg-[#16161a] border border-[#232328] text-xs text-neutral-400 text-center">
+              {['completed', 'delivered'].includes(donation.status)
+                ? 'Emails scheduled/dispatched upon final completion.'
+                : 'Completion emails will automatically trigger when this donation is delivered & verified.'}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Review Modal */}
       {showReviewModal && (

@@ -52,6 +52,7 @@ app.use(
     },
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
     frameguard: { action: 'deny' },
     hsts: config.isProduction
       ? { maxAge: 31536000, includeSubDomains: true, preload: true }

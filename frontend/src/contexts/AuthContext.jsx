@@ -38,25 +38,35 @@ export function AuthProvider({ children }) {
 
   const register = async (formData) => {
     const { data } = await api.post('/auth/register', formData);
-    localStorage.setItem('accessToken', data.data.accessToken);
-    localStorage.setItem('refreshToken', data.data.refreshToken);
-    setUser(data.data.user);
-    return data.data.user;
+    if (data.data?.accessToken) {
+      localStorage.setItem('accessToken', data.data.accessToken);
+      localStorage.setItem('refreshToken', data.data.refreshToken);
+      setUser(data.data.user);
+    }
+    return data.data;
   };
 
   const loginWithGoogle = async (credential) => {
     const { data } = await api.post('/auth/google', { credential });
-    localStorage.setItem('accessToken', data.data.accessToken);
-    localStorage.setItem('refreshToken', data.data.refreshToken);
-    setUser(data.data.user);
+    if (data.data?.accessToken) {
+      localStorage.setItem('accessToken', data.data.accessToken);
+      localStorage.setItem('refreshToken', data.data.refreshToken);
+      setUser(data.data.user);
+    }
     return data.data;
   };
 
   const completeProfile = async (formData) => {
     const { data } = await api.post('/auth/complete-profile', formData);
-    localStorage.setItem('accessToken', data.data.accessToken);
-    localStorage.setItem('refreshToken', data.data.refreshToken);
-    setUser(data.data.user);
+    if (data.data?.accessToken) {
+      localStorage.setItem('accessToken', data.data.accessToken);
+      localStorage.setItem('refreshToken', data.data.refreshToken);
+      setUser(data.data.user);
+    } else {
+      // Account is pending verification; revoke temporary setup session
+      localStorage.clear();
+      setUser(null);
+    }
     return data.data;
   };
 

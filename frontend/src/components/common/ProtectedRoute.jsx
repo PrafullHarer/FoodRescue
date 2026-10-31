@@ -25,6 +25,22 @@ export default function ProtectedRoute({ children, allowedRoles }) {
     return <Navigate to="/complete-profile" replace />;
   }
 
+  // Mandatory admin approval check (non-admin users must be APPROVED)
+  if (user.role !== 'admin' && user.verification_status && user.verification_status !== 'APPROVED') {
+    return (
+      <Navigate
+        to="/verification-pending"
+        state={{
+          email: user.email,
+          verification_status: user.verification_status,
+          role: user.role,
+          full_name: user.full_name,
+        }}
+        replace
+      />
+    );
+  }
+
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to="/dashboard" replace />;
   }

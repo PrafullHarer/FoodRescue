@@ -23,6 +23,13 @@ const createDelivery = async (donationId, volunteerId, ngoId) => {
       [donationId]
     );
 
+    // Record timeline event for volunteer assignment
+    await client.query(
+      `INSERT INTO donation_timeline_events (donation_id, event_type, metadata)
+       VALUES ($1, 'VOLUNTEER_ASSIGNED', $2)`,
+      [donationId, JSON.stringify({ volunteer_id: volunteerId, delivery_id: rows[0].id })]
+    );
+
     // Set volunteer as busy
     await client.query(
       `UPDATE volunteers SET availability = 'busy' WHERE id = $1`,
@@ -123,15 +130,29 @@ const updateDeliveryStatus = async (deliveryId, status, userId, userRole = 'volu
     values
   );
 
-  // Sync donation status
+  // Sync donation status & timeline events
+  const donationEmailService = require('../donations/donation-email.service');
   if (status === 'picked_up') {
     await db.query(
       `UPDATE food_donations SET status = 'collected' WHERE id = $1`,
       [delivery.donation_id]
     );
+    await donationEmailService.recordTimelineEvent(
+      delivery.donation_id,
+      'PICKUP_CONFIRMED',
+      userId,
+      { delivery_id: deliveryId, status: 'picked_up' }
+    );
+  } else if (status === 'in_transit') {
+    await donationEmailService.recordTimelineEvent(
+      delivery.donation_id,
+      'DELIVERY_STARTED',
+      userId,
+      { delivery_id: deliveryId, status: 'in_transit' }
+    );
   } else if (status === 'delivered') {
     await db.query(
-      `UPDATE food_donations SET status = 'delivered' WHERE id = $1`,
+      `UPDATE food_donations SET status = 'completed' WHERE id = $1`,
       [delivery.donation_id]
     );
     // Set volunteer back to available
@@ -146,6 +167,23 @@ const updateDeliveryStatus = async (deliveryId, status, userId, userRole = 'volu
       `UPDATE ngos SET total_received = total_received + 1 WHERE id = $1`,
       [delivery.ngo_id]
     );
+
+    // Record completion timeline events
+    await donationEmailService.recordTimelineEvent(
+      delivery.donation_id,
+      'FOOD_RECEIVED',
+      userId,
+      { delivery_id: deliveryId, status: 'delivered' }
+    );
+    await donationEmailService.recordTimelineEvent(
+      delivery.donation_id,
+      'DONATION_COMPLETED',
+      userId,
+      { delivery_id: deliveryId, status: 'completed' }
+    );
+
+    // Trigger automated completion confirmation emails post-commit
+    donationEmailService.triggerDonationCompletionEmails(delivery.donation_id);
   }
 
   return rows[0];

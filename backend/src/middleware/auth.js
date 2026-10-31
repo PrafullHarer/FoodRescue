@@ -55,7 +55,7 @@ const authenticate = async (req, res, next) => {
     // 2. Query DB only on cache miss
     if (!user) {
       const { rows } = await db.query(
-        'SELECT id, email, role, status, profile_completed FROM users WHERE id = $1',
+        'SELECT id, email, role, status, verification_status, rejection_reason, profile_completed FROM users WHERE id = $1',
         [decoded.id]
       );
 
@@ -70,11 +70,54 @@ const authenticate = async (req, res, next) => {
       setCachedUser(decoded.id, user);
     }
 
-    if (user.status === 'blocked' || user.status === 'suspended') {
-      return res.status(403).json({
-        success: false,
-        message: `Account is ${user.status}. Please contact support.`,
-      });
+    // Role admin is exempt from verification status blocks to administer platform
+    if (user.role !== 'admin') {
+      // Allow users with incomplete OAuth profiles to access profile-completion routes
+      const isProfileRoute =
+        (req.baseUrl === '/api/auth' || req.originalUrl?.startsWith('/api/auth')) &&
+        (req.path === '/complete-profile' || req.path === '/profile-status' || req.path === '/me');
+
+      if (user.profile_completed === false && isProfileRoute) {
+        // Allow through to complete profile
+      } else {
+        if (user.verification_status === 'PENDING' || user.status === 'pending') {
+          return res.status(403).json({
+            success: false,
+            code: 'ACCOUNT_PENDING_VERIFICATION',
+            verification_status: 'PENDING',
+            message: 'Your account is awaiting admin verification. You will be notified once approved.',
+          });
+        }
+
+        if (user.verification_status === 'REJECTED' || user.status === 'blocked') {
+          return res.status(403).json({
+            success: false,
+            code: 'ACCOUNT_REJECTED',
+            verification_status: 'REJECTED',
+            message: user.rejection_reason
+              ? `Your FoodRescue registration could not be approved. Reason: ${user.rejection_reason}`
+              : 'Your FoodRescue registration could not be approved. Please review the reason provided by the administrator.',
+          });
+        }
+
+        if (user.verification_status === 'SUSPENDED' || user.status === 'suspended') {
+          return res.status(403).json({
+            success: false,
+            code: 'ACCOUNT_SUSPENDED',
+            verification_status: 'SUSPENDED',
+            message: 'Your account has been suspended. Please contact support.',
+          });
+        }
+
+        if (user.verification_status !== 'APPROVED') {
+          return res.status(403).json({
+            success: false,
+            code: 'ACCOUNT_PENDING_VERIFICATION',
+            verification_status: user.verification_status || 'PENDING',
+            message: 'Your account is awaiting admin verification. You will be notified once approved.',
+          });
+        }
+      }
     }
 
     req.user = {
@@ -82,6 +125,8 @@ const authenticate = async (req, res, next) => {
       email: user.email,
       role: user.role,
       status: user.status,
+      verification_status: user.verification_status,
+      rejection_reason: user.rejection_reason,
       profile_completed: user.profile_completed !== false,
     };
 
@@ -122,7 +167,7 @@ const optionalAuthenticate = async (req, res, next) => {
     let user = getCachedUser(decoded.id);
     if (!user) {
       const { rows } = await db.query(
-        'SELECT id, email, role, status, profile_completed FROM users WHERE id = $1',
+        'SELECT id, email, role, status, verification_status, rejection_reason, profile_completed FROM users WHERE id = $1',
         [decoded.id]
       );
       if (rows.length > 0) {
@@ -131,12 +176,19 @@ const optionalAuthenticate = async (req, res, next) => {
       }
     }
 
-    if (user && user.status !== 'blocked' && user.status !== 'suspended') {
+    if (
+      user &&
+      (user.role === 'admin' || user.verification_status === 'APPROVED') &&
+      user.status !== 'blocked' &&
+      user.status !== 'suspended'
+    ) {
       req.user = {
         id: user.id,
         email: user.email,
         role: user.role,
         status: user.status,
+        verification_status: user.verification_status,
+        rejection_reason: user.rejection_reason,
         profile_completed: user.profile_completed !== false,
       };
     } else {

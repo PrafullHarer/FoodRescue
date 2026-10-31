@@ -5,10 +5,14 @@ import { useTheme } from '../../contexts/ThemeContext';
 import api from '../../api/client';
 import toast from 'react-hot-toast';
 
+// Global singletons to prevent multiple initialization warnings in React StrictMode & HMR
+let globalGisInitializedClientId = null;
+let globalGisResponseCallback = null;
+
 /**
  * Professional Google Identity Services Authentication Button.
  * Follows Google's official branding guidelines, auto-detects dark/light themes,
- * fetches client configuration dynamically, and handles OAuth credentials securely.
+ * mounts Google Identity Services securely, and handles authentic OAuth credential tokens.
  */
 export default function GoogleAuthButton({ mode = 'signin', className = '' }) {
   const { loginWithGoogle } = useAuth();
@@ -19,8 +23,7 @@ export default function GoogleAuthButton({ mode = 'signin', className = '' }) {
   const [googleClientId, setGoogleClientId] = useState(
     import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
   );
-  const [hasRenderedIframe, setHasRenderedIframe] = useState(false);
-  const [originMismatch, setOriginMismatch] = useState(false);
+
   const googleBtnRef = useRef(null);
 
   // 1. Fetch Google Client ID from backend if not defined in frontend env
@@ -48,7 +51,7 @@ export default function GoogleAuthButton({ mode = 'signin', className = '' }) {
     setLoading(true);
     try {
       const data = await loginWithGoogle(response.credential);
-      
+
       if (data?.profile_completed === false) {
         toast.success('Signed in with Google! Please complete your profile to continue.');
         navigate('/complete-profile');
@@ -58,11 +61,36 @@ export default function GoogleAuthButton({ mode = 'signin', className = '' }) {
       }
     } catch (err) {
       console.error('Google Auth Error:', err);
-      toast.error(err.response?.data?.message || 'Google authentication failed. Please try again.');
+      const code = err.response?.data?.code;
+      const details = err.response?.data?.details;
+      const msg = err.response?.data?.message || 'Google authentication failed. Please try again.';
+
+      if (code === 'ACCOUNT_PENDING_VERIFICATION' || msg.toLowerCase().includes('awaiting admin verification')) {
+        const email = details?.email || '';
+        if (email) sessionStorage.setItem('foodrescue_pending_email', email);
+        toast.error('Your account is awaiting admin verification.');
+        navigate('/verification-pending', {
+          state: {
+            email,
+            status: 'PENDING',
+            verification_status: 'PENDING',
+            full_name: details?.full_name || '',
+            role: details?.role || '',
+          },
+        });
+        return;
+      }
+
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
+
+  // Synchronize latest callback with global pointer
+  useEffect(() => {
+    globalGisResponseCallback = handleCredentialResponse;
+  });
 
   // 3. Load Google Identity Services SDK script
   useEffect(() => {
@@ -84,7 +112,7 @@ export default function GoogleAuthButton({ mode = 'signin', className = '' }) {
       script.defer = true;
       script.onload = () => setGisLoaded(true);
       script.onerror = () => {
-        console.warn('Google Identity Services script failed to load (blocked by browser or network).');
+        console.warn('Google Identity Services script failed to load.');
       };
       document.body.appendChild(script);
     } else {
@@ -92,160 +120,67 @@ export default function GoogleAuthButton({ mode = 'signin', className = '' }) {
     }
   }, []);
 
-  // 4. Initialize and render official GSI button
+  // 4. Initialize Google Identity Services (Globally ONCE per client ID)
   useEffect(() => {
     if (!gisLoaded || !window.google?.accounts?.id || !googleClientId) return;
+
+    // Prevent duplicate calls across React StrictMode remounts and page navigation
+    if (globalGisInitializedClientId === googleClientId) {
+      return;
+    }
 
     try {
       window.google.accounts.id.initialize({
         client_id: googleClientId,
-        callback: handleCredentialResponse,
+        callback: (resp) => {
+          if (globalGisResponseCallback) {
+            globalGisResponseCallback(resp);
+          }
+        },
         auto_select: false,
         cancel_on_tap_outside: true,
         itp_support: true,
-        error_callback: (err) => {
-          console.warn('Google Identity Services notification:', err);
-          if (err?.type === 'origin_mismatch' || (typeof err === 'string' && err.includes('origin'))) {
-            setOriginMismatch(true);
-          }
-        },
+        use_fedcm_for_prompt: true,
       });
-
-      if (googleBtnRef.current) {
-        // Clear previous render before mounting
-        googleBtnRef.current.innerHTML = '';
-
-        const containerWidth = googleBtnRef.current.offsetWidth || 340;
-        const clampedWidth = Math.min(Math.max(containerWidth, 240), 400);
-
-        window.google.accounts.id.renderButton(googleBtnRef.current, {
-          theme: 'outline',
-          size: 'large',
-          type: 'standard',
-          text: mode === 'signup' ? 'signup_with' : 'continue_with',
-          shape: 'rectangular',
-          logo_alignment: 'center',
-          width: clampedWidth,
-        });
-
-        // Check if iframe was injected
-        const checkTimer = setTimeout(() => {
-          if (googleBtnRef.current?.querySelector('iframe')) {
-            setHasRenderedIframe(true);
-          }
-        }, 300);
-
-        return () => clearTimeout(checkTimer);
-      }
+      globalGisInitializedClientId = googleClientId;
     } catch (e) {
-      console.error('Failed to initialize Google Accounts:', e);
+      console.warn('Failed to initialize Google Accounts:', e);
+    }
+  }, [gisLoaded, googleClientId]);
+
+  // 5. Render official GSI button into container
+  useEffect(() => {
+    if (!gisLoaded || !window.google?.accounts?.id || !googleClientId || !googleBtnRef.current) return;
+
+    try {
+      googleBtnRef.current.innerHTML = '';
+      const containerWidth = googleBtnRef.current.offsetWidth || 340;
+      const clampedWidth = Math.min(Math.max(containerWidth, 240), 400);
+
+      window.google.accounts.id.renderButton(googleBtnRef.current, {
+        theme: isDark ? 'filled_black' : 'outline',
+        size: 'large',
+        type: 'standard',
+        text: mode === 'signup' ? 'signup_with' : 'continue_with',
+        shape: 'rectangular',
+        logo_alignment: 'center',
+        width: clampedWidth,
+      });
+    } catch (e) {
+      console.warn('Failed to render Google button:', e);
     }
   }, [gisLoaded, googleClientId, isDark, mode]);
 
-  // 5. Fallback click handler when custom button is used or clicked
-  const handleCustomClick = () => {
+  const handleWrapperClick = () => {
     if (loading) return;
-
-    if (originMismatch) {
-      toast.error(
-        'Google Cloud Origin Error: Please add "http://localhost:5173" to Authorized JavaScript origins in Google Cloud Console.',
-        { duration: 8000 }
-      );
-      return;
-    }
-
-    if (googleClientId && window.google?.accounts?.id) {
-      try {
-        window.google.accounts.id.initialize({
-          client_id: googleClientId,
-          callback: handleCredentialResponse,
-          error_callback: (err) => {
-            console.warn('Google Identity Services status:', err);
-            toast.error(
-              'Google Origin Error: Ensure "http://localhost:5173" is added to Authorized JavaScript origins in Google Cloud Console.',
-              { duration: 8000 }
-            );
-          },
-        });
-
-        window.google.accounts.id.prompt((notification) => {
-          if (notification.isNotDisplayed()) {
-            const reason = notification.getNotDisplayedReason();
-            console.warn('Google One Tap not displayed:', reason);
-            if (reason === 'opt_out_or_no_session') {
-              toast('No active Google session found. Please sign into Google in your browser.', { icon: 'ℹ️' });
-            } else if (reason === 'suppressed_by_user') {
-              toast('Google prompt was closed recently. Please wait a moment or sign in with email.', { icon: 'ℹ️' });
-            } else {
-              toast('Google prompt unavailable. Check Authorized origins in Google Cloud Console.', { icon: '⚠️' });
-            }
-          }
-        });
-        return;
-      } catch (err) {
-        console.warn('Google prompt invocation error:', err);
-      }
-    }
-
-    // When client ID is not yet configured or for development simulation
-    toast(
-      (t) => (
-        <div className="space-y-2 text-xs">
-          <p className="font-bold text-sm">Google Sign-In Notice</p>
-          <p>
-            {googleClientId
-              ? 'To authenticate with Google, ensure your origin is authorized in Google Cloud Console.'
-              : 'Google Client ID is missing. Set VITE_GOOGLE_CLIENT_ID in frontend/.env.'}
-          </p>
-          <div className="pt-1 flex gap-2">
-            <button
-              onClick={() => {
-                toast.dismiss(t.id);
-                simulateDevGoogleSignIn();
-              }}
-              className="btn btn-primary py-1 px-2.5 text-[11px] font-bold"
-            >
-              Simulate Google Sign-In
-            </button>
-            <button
-              onClick={() => toast.dismiss(t.id)}
-              className="px-2.5 py-1 text-[11px] text-neutral-400 hover:text-white"
-            >
-              Dismiss
-            </button>
-          </div>
-        </div>
-      ),
-      { duration: 8000 }
-    );
-  };
-
-  // Helper for development simulation when needed
-  const simulateDevGoogleSignIn = async () => {
-    setLoading(true);
-    try {
-      const mockPayload = {
-        sub: `google-user-${Date.now()}`,
-        email: `google.user.${Math.floor(Math.random() * 1000)}@gmail.com`,
-        name: 'Sarah Connor (Google)',
-        picture: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
-        email_verified: true,
-      };
-
-      const encode = (obj) => btoa(JSON.stringify(obj)).replace(/=/g, '');
-      const fakeToken = `${encode({ alg: 'none', typ: 'JWT' })}.${encode(mockPayload)}.mockSignature`;
-
-      await handleCredentialResponse({ credential: fakeToken });
-    } catch (e) {
-      toast.error('Simulation failed: ' + e.message);
-    } finally {
-      setLoading(false);
+    if (!gisLoaded) {
+      toast('Connecting to Google Identity Services...', { icon: '⏳' });
     }
   };
 
   return (
     <div className={`relative w-full ${className}`}>
-      {/* 1. Visually Stunning Custom Google Button (Always visible, responsive, zero white-box, never clipped) */}
+      {/* 1. Custom Google Button Design (Always visible, responsive, matching design system) */}
       <div
         className="w-full h-11 px-4 flex items-center justify-center gap-3 rounded-xl border border-neutral-300 dark:border-[#2a2a30] bg-white dark:bg-[#141417] text-neutral-800 dark:text-neutral-100 font-semibold text-sm hover:bg-neutral-50 dark:hover:bg-[#1c1c22] hover:border-neutral-400 dark:hover:border-[#3a3a44] transition-all duration-150 shadow-xs select-none"
       >
@@ -277,10 +212,10 @@ export default function GoogleAuthButton({ mode = 'signin', className = '' }) {
         )}
       </div>
 
-      {/* 2. Official Google GSI Button mounted invisibly on top to capture clicks & open Account Chooser popup */}
+      {/* 2. Official Google GSI Button mounted invisibly on top to capture clicks */}
       <div
         ref={googleBtnRef}
-        onClick={handleCustomClick}
+        onClick={handleWrapperClick}
         className="absolute inset-0 w-full h-full opacity-[0.001] cursor-pointer z-10 overflow-hidden flex items-center justify-center [&_iframe]:!w-full [&_iframe]:!h-full [&>div]:!w-full [&>div]:!h-full [&>div]:!scale-110"
         title={mode === 'signup' ? 'Sign up with Google' : 'Continue with Google'}
       />

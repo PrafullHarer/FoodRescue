@@ -368,8 +368,17 @@ const scanQRCode = async (code, scannedByUserId, qualityChecklist = null) => {
         );
 
         await client.query(
-          `UPDATE food_donations SET status = 'delivered' WHERE id = $1`,
+          `UPDATE food_donations SET status = 'completed' WHERE id = $1`,
           [qrCode.donation_id]
+        );
+
+        // Record timeline events for NGO direct pickup & completion
+        await client.query(
+          `INSERT INTO donation_timeline_events (donation_id, event_type, actor_id, metadata)
+           VALUES ($1, 'PICKUP_CONFIRMED', $2, '{"type":"ngo_direct_pickup"}'),
+                  ($1, 'FOOD_RECEIVED', $2, '{"type":"ngo_direct_pickup"}'),
+                  ($1, 'DONATION_COMPLETED', $2, '{"type":"ngo_direct_pickup"}')`,
+          [qrCode.donation_id, scannedByUserId]
         );
 
         // Update stats
@@ -383,6 +392,10 @@ const scanQRCode = async (code, scannedByUserId, qualityChecklist = null) => {
         );
 
         await client.query('COMMIT');
+
+        // Trigger automated donation completion emails post-commit
+        const donationEmailService = require('../donations/donation-email.service');
+        donationEmailService.triggerDonationCompletionEmails(qrCode.donation_id);
 
         // Notify Food Provider
         if (qrCode.provider_user_id) {
@@ -414,6 +427,14 @@ const scanQRCode = async (code, scannedByUserId, qualityChecklist = null) => {
         await client.query(
           `UPDATE food_donations SET status = 'collected' WHERE id = $1`,
           [qrCode.donation_id]
+        );
+
+        // Record timeline events for volunteer pickup
+        await client.query(
+          `INSERT INTO donation_timeline_events (donation_id, event_type, actor_id, metadata)
+           VALUES ($1, 'PICKUP_CONFIRMED', $2, '{"type":"volunteer_pickup"}'),
+                  ($1, 'DELIVERY_STARTED', $2, '{"type":"volunteer_pickup"}')`,
+          [qrCode.donation_id, scannedByUserId]
         );
 
         await client.query('COMMIT');
@@ -455,8 +476,16 @@ const scanQRCode = async (code, scannedByUserId, qualityChecklist = null) => {
       );
 
       await client.query(
-        `UPDATE food_donations SET status = 'delivered' WHERE id = $1`,
+        `UPDATE food_donations SET status = 'completed' WHERE id = $1`,
         [qrCode.donation_id]
+      );
+
+      // Record timeline events for dropoff receipt & completion
+      await client.query(
+        `INSERT INTO donation_timeline_events (donation_id, event_type, actor_id, metadata)
+         VALUES ($1, 'FOOD_RECEIVED', $2, '{"type":"ngo_dropoff_scan"}'),
+                ($1, 'DONATION_COMPLETED', $2, '{"type":"ngo_dropoff_scan"}')`,
+        [qrCode.donation_id, scannedByUserId]
       );
 
       // Volunteer stats & availability
@@ -482,6 +511,10 @@ const scanQRCode = async (code, scannedByUserId, qualityChecklist = null) => {
       );
 
       await client.query('COMMIT');
+
+      // Trigger automated donation completion emails post-commit
+      const donationEmailService = require('../donations/donation-email.service');
+      donationEmailService.triggerDonationCompletionEmails(qrCode.donation_id);
 
       // Notifications to Provider, Volunteer, and NGO
       if (qrCode.provider_user_id) {

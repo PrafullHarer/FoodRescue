@@ -6,12 +6,19 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 env:
-  NODE_VERSION: '18'
+  NODE_VERSION: '20'
 
 jobs:
   # ─────────────────────────────────────────────
-  # 1. Backend — Lint & Build Check
+  # 1. Backend — Lint, Syntax & Verification
   # ─────────────────────────────────────────────
   backend-ci:
     name: 🔧 Backend CI
@@ -34,11 +41,13 @@ jobs:
       - name: 📦 Install dependencies
         run: npm ci
 
-      - name: ✅ Syntax check (dry-run start)
-        run: node --check src/app.js
+      - name: ✅ Syntax check (all backend modules)
+        run: |
+          node --check src/app.js
+          find src -name "*.js" -exec node --check {} +
 
   # ─────────────────────────────────────────────
-  # 2. Frontend — Lint & Build
+  # 2. Frontend — Lint & Production Build
   # ─────────────────────────────────────────────
   frontend-ci:
     name: 🎨 Frontend CI
@@ -102,12 +111,10 @@ jobs:
           PGPASSWORD: testpassword
           PGDATABASE: foodrescue_test
         run: |
-          # Install PostGIS extension (required by schema)
-          sudo apt-get update && sudo apt-get install -y postgresql-client
-          psql -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
-          psql -c "CREATE EXTENSION IF NOT EXISTS postgis;" 2>/dev/null || echo "PostGIS not available in test — skipping spatial extension"
-          # Validate that schema SQL is syntactically correct
-          psql -f database/schema.sql || echo "::warning::Schema had issues — review the SQL file"
+          if ! command -v psql &> /dev/null; then
+            sudo apt-get update && sudo apt-get install -y postgresql-client
+          fi
+          psql -v ON_ERROR_STOP=1 -f database/schema.sql
 
   # ─────────────────────────────────────────────
   # 4. Deploy gate (runs only on main push)
@@ -115,12 +122,12 @@ jobs:
   deploy-gate:
     name: 🚀 Deploy Gate
     runs-on: ubuntu-latest
-    needs: [backend-ci, frontend-ci]
+    needs: [backend-ci, frontend-ci, schema-check]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
       - name: ✅ All checks passed
-        run: echo "🎉 All CI checks passed. Ready for deployment!"
+        run: echo "🎉 All CI checks passed (Backend, Frontend & Schema). Ready for deployment!"
 
       # Uncomment and configure when ready to deploy:
       #

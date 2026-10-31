@@ -15,9 +15,9 @@ async function seed() {
 
     // 1. Admin User
     const adminRes = await client.query(
-      `INSERT INTO users (email, password_hash, role, status, full_name, phone)
-       VALUES ($1, $2, 'admin', 'active', 'System Administrator', '+1 555-0100')
-       ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, status = 'active'
+      `INSERT INTO users (email, password_hash, role, status, verification_status, approved_at, full_name, phone)
+       VALUES ($1, $2, 'admin', 'active', 'APPROVED', NOW(), 'System Administrator', '+1 555-0100')
+       ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, status = 'active', verification_status = 'APPROVED'
        RETURNING id, email, role`,
       ['admin@foodrescue.org', passwordHash]
     );
@@ -25,9 +25,9 @@ async function seed() {
 
     // 2. Provider User
     const providerRes = await client.query(
-      `INSERT INTO users (email, password_hash, role, status, full_name, phone)
-       VALUES ($1, $2, 'provider', 'active', 'Green Valley Bakery & Cafe', '+1 555-0101')
-       ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, status = 'active'
+      `INSERT INTO users (email, password_hash, role, status, verification_status, approved_at, full_name, phone)
+       VALUES ($1, $2, 'provider', 'active', 'APPROVED', NOW(), 'Green Valley Bakery & Cafe', '+1 555-0101')
+       ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, status = 'active', verification_status = 'APPROVED'
        RETURNING id, email, role`,
       ['provider@foodrescue.org', passwordHash]
     );
@@ -49,9 +49,9 @@ async function seed() {
 
     // 3. NGO User
     const ngoRes = await client.query(
-      `INSERT INTO users (email, password_hash, role, status, full_name, phone)
-       VALUES ($1, $2, 'ngo', 'active', 'Hope Harvest Community Shelter', '+1 555-0102')
-       ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, status = 'active'
+      `INSERT INTO users (email, password_hash, role, status, verification_status, approved_at, full_name, phone)
+       VALUES ($1, $2, 'ngo', 'active', 'APPROVED', NOW(), 'Hope Harvest Community Shelter', '+1 555-0102')
+       ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, status = 'active', verification_status = 'APPROVED'
        RETURNING id, email, role`,
       ['ngo@foodrescue.org', passwordHash]
     );
@@ -73,9 +73,9 @@ async function seed() {
 
     // 4. Volunteer User
     const volRes = await client.query(
-      `INSERT INTO users (email, password_hash, role, status, full_name, phone)
-       VALUES ($1, $2, 'volunteer', 'active', 'Alex Morgan (Volunteer)', '+1 555-0103')
-       ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, status = 'active'
+      `INSERT INTO users (email, password_hash, role, status, verification_status, approved_at, full_name, phone)
+       VALUES ($1, $2, 'volunteer', 'active', 'APPROVED', NOW(), 'Alex Morgan (Volunteer)', '+1 555-0103')
+       ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, status = 'active', verification_status = 'APPROVED'
        RETURNING id, email, role`,
       ['volunteer@foodrescue.org', passwordHash]
     );

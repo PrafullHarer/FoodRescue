@@ -13,6 +13,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState(null);
   const [recentDonations, setRecentDonations] = useState([]);
   const [availableMissions, setAvailableMissions] = useState([]);
+  const [pendingVerificationsCount, setPendingVerificationsCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -46,6 +47,9 @@ export default function DashboardPage() {
         promises.push(
           api.get('/donations', { params: { limit: 5 } }).catch(() => ({ data: { data: { donations: [] } } }))
         );
+        promises.push(
+          api.get('/admin/verifications', { params: { status: 'PENDING', limit: 1 } }).catch(() => ({ data: { data: { stats: { pending: 0 } } } }))
+        );
       }
 
       const results = await Promise.all(promises);
@@ -56,6 +60,9 @@ export default function DashboardPage() {
         if (results[2]) {
           setAvailableMissions(results[2]?.data?.data || []);
         }
+      } else if (user?.role === 'admin') {
+        setRecentDonations(results[1]?.data?.data?.donations || []);
+        setPendingVerificationsCount(results[2]?.data?.data?.stats?.pending || 0);
       } else {
         setRecentDonations(results[1]?.data?.data?.donations || []);
       }
@@ -161,6 +168,32 @@ export default function DashboardPage() {
           </Link>
         )}
       </div>
+
+      {/* Pending Verifications Alert for Admin */}
+      {user?.role === 'admin' && pendingVerificationsCount > 0 && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fade-in shadow-xs">
+          <div className="flex items-start sm:items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-amber-500 text-black flex items-center justify-center font-bold flex-shrink-0 shadow-xs">
+              <Clock className="w-5 h-5 animate-spin" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm sm:text-base text-neutral-900 dark:text-white">
+                {pendingVerificationsCount} Registration{pendingVerificationsCount > 1 ? 's' : ''} Awaiting Admin Verification
+              </h3>
+              <p className="text-xs text-neutral-600 dark:text-neutral-300 mt-0.5">
+                New food providers, NGOs, or volunteers are waiting for verification before receiving platform dashboard access.
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/admin/verifications"
+            className="btn btn-primary bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs py-2 px-4 whitespace-nowrap self-start sm:self-center flex items-center gap-1.5 cursor-pointer"
+          >
+            Review Verifications Queue
+            <ChevronRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+      )}
 
       {/* Stats cards (2 columns on mobile, 4 on desktop) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">

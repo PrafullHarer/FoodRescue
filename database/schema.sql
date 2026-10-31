@@ -106,6 +106,15 @@ CREATE TABLE users (
   google_id         VARCHAR(255) UNIQUE,
   auth_provider     VARCHAR(50) NOT NULL DEFAULT 'local',
   profile_completed BOOLEAN NOT NULL DEFAULT TRUE,
+  verification_status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+  approved_by       UUID REFERENCES users(id) ON DELETE SET NULL,
+  approved_at       TIMESTAMPTZ,
+  rejected_by       UUID REFERENCES users(id) ON DELETE SET NULL,
+  rejected_at       TIMESTAMPTZ,
+  rejection_reason  TEXT,
+  info_requested_notes TEXT,
+  info_requested_at TIMESTAMPTZ,
+  suspended_at      TIMESTAMPTZ,
   created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -206,6 +215,7 @@ CREATE TABLE deliveries (
   delivery_time     TIMESTAMPTZ,
   distance_km       DOUBLE PRECISION,
   notes             TEXT,
+  quality_checklist JSONB,
   created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -252,15 +262,34 @@ CREATE TABLE device_tokens (
 -- 11. Complaints
 CREATE TABLE complaints (
   id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  complaint_reference VARCHAR(50) UNIQUE,
   reporter_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  complainant_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
   reported_user_id  UUID REFERENCES users(id),
+  subject_user_id   UUID REFERENCES users(id) ON DELETE SET NULL,
   donation_id       UUID REFERENCES food_donations(id),
+  delivery_id       UUID REFERENCES deliveries(id) ON DELETE SET NULL,
+  category          VARCHAR(100) NOT NULL DEFAULT 'other',
+  title             VARCHAR(255),
   subject           VARCHAR(255) NOT NULL,
   description       TEXT NOT NULL,
-  status            complaint_status NOT NULL DEFAULT 'open',
+  priority          VARCHAR(20) NOT NULL DEFAULT 'medium',
+  status            VARCHAR(50) NOT NULL DEFAULT 'submitted',
+  assigned_admin_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
   resolution_notes  TEXT,
+  resolution_summary TEXT,
+  rejection_reason  TEXT,
+  reopen_reason     TEXT,
+  response_due_at   TIMESTAMPTZ,
+  resolution_due_at TIMESTAMPTZ,
+  escalated_at      TIMESTAMPTZ,
+  escalation_level  INTEGER NOT NULL DEFAULT 0,
   resolved_by       UUID REFERENCES users(id),
   resolved_at       TIMESTAMPTZ,
+  closed_at         TIMESTAMPTZ,
+  reopened_at       TIMESTAMPTZ,
+  incident_date     TIMESTAMPTZ,
+  supporting_evidence_url TEXT,
   created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -429,6 +458,41 @@ CREATE TABLE IF NOT EXISTS feedback (
 CREATE INDEX IF NOT EXISTS idx_feedback_status ON feedback(status);
 CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_feedback_type ON feedback(feedback_type);
+
+-- 22. Donation Timeline Events (System of record for lifecycle history)
+CREATE TABLE IF NOT EXISTS donation_timeline_events (
+  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  donation_id       UUID NOT NULL REFERENCES food_donations(id) ON DELETE CASCADE,
+  event_type        VARCHAR(50) NOT NULL,
+  event_timestamp   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  actor_id          UUID REFERENCES users(id) ON DELETE SET NULL,
+  metadata          JSONB DEFAULT '{}'::jsonb,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_donation_timeline_events_donation ON donation_timeline_events(donation_id, event_timestamp ASC);
+CREATE INDEX IF NOT EXISTS idx_donation_timeline_events_type ON donation_timeline_events(event_type);
+
+-- 23. Donation Completion Emails (Idempotent delivery tracking for Provider & NGO)
+CREATE TABLE IF NOT EXISTS donation_completion_emails (
+  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  donation_id       UUID NOT NULL REFERENCES food_donations(id) ON DELETE CASCADE,
+  recipient_type    VARCHAR(20) NOT NULL,
+  recipient_email   VARCHAR(255) NOT NULL,
+  recipient_name    VARCHAR(255),
+  status            VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+  subject           VARCHAR(255),
+  sent_at           TIMESTAMPTZ,
+  last_attempt_at   TIMESTAMPTZ,
+  retry_count       INTEGER NOT NULL DEFAULT 0,
+  failure_reason    TEXT,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(donation_id, recipient_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_donation_completion_emails_donation ON donation_completion_emails(donation_id);
+CREATE INDEX IF NOT EXISTS idx_donation_completion_emails_status ON donation_completion_emails(status);
 
 -- -------------------------
 -- Triggers

@@ -154,14 +154,41 @@ export default function ComplaintDetailPage() {
     }
   };
 
+  const formatDateTime = (dateStr, options = { dateStyle: 'short', timeStyle: 'short' }) => {
+    if (!dateStr) return '';
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return '';
+      return date.toLocaleString(undefined, options);
+    } catch {
+      return '';
+    }
+  };
+
+  const formatDateOnly = (dateStr, options = { dateStyle: 'medium' }) => {
+    if (!dateStr) return '';
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return '';
+      return date.toLocaleDateString(undefined, options);
+    } catch {
+      return '';
+    }
+  };
+
   const formatMessageTime = (dateStr) => {
     if (!dateStr) return '';
-    const date = new Date(dateStr);
-    const now = new Date();
-    const isToday = date.toDateString() === now.toDateString();
-    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    if (isToday) return `Today, ${timeStr}`;
-    return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${timeStr}`;
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return '';
+      const now = new Date();
+      const isToday = date.toDateString() === now.toDateString();
+      const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      if (isToday) return `Today, ${timeStr}`;
+      return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${timeStr}`;
+    } catch {
+      return '';
+    }
   };
 
   if (loading) {
@@ -248,17 +275,17 @@ export default function ComplaintDetailPage() {
 
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-            {complaint.title}
+            {complaint.title || complaint.subject || 'Complaint Investigation File'}
           </h1>
           <div className="flex items-center gap-3 text-xs text-neutral-400 mt-1 flex-wrap">
             <span>
-              Filed on {new Date(complaint.created_at).toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'short' })}
+              Filed on {formatDateTime(complaint.created_at, { dateStyle: 'full', timeStyle: 'short' })}
             </span>
             {complaint.incident_date && (
               <>
                 <span>•</span>
                 <span className="text-neutral-300">
-                  Incident Date: {new Date(complaint.incident_date).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                  Incident Date: {formatDateOnly(complaint.incident_date, { dateStyle: 'medium' })}
                 </span>
               </>
             )}
@@ -283,7 +310,7 @@ export default function ComplaintDetailPage() {
               </span>
               {complaint.resolved_at && (
                 <span className="text-[10px] text-emerald-500 font-medium">
-                  {new Date(complaint.resolved_at).toLocaleDateString()}
+                  {formatDateOnly(complaint.resolved_at)}
                 </span>
               )}
             </div>
@@ -553,10 +580,10 @@ export default function ComplaintDetailPage() {
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-white capitalize">
-                      {h.action_type.replace(/_/g, ' ')}
+                      {(h.action_type || 'update').replace(/_/g, ' ')}
                     </span>
                     <span className="text-[10px] text-neutral-500">
-                      {new Date(h.created_at).toLocaleDateString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
+                      {formatDateTime(h.created_at, { dateStyle: 'short', timeStyle: 'short' })}
                     </span>
                   </div>
                   {h.reason && (

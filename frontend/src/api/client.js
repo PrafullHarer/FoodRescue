@@ -14,11 +14,23 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Auto-refresh on 401
+// Auto-refresh on 401 & Handle unverified 403
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+
+    // Handle unapproved or revoked accounts trying to access protected endpoints
+    if (
+      error.response?.status === 403 &&
+      error.response?.data?.code === 'ACCOUNT_PENDING_VERIFICATION'
+    ) {
+      if (typeof window !== 'undefined' && window.location.pathname !== '/verification-pending') {
+        localStorage.clear();
+        window.location.href = '/verification-pending';
+      }
+      return Promise.reject(error);
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;

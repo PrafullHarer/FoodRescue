@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   Mail, Eye, EyeOff, ArrowLeft,
-  Check, Store, HeartHandshake, Truck, ShieldCheck
+  Check, Store, HeartHandshake, Truck, ShieldCheck,
+  Clock, XCircle, AlertTriangle, UserX
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ThemeToggle from '../../components/common/ThemeToggle';
@@ -13,23 +14,84 @@ import GoogleAuthButton from '../../components/common/GoogleAuthButton';
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ email: '', password: '' });
+  const location = useLocation();
+  const [form, setForm] = useState({
+    email: location.state?.email || sessionStorage.getItem('foodrescue_pending_email') || '',
+    password: '',
+  });
   const [showPass, setShowPass] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [statusNotice, setStatusNotice] = useState(null);
+
+  useEffect(() => {
+    if (location.state?.email) {
+      setForm((prev) => ({ ...prev, email: location.state.email }));
+    }
+    if (location.state?.approved) {
+      toast.success(location.state.message || 'Your account is approved! Please log in with your credentials.');
+    }
+  }, [location.state]);
 
   const handleSubmit = async (e, customEmail = null, customPass = null) => {
     if (e) e.preventDefault();
     const emailToUse = customEmail || form.email;
     const passToUse = customPass || form.password;
 
+    setStatusNotice(null);
     setLoading(true);
     try {
       const user = await login(emailToUse, passToUse);
       toast.success(`Welcome back, ${user.full_name}!`);
       navigate('/dashboard');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Login failed. Please check credentials.');
+      const errorData = err.response?.data || {};
+      const msg = errorData.message || 'Login failed. Please check credentials.';
+
+      if (
+        errorData.code === 'ACCOUNT_PENDING_VERIFICATION' ||
+        msg.toLowerCase().includes('awaiting admin verification')
+      ) {
+        sessionStorage.setItem('foodrescue_pending_email', emailToUse.trim());
+        toast.error('Account is awaiting admin verification.');
+        navigate('/verification-pending', {
+          state: {
+            email: emailToUse.trim(),
+            status: 'PENDING',
+            verification_status: 'PENDING',
+            full_name: errorData.details?.full_name || '',
+            role: errorData.details?.role || '',
+          },
+        });
+        return;
+      } else if (
+        errorData.code === 'ACCOUNT_REJECTED' ||
+        msg.toLowerCase().includes('rejected') ||
+        msg.toLowerCase().includes('not approved')
+      ) {
+        sessionStorage.setItem('foodrescue_pending_email', emailToUse.trim());
+        setStatusNotice({
+          type: 'rejected',
+          title: 'Registration Not Approved',
+          message: msg,
+          email: emailToUse.trim(),
+        });
+        toast.error('Registration was not approved.');
+      } else if (
+        errorData.code === 'ACCOUNT_SUSPENDED' ||
+        msg.toLowerCase().includes('suspended')
+      ) {
+        sessionStorage.setItem('foodrescue_pending_email', emailToUse.trim());
+        setStatusNotice({
+          type: 'suspended',
+          title: 'Account Suspended',
+          message: 'Your account has been suspended. Please contact support.',
+          email: emailToUse.trim(),
+        });
+        toast.error('Account has been suspended.');
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -122,6 +184,43 @@ export default function LoginPage() {
             </button>
           </div>
         </div>
+
+        {/* Status Notice Banner if account is Pending, Rejected, or Suspended */}
+        {statusNotice && (
+          <div
+            className={`p-3.5 rounded-xl border text-xs flex items-start gap-3 animate-fade-in ${
+              statusNotice.type === 'pending'
+                ? 'bg-amber-500/10 border-amber-500/30 text-amber-500'
+                : statusNotice.type === 'rejected'
+                ? 'bg-red-500/10 border-red-500/30 text-red-500'
+                : 'bg-neutral-500/10 border-neutral-500/30 text-neutral-400'
+            }`}
+          >
+            {statusNotice.type === 'pending' ? (
+              <Clock className="w-4 h-4 flex-shrink-0 mt-0.5 animate-spin" />
+            ) : statusNotice.type === 'rejected' ? (
+              <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            ) : (
+              <UserX className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            )}
+            <div>
+              <div className="font-bold text-neutral-900 dark:text-white">
+                {statusNotice.title}
+              </div>
+              <p className="text-neutral-600 dark:text-neutral-300 mt-0.5 leading-relaxed">
+                {statusNotice.message}
+              </p>
+              {statusNotice.email && (
+                <Link
+                  to={`/verification-pending?email=${encodeURIComponent(statusNotice.email)}`}
+                  className="inline-block mt-2 font-semibold underline text-[11px] hover:opacity-80 transition-opacity"
+                >
+                  View Verification Details & Status →
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Continue with Google */}
         <div className="space-y-4 pt-1">

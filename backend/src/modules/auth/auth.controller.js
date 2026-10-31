@@ -126,7 +126,7 @@ const getMe = async (req, res, next) => {
     const db = require('../../config/db');
 
     const { rows } = await db.query(
-      'SELECT id, email, role, full_name, phone, avatar_url, status, profile_completed, auth_provider, created_at FROM users WHERE id = $1',
+      'SELECT id, email, role, full_name, phone, avatar_url, status, verification_status, rejection_reason, info_requested_notes, approved_at, rejected_at, profile_completed, auth_provider, created_at FROM users WHERE id = $1',
       [req.user.id]
     );
 
@@ -160,12 +160,32 @@ const getGoogleConfig = async (req, res) => {
   });
 };
 
+/**
+ * GET or POST /api/auth/verification-status
+ * Check account approval status dynamically.
+ */
+const getVerificationStatus = async (req, res, next) => {
+  try {
+    const email = req.query.email || req.body?.email;
+    const result = await authService.getVerificationStatus(email);
+
+    res.status(200).json({
+      success: true,
+      message: 'Account verification status retrieved.',
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
   googleLogin,
   completeProfile,
   getProfileStatus,
+  getVerificationStatus,
   refreshToken,
   logout,
   getMe,

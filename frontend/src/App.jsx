@@ -13,6 +13,7 @@ import LandingPage from './pages/landing/LandingPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import CompleteProfilePage from './pages/auth/CompleteProfilePage';
+import VerificationPendingPage from './pages/auth/VerificationPendingPage';
 
 // Main Pages
 import DashboardPage from './pages/dashboard/DashboardPage';
@@ -88,6 +89,7 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/complete-profile" element={<CompleteProfilePage />} />
+            <Route path="/verification-pending" element={<VerificationPendingPage />} />
 
             {/* Protected Dashboard Routes */}
             <Route

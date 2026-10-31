@@ -64,4 +64,14 @@ router.patch(
   donationController.updatePickupType
 );
 
+// Lifecycle Timeline & Completion Emails
+router.get('/:id/timeline', authenticate.optional, donationController.getDonationTimeline);
+router.get('/:id/completion-emails', authenticate, donationController.getCompletionEmails);
+router.post(
+  '/:id/completion-emails/retry',
+  authenticate,
+  roleGuard('admin'),
+  donationController.retryCompletionEmails
+);
+
 module.exports = router;

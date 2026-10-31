@@ -37,6 +37,15 @@ const createDonation = async (providerId, data) => {
     [providerId]
   );
 
+  // Record initial DONATION_CREATED timeline event
+  const donationEmailService = require('./donation-email.service');
+  await donationEmailService.recordTimelineEvent(
+    rows[0].id,
+    'DONATION_CREATED',
+    null,
+    { title: rows[0].title, quantity: rows[0].quantity, category: rows[0].category }
+  );
+
   return rows[0];
 };
 
@@ -339,6 +348,11 @@ const getDonationById = async (donationId, user = null) => {
 
   donation.reviews = reviews;
 
+  // Attach complete donation lifecycle timeline and completion email delivery status
+  const donationEmailService = require('./donation-email.service');
+  donation.timeline = await donationEmailService.buildDonationTimeline(donationId);
+  donation.completion_emails = await donationEmailService.getDonationEmailStatus(donationId);
+
   return donation;
 };
 
@@ -450,6 +464,13 @@ const transitionStatus = async (donationId, newStatus) => {
     [newStatus, donationId]
   );
 
+  // If donation reached terminal completion, record event & trigger emails
+  if (newStatus === 'completed' || newStatus === 'delivered') {
+    const donationEmailService = require('./donation-email.service');
+    await donationEmailService.recordTimelineEvent(donationId, 'DONATION_COMPLETED');
+    donationEmailService.triggerDonationCompletionEmails(donationId);
+  }
+
   return rows[0];
 };
 
@@ -507,6 +528,13 @@ const claimDonation = async (donationId, ngoId, { pickupType = 'volunteer' } = {
     await client.query(
       'UPDATE food_donations SET status = $1, pickup_type = $2 WHERE id = $3',
       ['claimed', cleanPickupType, donationId]
+    );
+
+    // Record timeline event for claim
+    await client.query(
+      `INSERT INTO donation_timeline_events (donation_id, event_type, metadata)
+       VALUES ($1, 'DONATION_CLAIMED', $2)`,
+      [donationId, JSON.stringify({ ngo_id: ngoId, pickup_type: cleanPickupType })]
     );
 
     // Reject other pending claims
