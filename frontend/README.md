@@ -20,11 +20,13 @@ The **FoodRescue** frontend is a modern single-page application built with **Rea
 
 - **Google OAuth 2.0** — "Continue with Google" sign-in on Login and Register pages
 - **Mandatory Profile Completion** — Google sign-up users must complete role, phone, and address before dashboard access
+- **Account Verification Flow** — Dedicated pending verification page (`/verification-pending`) and admin approval portal
+- **Mobile Native Bridge Integration** — Bi-directional bridge with the Expo mobile app via `window.ReactNativeWebView` and `handleNativeQRScanned`
 - **Role-Based Dashboards** — Separate views for Provider, NGO, Volunteer, and Admin
 - **Data Isolation** — Each user sees only their own data; cross-user access is prevented
 - **Dark / Light Theme** — System-wide theme toggle with CSS custom properties
 - **Real-Time Notifications** — WebSocket-powered popups with role-based filtering (admins receive governance-only alerts)
-- **QR Code Scanning** — Built-in QR scanner for pickup and delivery verification
+- **QR Code Scanning & Verification** — Web camera + native hardware camera handoff with quality checklist inspection
 - **Trust & Ratings** — Click-to-view reputation profiles, review submission, and moderation
 - **Complaint System** — Submit, track, and communicate on complaints with threaded messaging
 - **Public Feedback** — Anonymous or authenticated feedback submission

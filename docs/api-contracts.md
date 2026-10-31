@@ -47,6 +47,9 @@ All protected endpoints require: `Authorization: Bearer <access_token>`
 | POST | `/donations/:id/claim` | ✓ | ngo | Claim a donation |
 | POST | `/donations/:id/cancel` | ✓ | provider | Cancel own donation |
 | PATCH | `/donations/:id/pickup-type` | ✓ | ngo | Update pickup type for claimed donation |
+| GET | `/donations/:id/timeline` | optional | — | Get chronological donation lifecycle timeline events |
+| GET | `/donations/:id/completion-emails` | ✓ | any | Get audit logs for automated donation completion emails |
+| POST | `/donations/:id/completion-emails/retry` | ✓ | admin | Retry failed completion email dispatch |
 
 ## Smart Matching
 
@@ -174,8 +177,15 @@ All protected endpoints require: `Authorization: Bearer <access_token>`
 
 | Method | Path | Auth | Roles | Description |
 |--------|------|------|-------|-------------|
-| GET | `/admin/pending-verifications` | ✓ | admin | Pending verifications |
-| POST | `/admin/verify/:type/:id` | ✓ | admin | Verify provider/ngo |
+| GET | `/admin/verifications` | ✓ | admin | List user verifications with status filters |
+| GET | `/admin/verifications/:userId` | ✓ | admin | Get detailed verification data for a user |
+| POST | `/admin/verifications/:userId/documents` | ✓ | admin | Add verification document record |
+| PATCH | `/admin/verifications/:userId/approve` | ✓ | admin | Approve user registration & unlock dashboard access |
+| PATCH | `/admin/verifications/:userId/reject` | ✓ | admin | Reject user verification with reason notes |
+| PATCH | `/admin/verifications/:userId/request-info` | ✓ | admin | Request additional verification documents |
+| PATCH | `/admin/verifications/:userId/suspend` | ✓ | admin | Suspend or reactivate user account |
+| GET | `/admin/pending-verifications` | ✓ | admin | Legacy pending verifications list |
+| POST | `/admin/verify/:type/:id` | ✓ | admin | Verify entity (provider/ngo) |
 | GET | `/admin/complaints` | ✓ | admin | List complaints (alias) |
 | GET | `/admin/complaints/stats` | ✓ | admin | Complaint stats (alias) |
 | GET | `/admin/complaints/export` | ✓ | admin | Export complaints (alias) |

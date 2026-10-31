@@ -13,6 +13,7 @@ flowchart TB
         NGO["🤝 NGO / Shelter Network\n(Web / Mobile Browser)"]
         VOL["🚚 Volunteer Courier\n(PWA / Mobile Scanner)"]
         ADM["🛡️ Platform Admin\n(Admin Dashboard)"]
+        MOB["📱 Mobile App (Expo SDK 52 / React Native)\n1:1 Webview Replica + Native 4:3 Camera"]
     end
 
     subgraph CDN["Edge & Ingress"]
@@ -575,3 +576,43 @@ flowchart LR
     BackendJob & FrontendJob & SchemaJob --> GATE
     GATE -- Yes --> READY
 ```
+
+---
+
+## 13. Mobile Native Bridge & 4:3 QR Scanner Architecture
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as 👤 Volunteer / NGO Courier
+    participant Web as 🌐 React Web App (Webview)
+    participant Replica as 📱 WebviewReplicaScreen (React Native)
+    participant Camera as 📷 NativeCameraModal (CameraView)
+    participant Server as ⚙️ Backend API & DB
+
+    Note over User,Web: Step 1: Triggering QR Verification
+    User->>Web: Navigates to /qr-scan or clicks "Scan with Camera"
+    Web->>Replica: window.ReactNativeWebView.postMessage("OPEN_CAMERA_SCANNER")
+    
+    Note over Replica,Camera: Step 2: Dedicated Hardware Graphics Handover
+    Replica->>Replica: Unmounts Chromium WebView completely (frees GPU surface)
+    Replica->>Camera: Mounts NativeCameraModal (edge-to-edge hardware layer)
+    Camera->>Camera: Computes 4:3 Viewport (width: 392, height: 523)
+    Camera->>Camera: Renders Top Black Bar (Back, Flash, Flip) & Bottom Black Bar (Manual, Shutter)
+    Camera->>Camera: Runs continuous neon-green laser sweep animation inside 4:3 reticle
+
+    Note over Camera,Server: Step 3: Real-Time Detection & Verification
+    Camera->>Camera: Points at physical QR code (RESCUE-PK-XXXX or RESCUE-DL-XXXX)
+    Camera->>Camera: ML Kit barcode analyzer detects code
+    Camera->>Camera: Haptic vibration feedback + checkmark confirmation badge
+    Camera->>Replica: onCodeScanned(cleanCode)
+    
+    Note over Replica,Web: Step 4: Webview Re-mount & Verification Flow
+    Replica->>Replica: Sets activeUrl = "/qr-scan?code=" + cleanCode
+    Replica->>Replica: Unmounts NativeCameraModal
+    Replica->>Web: Re-mounts WebView at /qr-scan?code=RESCUE-PK-XXXX
+    Web->>Server: GET /api/qr-codes/preview/RESCUE-PK-XXXX
+    Server-->>Web: Returns donation & pickup details
+    Web->>User: Displays 4-Point Quality Inspection Checklist for handoff confirmation
+```
+

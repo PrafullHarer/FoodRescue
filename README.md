@@ -5,6 +5,8 @@
 
 ![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)
+![React Native](https://img.shields.io/badge/React%20Native-0.88-61DAFB?logo=react&logoColor=white)
+![Expo](https://img.shields.io/badge/Expo-SDK%2052-000020?logo=expo&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
 
@@ -12,7 +14,7 @@
 
 ## 🌟 Overview
 
-Every day, restaurants, caterers, bakeries, and grocery stores produce edible surplus food that goes to waste, while local shelters and charities face shortages. **FoodRescue** bridges this gap with a modern web platform featuring real-time claims, route handovers with verification QR codes, automated food expiry management, Google OAuth sign-in, comprehensive complaints & incident management, public feedback collection, admin analytics with geographical donation hotspots, and ESG environmental impact analytics.
+Every day, restaurants, caterers, bakeries, and grocery stores produce edible surplus food that goes to waste, while local shelters and charities face shortages. **FoodRescue** bridges this gap with an end-to-end full-stack web and native mobile ecosystem (React 19 & Expo SDK 52) featuring real-time claims, route handovers with verification QR codes, Google Lens-style 4:3 camera scanner, automated food expiry management, Google OAuth sign-in, user verification governance, automated donation completion emails, comprehensive complaints & incident management, public feedback collection, admin analytics with geographical donation hotspots, and ESG environmental impact analytics.
 
 ---
 
@@ -23,6 +25,7 @@ Every day, restaurants, caterers, bakeries, and grocery stores produce edible su
 - **Manage Listings**: Real-time status tracking (`posted` ➔ `claimed` ➔ `in_transit` ➔ `delivered`).
 - **Data Isolation**: Providers can only view, edit, and delete their own donations — never another provider's listings.
 - **ESG Impact Metrics**: Track total kilograms rescued, meals donated, and CO₂ emissions avoided.
+- **Automated Completion Receipts**: Automated email receipts containing verified meal metrics upon shelter handover.
 - **Trust & Reputation**: Click volunteer names to inspect delivery success rates, on-time delivery percentages, and partner ratings; track donor ratings and packaging feedback.
 
 ### 🤝 2. NGOs & Community Shelters
@@ -30,18 +33,19 @@ Every day, restaurants, caterers, bakeries, and grocery stores produce edible su
 - **1-Click Reservation**: Instant claim system to secure food packages before expiry.
 - **Delivery Tracking**: Monitor incoming supplies from assigned volunteer couriers.
 - **Direct Self-Pickup**: NGOs can opt for direct pickup from the food provider with single-step QR verification.
+- **Account Verification Gating**: Mandatory onboarding verification to guarantee shelter legitimacy.
 - **Data Isolation**: NGOs can only see their own claims and claim data — never another NGO's private information.
 - **Verified Donor Trust**: Click provider names to view their 5-star rating breakdown, verified donation count, and historical reviews before claiming food.
 
 ### 🚚 3. Volunteers & Couriers
 - **Delivery Missions**: Browse active delivery runs and accept pickup/dropoff tasks.
-- **Handover QR Verification**: Built-in QR scanner to verify physical handoff at both pickup from donor and dropoff at shelter.
+- **Handover QR Verification**: Built-in QR scanner and native Google Lens 4:3 hardware camera scanner to verify physical handoff.
 - **Data Isolation**: Volunteers can only access deliveries assigned to them and their own delivery history.
 - **Courier Reputation**: Transparent courier metrics showing successful delivery rate %, on-time rate %, and verified provider/NGO feedback.
 - **Volunteer Leaderboard**: Gamified rankings based on completed delivery missions.
 
 ### 🛡️ 4. Administrators
-- **Verification Portal**: Review business licenses and tax registrations for new NGOs and food providers.
+- **Verification Portal**: Dedicated verification queue (`/admin/verifications`) to review registrations, inspect tax/business IDs, request info, approve, or reject accounts.
 - **User Governance**: Activate, suspend, or manage platform participants.
 - **Advanced Analytics**: KPI dashboard, geographical donation hotspots (Leaflet map with clustered markers), wasted food categories, NGO demand gaps, delivery reliability, and inactive provider tracking.
 - **Complaint Management**: Full lifecycle complaint resolution — submission, assignment, priority management, threaded messaging, audit history, CSV export, and status transitions.
@@ -151,6 +155,77 @@ FoodRescue uses a dual-QR code handover system to ensure tamper-proof verificati
 | `POST` | `/api/qr-codes/:code/scan` | Scan & verify a QR code | volunteer, ngo, admin, provider |
 | `GET` | `/api/qr-codes/delivery/:deliveryId` | Get QR codes by delivery ID | all authenticated |
 | `GET` | `/api/qr-codes/donation/:donationId` | Get QR codes by donation ID | all authenticated |
+
+---
+
+## 📱 Mobile Application (Expo & React Native)
+
+FoodRescue includes a dedicated cross-platform mobile application located in `mobile/`, built on **Expo SDK 52** and **React Native 0.88**. It delivers a 1:1 mobile experience with the desktop web platform, packaged inside a high-performance webview container with direct native hardware access.
+
+### 📷 Google Lens-Style 4:3 QR Code Camera Scanner
+- **Direct Hardware Streaming**: Powered by `expo-camera` (`CameraView`), streaming live video feed directly from device camera sensors.
+- **4:3 Aspect Ratio Viewport**: Precision-calculated 4:3 portrait camera frame (`cameraWidth : cameraHeight = 3 : 4`) letterboxed with solid black bars on top and bottom.
+- **Unconstrained Surface Layer**: Live camera preview rendered on an unrestricted base layer to eliminate Android `SurfaceView` punch-hole clipping and black screen issues.
+- **Google Lens Overlay Reticle**:
+  - 4 white curved corner brackets (`borderTopLeftRadius: 28`, `#FFFFFF`).
+  - Animated neon-green laser sweep line (`#84CC16`) with ambient elevation glow.
+  - Contextual instruction pill: *"Point at donor or shelter QR code to scan"*.
+  - Scanned confirmation checkmark badge with instant vibrational haptic feedback (`Vibration.vibrate(100)`).
+- **Streamlined Top Bar Controls**:
+  - Pinned back button (`←`) on top-left to exit camera mode immediately.
+  - Flashlight toggle (`flash`) and camera flip switch (`camera-reverse-outline`) on top-right.
+  - Minimal layout with the words "QR Scanner" removed for a clean, distraction-free viewfinder.
+- **Bottom Bar & Actions**:
+  - "Manual Code" pill button on the bottom-left for manual token entry (`RESCUE-PK-XXXX`).
+  - Centered Google Lens double-ring circular scan shutter button.
+
+### 🌉 Bi-Directional Web-Native Bridge
+- Seamlessly connects the web application and native device capabilities:
+  - Injects `window.isFoodRescueNativeApp = true`.
+  - Exposes `window.openNativeCamera()` to trigger the native hardware scanner from web pages.
+  - Safely unmounts Chromium WebView when the camera opens, granting 100% of the device's hardware graphics compositor to the camera sensor.
+  - Automatically extracts scanned QR codes (`RESCUE-PK-XXXX`, `RESCUE-DL-XXXX`), navigates to `/qr-scan?code=<TOKEN>`, and re-mounts the webview with the 4-point Quality Checklist ready for verification.
+
+### 🎨 Dark Carbon Styling (1:1 Web Match)
+- Exact Tailwind CSS dark carbon aesthetic matching desktop and mobile web:
+  - Deep carbon background (`#050505`)
+  - Elevated surfaces (`#121214`)
+  - Subtle borders (`#232328`)
+  - Vibrant brand lime accent (`#84CC16`)
+
+---
+
+## ✉️ Automated Donation Completion Emails
+
+When a food rescue mission is completed (via volunteer dropoff QR verification or direct shelter pickup), FoodRescue's `donation-email.service.js` triggers transactional confirmation emails to all participating parties.
+
+### Dual-Party Automated Notifications
+1. **Food Provider Completion Receipt**:
+   - Summary of rescued food items and total weight (kg).
+   - Equivalent meals provided and environmental metrics ($CO_2$ emissions avoided).
+   - Receiving NGO shelter name, delivery timestamp, and verified volunteer driver recognition.
+2. **NGO / Shelter Acknowledgment**:
+   - Official delivery receipt and verification details.
+   - Timestamped handover record for internal food bank accounting.
+
+### Donation Lifecycle Timeline & Audit API
+- `GET /api/donations/:id/timeline` — Chronological audit trail of all lifecycle events (`created` ➔ `claimed` ➔ `in_transit` ➔ `delivered`).
+- `GET /api/donations/:id/completion-emails` — Email dispatch log verifying recipient, timestamp, and delivery status.
+- `POST /api/donations/:id/completion-emails/retry` — Admin-only endpoint to re-dispatch failed completion notifications.
+
+---
+
+## 🛡️ User Verification & Governance Workflow
+
+To maintain a trusted network of verified charities and licensed food businesses, FoodRescue includes a multi-step account verification pipeline:
+
+### Workflow
+1. **Registration & Role Selection**: New NGOs and food providers submit registration details and optional business license/tax exemption numbers.
+2. **Pending Approval Gating**: Accounts with `verification_status = 'pending'` are redirected to the dedicated **Pending Approval Screen** (`/verification-pending`). Access to donation listings, claims, and dispatch tools remains locked until verified.
+3. **Admin Verification Dashboard** (`/admin/verifications`):
+   - Filter by status (`pending`, `approved`, `rejected`, `info_requested`, `suspended`).
+   - Inspect organization details, contact info, and attached verification documentation.
+   - 1-click status actions: Approve (activates full dashboard access), Request Info (sends notification to user for documentation), Reject (with reason notes), or Suspend.
 
 ---
 
@@ -359,12 +434,13 @@ A comprehensive analytics suite available exclusively to administrators.
 | Layer | Technologies |
 |---|---|
 | **Frontend** | React 19, Tailwind CSS v4, Lucide React, React Router v7, Axios, React Hot Toast, Leaflet Maps, Vite |
+| **Mobile** | Expo SDK 52, React Native 0.88, expo-camera (CameraView), react-native-webview, @expo/vector-icons, react-native-safe-area-context |
 | **Backend** | Node.js, Express.js, JWT Authentication (access + refresh token rotation), Google OAuth 2.0 (`google-auth-library`), Zod validation, Helmet, Rate Limiting |
 | **Database** | PostgreSQL / Neon Cloud Postgres (with PostGIS for geolocation) |
-| **QR System** | `qrcode` (server-side generation), `crypto` (unique code hashing), built-in scanner UI |
+| **QR System** | Google Lens 4:3 Camera Scanner (mobile), `qrcode` (server-side generation), `crypto` (unique code hashing), web camera fallback |
 | **Real-Time** | WebSocket (`ws`) for live notifications |
 | **Scheduling** | node-cron — automated food expiry checker, incident detector, complaint escalator |
-| **Email** | Nodemailer for transactional emails |
+| **Email** | Nodemailer with automated donation completion receipts & timeline tracking |
 | **CI/CD** | GitHub Actions (lint, build, schema validation, deploy gate) |
 
 ---
@@ -425,19 +501,23 @@ The project uses **GitHub Actions** for continuous integration. The pipeline run
 
 ### ⚡ Quick Start (Combined Command)
 
-Run both the backend API and frontend client together directly from the root location:
+Run the backend API, frontend client, and mobile bundler directly from the root location:
 
 ```bash
-# 1. Install all dependencies across root, backend, and frontend
+# 1. Install all dependencies across root, backend, frontend, and mobile
 npm run install:all
 
 # 2. Start backend and frontend simultaneously
 npm run dev
 # or: npm start
+
+# 3. Optional: Start mobile bundler
+npm run dev:mobile
 ```
 
 - **Backend API**: `http://localhost:3000`
 - **Frontend Web App**: `http://localhost:5173`
+- **Mobile Expo Metro**: `http://localhost:8081`
 
 ---
 
@@ -495,6 +575,31 @@ npm run dev
    npm run dev
    ```
    *Web App will run at `http://localhost:5173`*
+
+---
+
+### 3. Mobile App Setup (Expo & React Native)
+
+1. Navigate to the mobile folder:
+   ```bash
+   cd mobile
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Start the Expo Metro bundler:
+   ```bash
+   npx expo start
+   ```
+
+4. Run the app:
+   - **Physical Device:** Install **Expo Go** (Android/iOS) and scan the QR code displayed in the terminal. Metro will auto-discover your local workstation IP (`10.221.100.64`).
+   - **Android Emulator:** Press `a` in the terminal.
+   - **iOS Simulator:** Press `i` in the terminal.
+   - **Reload:** Press `r` in the terminal or shake your device.
 
 ---
 
@@ -599,6 +704,24 @@ FoodRescue/
 │   │   │   └── volunteer/        # 📱 Deliveries & QR scan page
 │   │   └── App.jsx               # Routing configuration
 │   ├── vite.config.js
+│   └── package.json
+├── mobile/                       # 📱 Expo & React Native Mobile App
+│   ├── assets/                   # App icons, splash screens, logos
+│   ├── src/
+│   │   ├── api/                  # Mobile API client & dev host resolution
+│   │   ├── components/           # UI primitives & NativeCameraModal
+│   │   │   └── NativeCameraModal.js # 📷 Google Lens 4:3 QR code camera scanner
+│   │   ├── context/              # Mobile auth context
+│   │   ├── navigation/           # Root, auth, and role navigators
+│   │   ├── screens/              # Screens & WebviewReplicaScreen
+│   │   │   ├── WebviewReplicaScreen.js # Webview bridge container
+│   │   │   ├── auth/             # Login, Register, VerificationPending
+│   │   │   ├── ngo/              # BrowseDonations, MyClaims, NGOProfile
+│   │   │   ├── provider/         # CreateDonation, ProviderDashboard, ProviderDonations
+│   │   │   └── volunteer/        # Deliveries, DeliveryDetail, QRScannerScreen
+│   │   └── theme/                # Dark carbon color system
+│   ├── App.js                    # Mobile application root
+│   ├── app.json                  # Expo project manifest
 │   └── package.json
 ├── database/                     # PostgreSQL System of Record
 │   └── schema.sql                # Full relational schema with PostGIS & triggers

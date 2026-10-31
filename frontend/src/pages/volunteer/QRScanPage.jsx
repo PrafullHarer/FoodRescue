@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../api/client';
@@ -19,6 +19,102 @@ export default function QRScanPage() {
   const [qrPreview, setQrPreview] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [scanResult, setScanResult] = useState(null);
+  const [webCamActive, setWebCamActive] = useState(false);
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+
+  // Mobile App Native Hardware Camera Bridge
+  useEffect(() => {
+    window.handleNativeQRScanned = (scannedCode) => {
+      const clean = (scannedCode || '').trim().toUpperCase();
+      if (!clean) return;
+      setCode(clean);
+      toast.success('QR Code verified by camera!');
+      handlePreview(clean);
+    };
+
+    return () => {
+      delete window.handleNativeQRScanned;
+    };
+  }, []);
+
+  const handleLaunchCamera = () => {
+    if (typeof window !== 'undefined' && window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'OPEN_CAMERA_SCANNER' }));
+      return;
+    }
+    // Web browser camera fallback
+    setWebCamActive((prev) => !prev);
+  };
+
+  useEffect(() => {
+    if (!webCamActive) {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+      return;
+    }
+
+    let interval = null;
+    let cancelled = false;
+
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices
+        .getUserMedia({ video: { facingMode: 'environment' } })
+        .then((stream) => {
+          if (cancelled) {
+            stream.getTracks().forEach((track) => track.stop());
+            return;
+          }
+          streamRef.current = stream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.play().catch(() => {});
+          }
+
+          if ('BarcodeDetector' in window) {
+            const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+            interval = setInterval(async () => {
+              if (videoRef.current && videoRef.current.readyState >= 2) {
+                try {
+                  const barcodes = await detector.detect(videoRef.current);
+                  if (barcodes.length > 0) {
+                    let raw = barcodes[0].rawValue || '';
+                    if (raw.includes('code=')) {
+                      raw = raw.split('code=')[1].split('&')[0];
+                    }
+                    const detected = decodeURIComponent(raw).trim().toUpperCase();
+                    if (detected) {
+                      setCode(detected);
+                      setWebCamActive(false);
+                      toast.success('QR Code detected!');
+                      handlePreview(detected);
+                    }
+                  }
+                } catch {
+                  // scanning...
+                }
+              }
+            }, 300);
+          }
+        })
+        .catch((err) => {
+          console.warn('Webcam error:', err);
+          toast.error('Could not access camera. Enter code manually.');
+          setWebCamActive(false);
+        });
+    }
+
+    return () => {
+      cancelled = true;
+      if (interval) clearInterval(interval);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+    };
+  }, [webCamActive]);
 
   // Quality checklist state for pickup inspection
   const [checklist, setChecklist] = useState({
@@ -125,6 +221,59 @@ export default function QRScanPage() {
               Enter the alphanumeric code from the donor or volunteer screen.
             </p>
           </div>
+        </div>
+
+        {/* Hardware Camera Scanner Action */}
+        <button
+          type="button"
+          onClick={handleLaunchCamera}
+          className="w-full py-4 px-5 rounded-2xl bg-[#162215] dark:bg-[#121c13] border border-lime-500/40 hover:border-lime-500 text-white font-bold flex items-center justify-between shadow-lg shadow-lime-950/20 active:scale-[0.99] transition-all group cursor-pointer"
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-lime-500/20 border border-lime-500/30 flex items-center justify-center text-lime-400 group-hover:scale-105 transition-transform">
+              <Camera className="w-5 h-5 text-lime-400" />
+            </div>
+            <div className="text-left">
+              <div className="text-sm font-bold text-white flex items-center gap-2">
+                <span>Scan with Camera</span>
+                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-lime-500/20 text-lime-400 border border-lime-500/30">
+                  Live Scanner
+                </span>
+              </div>
+              <p className="text-xs text-neutral-400 font-normal mt-0.5">
+                Point camera at donor or shelter QR code to scan
+              </p>
+            </div>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-neutral-400 group-hover:text-lime-400 group-hover:translate-x-0.5 transition-all">
+            <Sparkles className="w-4 h-4 text-lime-400" />
+          </div>
+        </button>
+
+        {/* Web Camera Stream Fallback for standard browsers */}
+        {webCamActive && (
+          <div className="p-4 bg-neutral-900 border border-lime-500/30 rounded-2xl space-y-3 animate-fade-in text-center">
+            <div className="relative aspect-video max-w-sm mx-auto overflow-hidden rounded-xl border border-neutral-700 bg-black">
+              <video ref={videoRef} className="w-full h-full object-cover" autoPlay playsInline muted />
+              <div className="absolute inset-x-8 inset-y-6 border-2 border-dashed border-lime-400/80 rounded-lg pointer-events-none" />
+            </div>
+            <div className="flex items-center justify-between text-xs text-neutral-400 px-2">
+              <span>Align QR code in camera view</span>
+              <button
+                type="button"
+                onClick={() => setWebCamActive(false)}
+                className="text-rose-400 hover:text-rose-300 font-semibold cursor-pointer"
+              >
+                Close Camera
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-[1px] bg-neutral-200 dark:bg-[#232328]" />
+          <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider">or enter code manually</span>
+          <div className="flex-1 h-[1px] bg-neutral-200 dark:bg-[#232328]" />
         </div>
 
         <form
