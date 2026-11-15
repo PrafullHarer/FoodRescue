@@ -2,24 +2,20 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../api/client';
+import { Bell, X, CheckCircle2 } from 'lucide-react';
 import {
-  Bell, X, ChevronRight, Utensils,
-  Package, Clock, ExternalLink,
-  AlertTriangle as AlertTriangleIcon,
-  CheckCircle2 as CheckCircle2Icon
-} from 'lucide-react';
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '../ui/alert';
+  isBrowserNotificationSupported,
+  getBrowserNotificationPermission,
+  requestBrowserNotificationPermission,
+  sendBrowserNotification,
+} from '../../utils/browserNotifications';
 
-const POLL_INTERVAL = 45000; // 45 seconds (checks only when tab is active)
+const POLL_INTERVAL = 30000; // 30 seconds
 
 const getSeenIds = (userId) => {
   if (!userId) return new Set();
   try {
-    const raw = localStorage.getItem(`foodrescue_seen_popups_${userId}`);
+    const raw = localStorage.getItem(`foodrescue_seen_browser_notifs_${userId}`);
     return raw ? new Set(JSON.parse(raw)) : new Set();
   } catch {
     return new Set();
@@ -30,7 +26,7 @@ const saveSeenIds = (userId, seenSet) => {
   if (!userId) return;
   try {
     const arr = Array.from(seenSet).slice(-100);
-    localStorage.setItem(`foodrescue_seen_popups_${userId}`, JSON.stringify(arr));
+    localStorage.setItem(`foodrescue_seen_browser_notifs_${userId}`, JSON.stringify(arr));
   } catch {
     // ignore
   }
@@ -64,34 +60,96 @@ const isDonationNotification = (n) => {
   return titleLower.includes('donation') || titleLower.includes('pickup mission') || bodyLower.includes('donation');
 };
 
+const resolveNotificationRoute = (notification, user) => {
+  let notifData = notification.data;
+  if (typeof notifData === 'string') {
+    try {
+      notifData = JSON.parse(notifData);
+    } catch {
+      notifData = null;
+    }
+  }
+
+  const titleLower = (notification.title || '').toLowerCase();
+  const isIncident = notifData?.incident_id || notification.type === 'incident' || titleLower.includes('incident') || titleLower.includes('escalation');
+  const isVerification = notifData?.verification_id || notification.type === 'verification' || titleLower.includes('verification');
+  const isComplaint = notifData?.complaint_id || notification.type === 'complaint' || titleLower.includes('complaint');
+
+  if (isIncident && user?.role === 'admin') {
+    return '/admin/incidents';
+  }
+
+  if (isVerification && user?.role === 'admin') {
+    return '/admin/verifications';
+  }
+
+  if (isComplaint) {
+    return user?.role === 'admin' ? '/admin/complaints' : '/complaints';
+  }
+
+  const donationId = notifData?.donation_id || notifData?.donationId || notification.donation_id;
+  const isValidUUID = donationId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(donationId);
+
+  if (isValidUUID) {
+    return `/donations/${donationId}`;
+  } else if (notifData?.claim_id) {
+    return '/claims';
+  } else if (notifData?.delivery_id) {
+    return '/deliveries';
+  } else if (user?.role === 'ngo') {
+    return '/browse';
+  } else if (user?.role === 'provider') {
+    return '/donations';
+  } else {
+    return '/notifications';
+  }
+};
+
 /**
- * Bottom-right notification popup for users (NGOs, Providers, Volunteers).
- * Polls for unread notifications and displays them as slide-in cards with auto-dismiss.
+ * Native Browser Notification Dispatcher
+ * Requests browser notification permission and sends notifications via the browser's native API.
+ * Keeps the main screen clean with zero intrusive popup cards.
  */
 export default function NotificationPopup() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [popups, setPopups] = useState([]);
+  const [permission, setPermission] = useState(getBrowserNotificationPermission());
+  const [promptDismissed, setPromptDismissed] = useState(() => {
+    return localStorage.getItem('foodrescue_browser_notif_prompt_dismissed') === 'true';
+  });
   const intervalRef = useRef(null);
 
-  const dismissPopup = useCallback((popupId, originalId) => {
-    setPopups(prev => prev.filter(p => p._popupId !== popupId));
-    if (user?.id && originalId) {
-      const seen = getSeenIds(user.id);
-      seen.add(originalId);
-      saveSeenIds(user.id, seen);
+  // Sync permission status
+  useEffect(() => {
+    if (isBrowserNotificationSupported()) {
+      setPermission(Notification.permission);
     }
-  }, [user?.id]);
+  }, []);
 
-  const fetchNewNotifications = useCallback(async () => {
-    if (!user || (typeof document !== 'undefined' && document.hidden)) return;
+  const handleRequestPermission = async () => {
+    const result = await requestBrowserNotificationPermission();
+    setPermission(result);
+    if (result === 'granted') {
+      sendBrowserNotification('FoodRescue Notifications Active', {
+        body: 'You will now receive real-time donation and delivery alerts directly from your browser.',
+      });
+    }
+  };
+
+  const handleDismissPrompt = () => {
+    setPromptDismissed(true);
+    localStorage.setItem('foodrescue_browser_notif_prompt_dismissed', 'true');
+  };
+
+  const fetchAndDispatchNotifications = useCallback(async () => {
+    if (!user) return;
     try {
       const { data } = await api.get('/notifications', {
-        params: { unread: 'true', limit: 5 },
+        params: { unread: 'true', limit: 8 },
       });
 
       let notifications = data?.data?.notifications || [];
-      // Admins should not receive any donation-related notification popups
+      // Admins should not receive donation-related notification alerts
       if (user?.role === 'admin') {
         notifications = notifications.filter(n => !isDonationNotification(n));
       }
@@ -99,200 +157,108 @@ export default function NotificationPopup() {
       if (notifications.length === 0) return;
 
       const seenSet = getSeenIds(user.id);
-
-      // Find any unread notification that hasn't been shown yet
-      const freshNotifications = notifications.filter(
-        n => !seenSet.has(n.id)
-      );
+      const freshNotifications = notifications.filter(n => !seenSet.has(n.id));
 
       if (freshNotifications.length > 0) {
-        // Record them as shown persistently in localStorage
-        freshNotifications.forEach(n => seenSet.add(n.id));
-        saveSeenIds(user.id, seenSet);
+        freshNotifications.forEach(n => {
+          seenSet.add(n.id);
 
-        // Add up to 3 to popup queue
-        setPopups(prev => {
-          const newPopups = freshNotifications.slice(0, 3).map(n => ({
-            ...n,
-            _popupId: `${n.id}-${Date.now()}`,
-          }));
-          return [...newPopups, ...prev].slice(0, 4);
+          // Dispatch native browser notification
+          if (permission === 'granted' || (isBrowserNotificationSupported() && Notification.permission === 'granted')) {
+            const targetRoute = resolveNotificationRoute(n, user);
+            sendBrowserNotification(
+              n.title || 'FoodRescue Notification',
+              {
+                body: n.body || n.message || 'New update available on FoodRescue.',
+                tag: `foodrescue-${n.id}`,
+                renotify: true,
+              },
+              () => {
+                api.patch(`/notifications/${n.id}/read`).catch(() => {});
+                navigate(targetRoute);
+              }
+            );
+          }
         });
+
+        saveSeenIds(user.id, seenSet);
       }
     } catch {
       // Silently fail
     }
-  }, [user]);
+  }, [user, permission, navigate]);
 
-  // Auto-dismiss popups after 8 seconds
-  useEffect(() => {
-    if (popups.length === 0) return;
-
-    const timers = popups.map(p =>
-      setTimeout(() => {
-        dismissPopup(p._popupId, p.id);
-      }, 8000)
-    );
-
-    return () => timers.forEach(clearTimeout);
-  }, [popups, dismissPopup]);
-
-  // Start polling
+  // Polling loop
   useEffect(() => {
     if (!user) return;
 
-    // Fetch immediately on mount
-    fetchNewNotifications();
-
-    intervalRef.current = setInterval(fetchNewNotifications, POLL_INTERVAL);
+    fetchAndDispatchNotifications();
+    intervalRef.current = setInterval(fetchAndDispatchNotifications, POLL_INTERVAL);
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [user, fetchNewNotifications]);
+  }, [user, fetchAndDispatchNotifications]);
 
-  const handleClick = async (popup) => {
-    // Mark as read
-    try {
-      await api.patch(`/notifications/${popup.id}/read`);
-    } catch {
-      // ignore
-    }
+  // If permission is already granted, denied, unsupported, or user dismissed prompt,
+  // do NOT render anything on the main screen. The website stays completely clean!
+  if (
+    !isBrowserNotificationSupported() ||
+    permission === 'granted' ||
+    permission === 'denied' ||
+    promptDismissed
+  ) {
+    return null;
+  }
 
-    // Parse the notification data
-    let notifData = popup.data;
-    if (typeof notifData === 'string') {
-      try {
-        notifData = JSON.parse(notifData);
-      } catch {
-        notifData = null;
-      }
-    }
-
-    dismissPopup(popup._popupId, popup.id);
-
-    const titleLower = (popup.title || '').toLowerCase();
-    const isIncident = notifData?.incident_id || popup.type === 'incident' || titleLower.includes('incident') || titleLower.includes('escalation');
-    const isVerification = notifData?.verification_id || popup.type === 'verification' || titleLower.includes('verification');
-    const isComplaint = notifData?.complaint_id || popup.type === 'complaint' || titleLower.includes('complaint');
-
-    if (isIncident && user?.role === 'admin') {
-      navigate('/admin/incidents');
-      return;
-    }
-
-    if (isVerification && user?.role === 'admin') {
-      navigate('/admin/verifications');
-      return;
-    }
-
-    if (isComplaint) {
-      if (user?.role === 'admin') navigate('/admin/complaints');
-      else navigate('/complaints');
-      return;
-    }
-
-    const donationId = notifData?.donation_id || notifData?.donationId || popup.donation_id;
-    const isValidUUID = donationId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(donationId);
-
-    if (isValidUUID) {
-      navigate(`/donations/${donationId}`);
-    } else if (notifData?.claim_id) {
-      navigate('/claims');
-    } else if (notifData?.delivery_id) {
-      navigate('/deliveries');
-    } else if (user?.role === 'ngo') {
-      navigate('/browse');
-    } else if (user?.role === 'provider') {
-      navigate('/donations');
-    } else {
-      navigate('/notifications');
-    }
-  };
-
+  // If permission is 'default' and user has not dismissed prompt,
+  // render a subtle, non-intrusive banner asking for browser notification permission.
   return (
-    <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 z-50 flex flex-col-reverse gap-3 sm:max-w-sm pointer-events-none">
-      {popups.map((popup, index) => {
-        const isExpiring =
-          popup.type === 'expiry_warning' ||
-          popup.type === 'expiry' ||
-          popup.title?.toLowerCase().includes('expir') ||
-          popup.body?.toLowerCase().includes('expir');
-
-        return (
-          <div
-            key={popup._popupId}
-            className="pointer-events-auto animate-slide-in-right w-full"
-            style={{
-              animationDelay: `${index * 100}ms`,
-            }}
-          >
-            {isExpiring ? (
-              <Alert className="max-w-md border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-50 shadow-2xl backdrop-blur-xl relative">
-                <AlertTriangleIcon className="text-amber-600 dark:text-amber-400" />
-                <div className="flex-1 min-w-0 pr-6">
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <AlertTitle className="text-xs font-bold leading-snug">
-                      {popup.title}
-                    </AlertTitle>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        dismissPopup(popup._popupId, popup.id);
-                      }}
-                      className="absolute top-2.5 right-2.5 p-1 rounded-md text-amber-700/70 hover:text-amber-950 dark:text-amber-300/70 dark:hover:text-amber-100 hover:bg-amber-200/50 dark:hover:bg-amber-900/50 transition-colors"
-                      aria-label="Dismiss alert"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <AlertDescription className="text-[11px] leading-relaxed text-amber-800 dark:text-amber-200 mb-2.5">
-                    {popup.body}
-                  </AlertDescription>
-                  <button
-                    onClick={() => handleClick(popup)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-bold bg-amber-900 text-amber-50 dark:bg-amber-100 dark:text-amber-950 hover:bg-amber-800 dark:hover:bg-amber-200 shadow-xs transition-all"
-                  >
-                    <span>View Donation</span>
-                    <ChevronRight className="w-3 h-3" />
-                  </button>
-                </div>
-              </Alert>
-            ) : (
-              <Alert className="max-w-md shadow-xl backdrop-blur-xl relative bg-white dark:bg-[#121214] border-neutral-200 dark:border-[#232328] text-neutral-900 dark:text-white">
-                <CheckCircle2Icon className="text-emerald-600 dark:text-[#39FF14]" />
-                <div className="flex-1 min-w-0 pr-6">
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <AlertTitle className="text-xs font-bold leading-snug text-neutral-900 dark:text-white">
-                      {popup.title}
-                    </AlertTitle>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        dismissPopup(popup._popupId, popup.id);
-                      }}
-                      className="absolute top-2.5 right-2.5 p-1 rounded-md text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 dark:hover:text-white dark:hover:bg-[#1f1f24] transition-colors cursor-pointer"
-                      aria-label="Dismiss alert"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <AlertDescription className="text-[11px] leading-relaxed text-neutral-600 dark:text-neutral-300 mb-2.5">
-                    {popup.body}
-                  </AlertDescription>
-                  <button
-                    onClick={() => handleClick(popup)}
-                    className="btn btn-primary py-1 px-3 text-[11px] font-bold rounded-lg inline-flex items-center gap-1.5 shadow-xs cursor-pointer"
-                  >
-                    <span>View Details</span>
-                    <ChevronRight className="w-3 h-3" />
-                  </button>
-                </div>
-              </Alert>
-            )}
+    <aside
+      aria-label="Browser notifications permission"
+      className="fixed top-4 right-4 sm:top-5 sm:right-6 z-50 max-w-md w-[calc(100%-2rem)] bg-[#121214] text-white border border-lime-500/40 rounded-2xl p-4 shadow-2xl backdrop-blur-xl animate-fade-in"
+    >
+      <div className="flex items-start gap-3.5">
+        <div className="w-9 h-9 rounded-xl bg-lime-500/15 border border-lime-500/30 flex items-center justify-center shrink-0 text-lime-400">
+          <Bell className="w-4 h-4" />
+        </div>
+        <div className="flex-1 min-w-0 pr-2">
+          <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+            <span>Enable Browser Notifications</span>
+            <span className="text-[10px] font-semibold text-lime-400 bg-lime-500/10 px-1.5 py-0.2 rounded border border-lime-500/20">
+              Native
+            </span>
+          </h4>
+          <p className="text-[11px] text-neutral-300 mt-1 leading-relaxed">
+            Allow your browser to send instant alerts for food donations, claims, and delivery handoffs without covering your screen.
+          </p>
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleRequestPermission}
+              className="px-3 py-1.5 rounded-lg bg-lime-500 hover:bg-lime-400 text-black text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer flex items-center gap-1.5"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Allow Notifications</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleDismissPrompt}
+              className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white text-xs font-medium transition-all cursor-pointer"
+            >
+              Later
+            </button>
           </div>
-        );
-      })}
-    </div>
+        </div>
+        <button
+          type="button"
+          onClick={handleDismissPrompt}
+          className="text-neutral-500 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+          aria-label="Dismiss prompt"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    </aside>
   );
 }

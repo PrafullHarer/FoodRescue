@@ -5,9 +5,15 @@ import api from '../../api/client';
 import {
   Bell, CheckCheck, Clock, ShieldAlert, Package, CheckCircle2,
   Inbox, Utensils, ExternalLink, RefreshCw, ChevronRight, Shield,
-  AlertTriangle as AlertTriangleIcon
+  AlertTriangle as AlertTriangleIcon, Globe, Sparkles
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import {
+  isBrowserNotificationSupported,
+  getBrowserNotificationPermission,
+  requestBrowserNotificationPermission,
+  sendBrowserNotification,
+} from '../../utils/browserNotifications';
 
 function formatRelativeTime(dateString) {
   if (!dateString) return 'Recent';
@@ -28,6 +34,31 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('unread'); // Default to 'unread' tab
   const [refreshing, setRefreshing] = useState(false);
+  const [browserPermission, setBrowserPermission] = useState(getBrowserNotificationPermission());
+
+  const handleEnableBrowserNotifications = async () => {
+    const result = await requestBrowserNotificationPermission();
+    setBrowserPermission(result);
+    if (result === 'granted') {
+      toast.success('Browser notifications enabled!');
+      sendBrowserNotification('FoodRescue Notifications Active', {
+        body: 'You will now receive instant food rescue updates directly from your browser.',
+      });
+    } else if (result === 'denied') {
+      toast.error('Notifications blocked by browser. Please enable in your browser URL bar.');
+    }
+  };
+
+  const handleTestBrowserNotification = () => {
+    const notif = sendBrowserNotification('FoodRescue Test Alert', {
+      body: 'This is a test notification from FoodRescue. Browser notifications are working properly!',
+    });
+    if (notif) {
+      toast.success('Test notification sent to your browser!');
+    } else {
+      toast.error('Could not send. Please ensure notifications are permitted.');
+    }
+  };
 
   const fetchNotifications = useCallback(async (isManual = false) => {
     try {
@@ -288,6 +319,68 @@ export default function NotificationsPage() {
           )}
         </div>
       </div>
+
+      {/* Browser Notification Status Banner */}
+      {isBrowserNotificationSupported() && (
+        <div className="p-4 rounded-2xl bg-neutral-100 dark:bg-[#121214] border border-neutral-200 dark:border-[#232328] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+              browserPermission === 'granted'
+                ? 'bg-lime-500/15 text-lime-600 dark:text-lime-400 border border-lime-500/30'
+                : browserPermission === 'denied'
+                ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30'
+                : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+            }`}>
+              <Globe className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-neutral-900 dark:text-white">
+                  Native Browser Notifications
+                </span>
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                  browserPermission === 'granted'
+                    ? 'bg-lime-500/15 text-lime-700 dark:text-lime-400 border border-lime-500/30'
+                    : browserPermission === 'denied'
+                    ? 'bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/30'
+                    : 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30'
+                }`}>
+                  {browserPermission === 'granted' ? 'Enabled' : browserPermission === 'denied' ? 'Blocked' : 'Action Needed'}
+                </span>
+              </div>
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
+                {browserPermission === 'granted'
+                  ? 'Your browser will alert you to food donations and delivery milestones without covering your screen.'
+                  : browserPermission === 'denied'
+                  ? 'Notifications are blocked in your browser. Click the lock/tune icon in your browser URL bar to allow notifications.'
+                  : 'Grant browser permission to receive alerts directly from your browser even when minimized.'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+            {browserPermission === 'granted' ? (
+              <button
+                type="button"
+                onClick={handleTestBrowserNotification}
+                className="btn btn-secondary text-xs flex items-center gap-1.5 py-2 px-3 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-lime-500" />
+                <span>Send Test Alert</span>
+              </button>
+            ) : browserPermission === 'default' ? (
+              <button
+                type="button"
+                onClick={handleEnableBrowserNotifications}
+                className="btn btn-primary text-xs flex items-center gap-1.5 py-2 px-3 cursor-pointer"
+              >
+                <Bell className="w-3.5 h-3.5" />
+                <span>Enable Browser Alerts</span>
+              </button>
+            ) : null}
+          </div>
+        </div>
+      )}
 
       {/* Filter Tabs */}
       <div className="flex items-center gap-2 border-b border-neutral-200 dark:border-[#232328] pb-3 overflow-x-auto">
