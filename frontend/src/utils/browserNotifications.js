@@ -61,3 +61,4 @@ export const sendBrowserNotification = (title, options = {}, onClick = null) => 
     return null;
   }
 };
+

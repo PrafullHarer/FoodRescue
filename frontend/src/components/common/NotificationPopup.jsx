@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../api/client';
-import { Bell, X, CheckCircle2 } from 'lucide-react';
 import {
   isBrowserNotificationSupported,
   getBrowserNotificationPermission,
@@ -106,40 +105,43 @@ const resolveNotificationRoute = (notification, user) => {
 };
 
 /**
- * Native Browser Notification Dispatcher
- * Requests browser notification permission and sends notifications via the browser's native API.
- * Keeps the main screen clean with zero intrusive popup cards.
+ * Headless Browser Notification Dispatcher
+ * Requests browser notification permission natively and dispatches updates via the Web Notification API.
+ * Renders null so nothing is displayed on the main screen.
  */
 export default function NotificationPopup() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [permission, setPermission] = useState(getBrowserNotificationPermission());
-  const [promptDismissed, setPromptDismissed] = useState(() => {
-    return localStorage.getItem('foodrescue_browser_notif_prompt_dismissed') === 'true';
-  });
   const intervalRef = useRef(null);
 
-  // Sync permission status
+  // Request browser permission if default
   useEffect(() => {
-    if (isBrowserNotificationSupported()) {
+    if (!isBrowserNotificationSupported()) return;
+
+    if (Notification.permission === 'default') {
+      // Attempt requesting permission immediately
+      requestBrowserNotificationPermission().then((res) => {
+        setPermission(res);
+      });
+
+      // Also attach a one-time user-interaction trigger as fallback for strict browsers
+      const handleUserGesture = () => {
+        if (Notification.permission === 'default') {
+          requestBrowserNotificationPermission().then((res) => {
+            setPermission(res);
+          });
+        }
+      };
+
+      window.addEventListener('click', handleUserGesture, { once: true });
+      return () => {
+        window.removeEventListener('click', handleUserGesture);
+      };
+    } else {
       setPermission(Notification.permission);
     }
   }, []);
-
-  const handleRequestPermission = async () => {
-    const result = await requestBrowserNotificationPermission();
-    setPermission(result);
-    if (result === 'granted') {
-      sendBrowserNotification('FoodRescue Notifications Active', {
-        body: 'You will now receive real-time donation and delivery alerts directly from your browser.',
-      });
-    }
-  };
-
-  const handleDismissPrompt = () => {
-    setPromptDismissed(true);
-    localStorage.setItem('foodrescue_browser_notif_prompt_dismissed', 'true');
-  };
 
   const fetchAndDispatchNotifications = useCallback(async () => {
     if (!user) return;
@@ -200,65 +202,6 @@ export default function NotificationPopup() {
     };
   }, [user, fetchAndDispatchNotifications]);
 
-  // If permission is already granted, denied, unsupported, or user dismissed prompt,
-  // do NOT render anything on the main screen. The website stays completely clean!
-  if (
-    !isBrowserNotificationSupported() ||
-    permission === 'granted' ||
-    permission === 'denied' ||
-    promptDismissed
-  ) {
-    return null;
-  }
-
-  // If permission is 'default' and user has not dismissed prompt,
-  // render a subtle, non-intrusive banner asking for browser notification permission.
-  return (
-    <aside
-      aria-label="Browser notifications permission"
-      className="fixed top-4 right-4 sm:top-5 sm:right-6 z-50 max-w-md w-[calc(100%-2rem)] bg-[#121214] text-white border border-lime-500/40 rounded-2xl p-4 shadow-2xl backdrop-blur-xl animate-fade-in"
-    >
-      <div className="flex items-start gap-3.5">
-        <div className="w-9 h-9 rounded-xl bg-lime-500/15 border border-lime-500/30 flex items-center justify-center shrink-0 text-lime-400">
-          <Bell className="w-4 h-4" />
-        </div>
-        <div className="flex-1 min-w-0 pr-2">
-          <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
-            <span>Enable Browser Notifications</span>
-            <span className="text-[10px] font-semibold text-lime-400 bg-lime-500/10 px-1.5 py-0.2 rounded border border-lime-500/20">
-              Native
-            </span>
-          </h4>
-          <p className="text-[11px] text-neutral-300 mt-1 leading-relaxed">
-            Allow your browser to send instant alerts for food donations, claims, and delivery handoffs without covering your screen.
-          </p>
-          <div className="mt-3 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleRequestPermission}
-              className="px-3 py-1.5 rounded-lg bg-lime-500 hover:bg-lime-400 text-black text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer flex items-center gap-1.5"
-            >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Allow Notifications</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleDismissPrompt}
-              className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white text-xs font-medium transition-all cursor-pointer"
-            >
-              Later
-            </button>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={handleDismissPrompt}
-          className="text-neutral-500 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
-          aria-label="Dismiss prompt"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-    </aside>
-  );
+  // Headless: renders nothing on the main screen
+  return null;
 }
