@@ -143,6 +143,14 @@ export default function NativeCameraModal({
       {/* 2. Permission Denied Screen with Settings Link */}
       {permission && !permission.granted && (
         <View style={styles.permissionContainer}>
+          <TouchableOpacity
+            style={[styles.iconCircleButton, { position: 'absolute', top: insets.top + (Platform.OS === 'android' ? 14 : 10), left: 16 }]}
+            onPress={onClose}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
           <View style={styles.permissionCard}>
             <View style={styles.iconCircle}>
               <Ionicons name="camera-outline" size={48} color={colors.primary} />
@@ -185,19 +193,17 @@ export default function NativeCameraModal({
       {permission && permission.granted && (
         <View style={styles.scannerRoot}>
           {/* Base Layer: Real Hardware Camera Feed (Unrestricted Surface) */}
-          <View style={StyleSheet.absoluteFillObject}>
-            <CameraView
-              style={styles.camera}
-              facing={facing}
-              enableTorch={torch}
-              barcodeScannerSettings={{
-                barcodeTypes: ['qr'],
-              }}
-              onCameraReady={() => setCameraReady(true)}
-              onMountError={(err) => console.warn('[Camera] Mount error:', err)}
-              onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
-            />
-          </View>
+          <CameraView
+            style={StyleSheet.absoluteFill}
+            facing={facing}
+            enableTorch={torch}
+            barcodeScannerSettings={{
+              barcodeTypes: ['qr'],
+            }}
+            onCameraReady={() => setCameraReady(true)}
+            onMountError={(err) => console.warn('[Camera] Mount error:', err)}
+            onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
+          />
 
           {/* Top Solid Black Bar with Back, Flash & Camera Flip Buttons (No "QR Scanner" title) */}
           <View style={[styles.topBlackBar, { height: cameraTop }]}>
@@ -399,12 +405,10 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     position: 'relative',
-    backgroundColor: '#000000',
+    backgroundColor: 'transparent',
   },
   camera: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
+    ...StyleSheet.absoluteFillObject,
   },
   centerContainer: {
     flex: 1,
@@ -513,7 +517,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#000000',
+    backgroundColor: 'rgba(0, 0, 0, 0.78)',
     zIndex: 20,
     justifyContent: 'flex-start',
   },
@@ -547,7 +551,7 @@ const styles = StyleSheet.create({
   // Side Letterbox Bars (For narrow 4:3 displays)
   sideBlackBar: {
     position: 'absolute',
-    backgroundColor: '#000000',
+    backgroundColor: 'rgba(0, 0, 0, 0.78)',
     zIndex: 15,
   },
 
@@ -663,7 +667,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    backgroundColor: '#000000',
+    backgroundColor: 'rgba(0, 0, 0, 0.78)',
     zIndex: 20,
     justifyContent: 'center',
     alignItems: 'center',

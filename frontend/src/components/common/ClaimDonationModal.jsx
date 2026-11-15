@@ -19,7 +19,7 @@ export default function ClaimDonationModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-      <div className="bg-white dark:bg-[#141416] border border-neutral-200 dark:border-[#282830] rounded-[28px] max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-6 animate-scale-up">
+      <div className="bg-white dark:bg-[#141416] border border-neutral-200 dark:border-[#282830] rounded-[28px] max-w-lg w-full p-5 sm:p-8 shadow-2xl space-y-5 sm:space-y-6 animate-scale-up max-h-[92vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-start justify-between gap-3 border-b border-neutral-200 dark:border-[#232328] pb-4">
           <div>

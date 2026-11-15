@@ -56,9 +56,26 @@ const registerDeviceToken = async (req, res, next) => {
   }
 };
 
+/**
+ * POST /api/notifications/test
+ */
+const sendTestNotification = async (req, res, next) => {
+  try {
+    const result = await notificationService.testPushNotification(req.user.id);
+    res.status(200).json({
+      success: true,
+      message: 'Test notification created and dispatched.',
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getNotifications,
   markAsRead,
   markAllAsRead,
   registerDeviceToken,
+  sendTestNotification,
 };

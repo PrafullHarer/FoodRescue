@@ -121,7 +121,7 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
           <button
             onClick={() => setMobileOpen?.(!mobileOpen)}
             aria-label="Toggle navigation menu"
-            className="p-2 rounded-xl bg-neutral-100 dark:bg-[#18181b] border border-neutral-200 dark:border-[#232328] text-neutral-800 dark:text-white hover:bg-neutral-200 dark:hover:bg-[#232328] active:scale-95 transition-all"
+            className="p-2.5 rounded-xl bg-neutral-100 dark:bg-[#18181b] border border-neutral-200 dark:border-[#232328] text-neutral-800 dark:text-white hover:bg-neutral-200 dark:hover:bg-[#232328] active:scale-95 transition-all min-h-[44px] min-w-[44px] flex items-center justify-center"
           >
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -139,7 +139,7 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
 
           <Link
             to="/notifications"
-            className="relative p-2 rounded-xl bg-neutral-100 dark:bg-[#18181b] border border-neutral-200 dark:border-[#232328] text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors"
+            className="relative p-2.5 rounded-xl bg-neutral-100 dark:bg-[#18181b] border border-neutral-200 dark:border-[#232328] text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
           >
             <Bell className="w-4 h-4" />
             {unreadCount > 0 && (
@@ -152,7 +152,7 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
           <button
             onClick={handleLogout}
             title="Sign Out"
-            className="p-2 rounded-xl bg-neutral-100 dark:bg-[#18181b] border border-neutral-200 dark:border-[#232328] text-neutral-500 dark:text-neutral-400 hover:text-red-500 transition-colors cursor-pointer"
+            className="p-2.5 rounded-xl bg-neutral-100 dark:bg-[#18181b] border border-neutral-200 dark:border-[#232328] text-neutral-500 dark:text-neutral-400 hover:text-red-500 transition-colors cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center"
           >
             <LogOut className="w-4 h-4" />
           </button>
@@ -259,7 +259,7 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
         </nav>
 
         {/* User profile & Footer */}
-        <div className="border-t border-[#E5E7EB] dark:border-[#232328] px-3 py-3 bg-neutral-50 dark:bg-[#0a0a0c] space-y-1 transition-colors">
+        <div className="border-t border-[#E5E7EB] dark:border-[#232328] px-3 py-3 pb-8 lg:pb-3 bg-neutral-50 dark:bg-[#0a0a0c] space-y-1 transition-colors">
           <Link
             to="/profile"
             onClick={() => setMobileOpen?.(false)}

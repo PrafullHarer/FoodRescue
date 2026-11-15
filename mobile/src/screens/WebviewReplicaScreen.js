@@ -19,9 +19,15 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
+import * as Location from 'expo-location';
 import Logo from '../components/Logo';
 import NativeCameraModal from '../components/NativeCameraModal';
 import { colors } from '../theme/colors';
+import {
+  setupNativeNotifications,
+  triggerNativeNotification,
+  addNotificationResponseListener,
+} from '../utils/nativeNotifications';
 
 /**
  * Automatically determine the developer computer's host IP from Expo Constants or Metro scriptURL.
@@ -57,17 +63,18 @@ export const getDevHost = () => {
     // fallback
   }
   // 3. Current active Wi-Fi LAN IP of development machine
-  return '10.81.107.64';
+  return '10.220.171.64';
 };
 
 const devHost = getDevHost();
 
 // The FoodRescue frontend Vite dev server runs at port 5173
+// devHost (LAN IP) connects over local Wi-Fi, while localhost connects for web/adb reverse
 const DEFAULT_WEB_URL = Platform.select({
   web: 'http://localhost:5173',
-  android: `http://${devHost}:5173`,
+  android: 'http://localhost:5173',
   ios: `http://${devHost}:5173`,
-  default: `http://${devHost}:5173`,
+  default: 'http://localhost:5173',
 });
 
 export default function WebviewReplicaScreen() {
@@ -77,26 +84,93 @@ export default function WebviewReplicaScreen() {
   const [errorOccurred, setErrorOccurred] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [activeUrl, setActiveUrl] = useState(DEFAULT_WEB_URL);
+  const currentUrlRef = useRef(DEFAULT_WEB_URL);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [customIpInput, setCustomIpInput] = useState(devHost);
+  const [cachedAuthSession, setCachedAuthSession] = useState(null);
   const lastAutoOpenedUrl = useRef(null);
 
+  const getBaseOrigin = () => {
+    const cur = currentUrlRef.current || activeUrl;
+    try {
+      return cur.split('/')[0] + '//' + cur.split('/')[2];
+    } catch {
+      return activeUrl;
+    }
+  };
+
   useEffect(() => {
-    AsyncStorage.getItem('@foodrescue_custom_web_url').then((saved) => {
-      // Clear outdated 10.221.100.64 IP if previously cached on device
-      if (saved && !saved.includes('10.221.100.64')) {
-        setActiveUrl(saved);
-        const savedHost = saved.split('://')[1]?.split(':')[0];
-        if (savedHost) setCustomIpInput(savedHost);
+    AsyncStorage.getItem('@foodrescue_user_explicit_ip').then((isExplicit) => {
+      if (isExplicit === 'true') {
+        AsyncStorage.getItem('@foodrescue_custom_web_url').then((saved) => {
+          if (saved && !saved.includes('10.221.100.64') && !saved.includes('10.81.107.64')) {
+            setActiveUrl(saved);
+            currentUrlRef.current = saved;
+            const savedHost = saved.split('://')[1]?.split(':')[0];
+            if (savedHost) setCustomIpInput(savedHost);
+            return;
+          }
+          setActiveUrl(DEFAULT_WEB_URL);
+          currentUrlRef.current = DEFAULT_WEB_URL;
+          setCustomIpInput(devHost);
+        });
       } else {
-        const freshUrl = `http://${devHost}:5173`;
-        setActiveUrl(freshUrl);
+        setActiveUrl(DEFAULT_WEB_URL);
+        currentUrlRef.current = DEFAULT_WEB_URL;
         setCustomIpInput(devHost);
-        AsyncStorage.setItem('@foodrescue_custom_web_url', freshUrl);
+      }
+    });
+
+    // Check 7-day mobile login persistence session
+    AsyncStorage.multiGet([
+      '@foodrescue_token',
+      '@foodrescue_refresh_token',
+      '@foodrescue_auth_expiry',
+    ]).then((pairs) => {
+      const token = pairs[0]?.[1];
+      const refresh = pairs[1]?.[1];
+      const expiry = pairs[2]?.[1];
+      if (token && expiry) {
+        if (Date.now() > Number(expiry)) {
+          // 7-day session expired, clear stored session
+          AsyncStorage.multiRemove([
+            '@foodrescue_token',
+            '@foodrescue_refresh_token',
+            '@foodrescue_auth_expiry',
+            '@foodrescue_user_id',
+          ]);
+        } else {
+          setCachedAuthSession({
+            token,
+            refreshToken: refresh || '',
+            expiresAt: expiry,
+          });
+        }
       }
     });
   }, []);
+
+  // Initialize native OS notification channel and permissions on phone
+  useEffect(() => {
+    setupNativeNotifications();
+
+    // Listen for user tapping native notifications in the phone status bar
+    const responseSub = addNotificationResponseListener((response) => {
+      const targetRoute = response?.notification?.request?.content?.data?.targetRoute;
+      if (targetRoute) {
+        try {
+          const baseOrigin = getBaseOrigin();
+          const fullTarget = `${baseOrigin}${targetRoute.startsWith('/') ? '' : '/'}${targetRoute}`;
+          setActiveUrl(fullTarget);
+        } catch {
+          // fallback
+        }
+      }
+    });
+
+    return () => responseSub.remove();
+  }, [activeUrl]);
 
   // Handle hardware Android back button to navigate website history
   useEffect(() => {
@@ -140,6 +214,7 @@ export default function WebviewReplicaScreen() {
     }
     setActiveUrl(newUrl);
     AsyncStorage.setItem('@foodrescue_custom_web_url', newUrl);
+    AsyncStorage.setItem('@foodrescue_user_explicit_ip', 'true');
     setSettingsModalOpen(false);
     setErrorOccurred(false);
     setLoading(true);
@@ -151,6 +226,7 @@ export default function WebviewReplicaScreen() {
     setCustomIpInput(detected);
     setActiveUrl(freshUrl);
     AsyncStorage.setItem('@foodrescue_custom_web_url', freshUrl);
+    AsyncStorage.removeItem('@foodrescue_user_explicit_ip');
     setSettingsModalOpen(false);
     setErrorOccurred(false);
     setLoading(true);
@@ -161,7 +237,7 @@ export default function WebviewReplicaScreen() {
     setCanGoBack(navState.canGoBack);
     const url = navState.url || '';
     if (url && !url.includes('about:blank')) {
-      setActiveUrl(url);
+      currentUrlRef.current = url;
     }
 
     const codeMatch = url.match(/[?&]code=([^&#]+)/);
@@ -191,9 +267,137 @@ export default function WebviewReplicaScreen() {
 
       if (data.type === 'OPEN_CAMERA_SCANNER' || data.type === 'OPEN_QR_SCANNER') {
         setCameraOpen(true);
+      } else if (data.type === 'ROUTE_CHANGED') {
+        const pathname = data.pathname || '';
+        const search = data.search || '';
+        const codeMatch = search.match(/[?&]code=([^&#]+)/);
+        const hasCodeParam = Boolean(codeMatch && codeMatch[1]?.trim());
+
+        if (pathname.includes('/qr-scan') && !hasCodeParam && lastAutoOpenedUrl.current !== data.href) {
+          lastAutoOpenedUrl.current = data.href;
+          setCameraOpen(true);
+        } else if (!pathname.includes('/qr-scan')) {
+          lastAutoOpenedUrl.current = null;
+        }
+      } else if (data.type === 'TRIGGER_NATIVE_NOTIFICATION') {
+        console.log('[WebviewBridge] Received TRIGGER_NATIVE_NOTIFICATION:', data.title, data.body);
+        triggerNativeNotification(data.title, data.body, data.data || {});
+      } else if (data.type === 'USER_AUTHENTICATED' && data.token) {
+        const expiresAt = data.expiresAt || String(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        AsyncStorage.multiSet([
+          ['@foodrescue_token', data.token],
+          ['@foodrescue_refresh_token', data.refreshToken || ''],
+          ['@foodrescue_auth_expiry', String(expiresAt)],
+          ['@foodrescue_user_id', data.userId || ''],
+        ]);
+        setCachedAuthSession({
+          token: data.token,
+          refreshToken: data.refreshToken || '',
+          expiresAt: String(expiresAt),
+        });
+      } else if (data.type === 'USER_LOGGED_OUT') {
+        AsyncStorage.multiRemove([
+          '@foodrescue_token',
+          '@foodrescue_refresh_token',
+          '@foodrescue_auth_expiry',
+          '@foodrescue_user_id',
+        ]);
+        setCachedAuthSession(null);
+      } else if (data.type === 'REQUEST_DEVICE_LOCATION') {
+        handleRequestDeviceLocation();
       }
     } catch (err) {
       console.warn('Error processing webview message:', err);
+    }
+  };
+
+  // Handle native location request from WebView
+  const handleRequestDeviceLocation = async () => {
+    try {
+      console.log('[NativeLocation] Requesting device location permissions...');
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        const errorMsg = 'Location permission was denied in device settings.';
+        if (webViewRef.current) {
+          webViewRef.current.injectJavaScript(`
+            if (typeof window.handleNativeLocationError === 'function') {
+              window.handleNativeLocationError('${errorMsg}');
+            }
+            true;
+          `);
+        }
+        return;
+      }
+
+      console.log('[NativeLocation] Checking last known location for instant response...');
+      // 1. Fast last-known position (< 50ms)
+      try {
+        const lastKnown = await Location.getLastKnownPositionAsync();
+        if (lastKnown?.coords && webViewRef.current) {
+          const { latitude, longitude, accuracy } = lastKnown.coords;
+          console.log('[NativeLocation] Fast last known position available:', latitude, longitude);
+          webViewRef.current.injectJavaScript(`
+            if (typeof window.handleNativeLocationSuccess === 'function') {
+              window.handleNativeLocationSuccess(${latitude}, ${longitude}, ${accuracy || 15});
+            }
+            window.dispatchEvent(new CustomEvent('foodrescue:location-update', {
+              detail: { latitude: ${latitude}, longitude: ${longitude}, accuracy: ${accuracy || 15}, source: 'native_last_known' }
+            }));
+            true;
+          `);
+        }
+      } catch (lkErr) {
+        console.warn('[NativeLocation] Last known not available:', lkErr.message);
+      }
+
+      // 2. Fresh high-precision GPS satellite fix
+      console.log('[NativeLocation] Fetching live GPS fix...');
+      let pos = null;
+      try {
+        pos = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
+      } catch (posErr) {
+        console.warn('[NativeLocation] High accuracy slow, trying balanced:', posErr.message);
+        try {
+          pos = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+        } catch (posErr2) {
+          // If fresh fix fails, lastKnown might have already succeeded
+          console.warn('[NativeLocation] Both high & balanced fixes failed:', posErr2.message);
+        }
+      }
+
+      if (pos?.coords && webViewRef.current) {
+        const { latitude, longitude, accuracy } = pos.coords;
+        console.log('[NativeLocation] Fresh GPS location resolved:', latitude, longitude);
+        webViewRef.current.injectJavaScript(`
+          if (typeof window.handleNativeLocationSuccess === 'function') {
+            window.handleNativeLocationSuccess(${latitude}, ${longitude}, ${accuracy || 10});
+          }
+          window.dispatchEvent(new CustomEvent('foodrescue:location-update', {
+            detail: { latitude: ${latitude}, longitude: ${longitude}, accuracy: ${accuracy || 10}, source: 'native_gps' }
+          }));
+          window.postMessage(JSON.stringify({
+            type: 'DEVICE_LOCATION_SUCCESS',
+            latitude: ${latitude},
+            longitude: ${longitude},
+            accuracy: ${accuracy || 10}
+          }), '*');
+          true;
+        `);
+      }
+    } catch (err) {
+      console.warn('[NativeLocation] Error:', err.message);
+      if (webViewRef.current) {
+        webViewRef.current.injectJavaScript(`
+          if (typeof window.handleNativeLocationError === 'function') {
+            window.handleNativeLocationError('${err.message || 'GPS location error'}');
+          }
+          true;
+        `);
+      }
     }
   };
 
@@ -205,8 +409,21 @@ export default function WebviewReplicaScreen() {
     }
 
     try {
-      const baseOrigin = activeUrl.split('/')[0] + '//' + activeUrl.split('/')[2];
-      const targetUrl = `${baseOrigin}/qr-scan?code=${encodeURIComponent(scannedCode)}`;
+      const cleanCode = String(scannedCode).trim().toUpperCase();
+
+      // 1. Direct JS injection to instantly populate active scanner page without page reload
+      if (webViewRef.current) {
+        webViewRef.current.injectJavaScript(`
+          if (typeof window.handleNativeQRScanned === 'function') {
+            window.handleNativeQRScanned('${cleanCode}');
+          }
+          true;
+        `);
+      }
+
+      // 2. Also update URL in case user launched camera from a different route
+      const baseOrigin = getBaseOrigin();
+      const targetUrl = `${baseOrigin}/qr-scan?code=${encodeURIComponent(cleanCode)}`;
       lastAutoOpenedUrl.current = targetUrl;
       setActiveUrl(targetUrl);
     } catch {
@@ -224,6 +441,83 @@ export default function WebviewReplicaScreen() {
           window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'OPEN_CAMERA_SCANNER' }));
         }
       };
+      window.sendNativeNotification = function(title, body, data) {
+        if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'TRIGGER_NATIVE_NOTIFICATION',
+            title: title,
+            body: body,
+            data: data || {}
+          }));
+        }
+      };
+      window.requestNativeLocation = function() {
+        if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'REQUEST_DEVICE_LOCATION'
+          }));
+        }
+      };
+
+      // Intercept SPA navigation to notify native shell on route transitions
+      function notifyRouteChange() {
+        try {
+          var p = window.location.pathname || '';
+          var s = window.location.search || '';
+          var h = window.location.href || '';
+          if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'ROUTE_CHANGED',
+              pathname: p,
+              search: s,
+              href: h
+            }));
+          }
+        } catch(e) {}
+      }
+
+      var origPush = history.pushState;
+      history.pushState = function() {
+        var res = origPush.apply(this, arguments);
+        notifyRouteChange();
+        return res;
+      };
+
+      var origReplace = history.replaceState;
+      history.replaceState = function() {
+        var res = origReplace.apply(this, arguments);
+        notifyRouteChange();
+        return res;
+      };
+
+      // 7-day login cookies & session preservation bridge
+      try {
+        var cToken = '${cachedAuthSession?.token || ''}';
+        var cRefresh = '${cachedAuthSession?.refreshToken || ''}';
+        var cExpiry = '${cachedAuthSession?.expiresAt || ''}';
+        if (cToken && cExpiry && Number(cExpiry) > Date.now()) {
+          var remainingSec = Math.floor((Number(cExpiry) - Date.now()) / 1000);
+          if (remainingSec > 0) {
+            if (!localStorage.getItem('accessToken')) {
+              localStorage.setItem('accessToken', cToken);
+            }
+            if (cRefresh && !localStorage.getItem('refreshToken')) {
+              localStorage.setItem('refreshToken', cRefresh);
+            }
+            if (!localStorage.getItem('foodrescue_auth_expiry')) {
+              localStorage.setItem('foodrescue_auth_expiry', cExpiry);
+            }
+            document.cookie = 'foodrescue_token=' + encodeURIComponent(cToken) + '; path=/; max-age=' + remainingSec + '; SameSite=Lax';
+            if (cRefresh) {
+              document.cookie = 'foodrescue_refresh=' + encodeURIComponent(cRefresh) + '; path=/; max-age=' + remainingSec + '; SameSite=Lax';
+            }
+            document.cookie = 'foodrescue_session=active; path=/; max-age=' + remainingSec + '; SameSite=Lax';
+            document.cookie = 'foodrescue_expires_at=' + cExpiry + '; path=/; max-age=' + remainingSec + '; SameSite=Lax';
+          }
+        }
+      } catch (err) {}
+
+      window.addEventListener('popstate', notifyRouteChange);
     })();
     true;
   `;
@@ -240,7 +534,7 @@ export default function WebviewReplicaScreen() {
           onCodeScanned={handleCodeScanned}
         />
       ) : (
-        <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
           <View style={styles.container}>
             <WebView
               ref={webViewRef}
@@ -267,6 +561,9 @@ export default function WebviewReplicaScreen() {
               // Enable hardware & browser features
               javaScriptEnabled={true}
               domStorageEnabled={true}
+              sharedCookiesEnabled={true}
+              thirdPartyCookiesEnabled={true}
+              saveFormDataDisabled={false}
               allowsInlineMediaPlayback={true}
               mediaPlaybackRequiresUserAction={false}
               geolocationEnabled={true}
@@ -276,6 +573,7 @@ export default function WebviewReplicaScreen() {
               pullToRefreshEnabled={true}
               startInLoadingState={true}
               injectedJavaScript={INJECTED_BRIDGE_JS}
+              injectedJavaScriptBeforeContentLoaded={INJECTED_BRIDGE_JS}
               onMessage={handleWebViewMessage}
               renderLoading={() => (
                 <View style={styles.loadingContainer}>

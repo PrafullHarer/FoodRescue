@@ -21,7 +21,10 @@ The **FoodRescue** frontend is a modern single-page application built with **Rea
 - **Google OAuth 2.0** — "Continue with Google" sign-in on Login and Register pages
 - **Mandatory Profile Completion** — Google sign-up users must complete role, phone, and address before dashboard access
 - **Account Verification Flow** — Dedicated pending verification page (`/verification-pending`) and admin approval portal
-- **Mobile Native Bridge Integration** — Bi-directional bridge with the Expo mobile app via `window.ReactNativeWebView` and `handleNativeQRScanned`
+- **Mobile Native Bridge Integration** — Bi-directional bridge with the Expo mobile app via `window.ReactNativeWebView`, `handleNativeQRScanned`, and `foodrescue:location-update`
+- **Themed Interactive Location Picker (`MapAddressPickerModal.jsx`)** — Full-screen mobile-first Leaflet map picker matching the platform's VIP Dark Carbon (`#121214`) & Neon Lime (`#39FF14`) aesthetic. Features custom center-pin marker, live coordinate display, search bar, map layer switcher (Dark Matter vs Street Map), and one-click `SELECT LOCATION!` confirmation.
+- **Unified 3-Tier Geolocation (`geolocation.js`)** — Automatic location resolution: Native Mobile GPS (via bridge) ➔ HTML5 Browser Geolocation ➔ IP Geolocation Fallback with OpenStreetMap Nominatim reverse geocoding.
+- **Browser & In-App Push Notifications (`browserNotifications.js`, `NotificationPopup.jsx`)** — Real-time notification banners with animated progress auto-dismiss, audio chime, and optional desktop browser push permission request.
 - **Role-Based Dashboards** — Separate views for Provider, NGO, Volunteer, and Admin
 - **Data Isolation** — Each user sees only their own data; cross-user access is prevented
 - **Dark / Light Theme** — System-wide theme toggle with CSS custom properties
@@ -31,7 +34,7 @@ The **FoodRescue** frontend is a modern single-page application built with **Rea
 - **Complaint System** — Submit, track, and communicate on complaints with threaded messaging
 - **Public Feedback** — Anonymous or authenticated feedback submission
 - **Admin Analytics** — KPI dashboards, geographical donation hotspots with Leaflet map, and data export
-- **Map-Based Location Picker** — Interactive address picker with geocoding on registration
+- **Streamlined Donation Posting** — Minimal Section 2 in `CreateDonationPage.jsx` with direct map picker launch and live GPS coordinate binding.
 
 ## Project Structure
 
@@ -40,7 +43,7 @@ frontend/
 ├── src/
 │   ├── api/                      # Axios client with JWT auto-refresh interceptor
 │   ├── components/
-│   │   ├── common/               # Shared components (GoogleAuthButton, Maps, QR, Notifications, etc.)
+│   │   ├── common/               # Shared components (GoogleAuthButton, MapAddressPickerModal, QR, Notifications, etc.)
 │   │   ├── complaints/           # Complaint UI components
 │   │   ├── incidents/            # Incident UI components
 │   │   ├── layout/               # DashboardLayout, Sidebar
@@ -56,7 +59,7 @@ frontend/
 │   │   ├── auth/                 # Login, Register, CompleteProfile
 │   │   ├── complaints/           # My complaints & complaint detail
 │   │   ├── dashboard/            # Role-based dashboards
-│   │   ├── donations/            # Donation CRUD & detail
+│   │   ├── donations/            # CreateDonationPage (with Location Picker), Donation CRUD & detail
 │   │   ├── feedback/             # Public feedback submission
 │   │   ├── landing/              # Public landing page
 │   │   ├── ngo/                  # Browse donations & claims
@@ -64,6 +67,9 @@ frontend/
 │   │   ├── profile/              # User profile
 │   │   ├── reviews/              # My ratings & trust hub
 │   │   └── volunteer/            # Deliveries & QR scan
+│   ├── utils/                    # Core client utilities
+│   │   ├── browserNotifications.js # Desktop browser notification permissions & dispatcher
+│   │   └── geolocation.js        # 3-tier mobile GPS, browser & IP reverse geocoder
 │   └── App.jsx                   # Route configuration
 ├── index.html
 ├── vite.config.js

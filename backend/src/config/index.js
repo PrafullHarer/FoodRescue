@@ -37,7 +37,7 @@ module.exports = {
 
   jwt: {
     secret: process.env.JWT_SECRET || 'dev-fallback-secret-key-change-in-production-min32',
-    accessExpiry: process.env.JWT_ACCESS_EXPIRY || '15m',
+    accessExpiry: process.env.JWT_ACCESS_EXPIRY || '7d',
     refreshExpiry: process.env.JWT_REFRESH_EXPIRY || '7d',
   },
 

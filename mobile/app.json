@@ -7,14 +7,13 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "primaryColor": "#16A34A",
-    "splash": {
-      "backgroundColor": "#070907",
-      "resizeMode": "contain"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.foodrescue.app",
       "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        },
         "NSCameraUsageDescription": "FoodRescue uses the camera to scan QR codes for secure physical handoff verification of surplus food donations.",
         "NSLocationWhenInUseUsageDescription": "FoodRescue uses your location to discover nearby food donations and provide delivery routes for couriers."
       }
@@ -30,13 +29,22 @@
       "permissions": [
         "CAMERA",
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "POST_NOTIFICATIONS"
       ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#84CC16",
+          "sounds": []
+        }
+      ],
       [
         "expo-camera",
         {
@@ -48,7 +56,9 @@
         {
           "locationWhenInUsePermission": "FoodRescue uses your location to show available food donations nearby."
         }
-      ]
+      ],
+      "expo-font",
+      "expo-status-bar"
     ]
   }
 }

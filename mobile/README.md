@@ -29,22 +29,27 @@ An exact, production-ready mobile application for the **FoodRescue** platform, f
   - Exposes `window.openNativeCamera()` to trigger the native hardware scanner from web pages.
   - Safely unmounts Chromium WebView when the camera opens, granting 100% of the device's hardware graphics compositor to the camera.
   - Auto-extracts scanned codes, pre-fills the verification URL (`/qr-scan?code=<TOKEN>`), and reloads the web client with instant inspection checklist triggers.
+  - **Native Geolocation Bridge**: Leverages `expo-location` to access device GPS sensors (`ACCESS_FINE_LOCATION`). Dispatches live `foodrescue:location-update` events directly to the WebView window, instantly centering the `MapAddressPickerModal` onto the physical device's coordinates.
+  - **Native Push Notification Sync**: Integrates `expo-notifications` to register Expo push tokens with `/api/notifications/device-token`, enabling background system tray notifications and foreground alert chimes for claim and delivery events.
 
 ### 3. 🎨 Zero Style Deviation (1:1 Web Replica)
 - Exact Tailwind CSS dark carbon aesthetic matching the desktop and mobile web experiences:
   - Deep carbon background (`#050505`)
   - Elevated surfaces (`#121214`)
   - Subtle borders (`#232328`)
-  - Vibrant brand lime accent (`#84CC16`)
+  - Vibrant brand lime accent (`#84CC16` / `#39FF14`)
 - Full access to all platform features:
   - **Landing Page:** Interactive redistribution flow with dual QR badges.
   - **Authentication:** Email/password login, demo 1-click credentials, and Google OAuth.
-  - **Provider Hub:** Post surplus food, manage active listings, track ESG environmental metrics.
+  - **Provider Hub:** Post surplus food with interactive Location Picker, manage active listings, track ESG environmental metrics.
   - **NGO Shelter Hub:** Live donation feed, proximity filtering, 1-click reservation, and claim tracking.
   - **Volunteer Courier Hub:** Delivery missions, route handovers, and physical verification.
   - **Trust & Reputation:** Click-to-view user reputation cards and verified rating scorecards.
+  - **Mobile Map Picker:** Full-screen responsive touch-enabled Leaflet map with center pin panning, dark tiles, and street search.
 
 ### 4. 📱 Native Device Integrations
+- **Live Device GPS (`expo-location`):** Hardware-level coordinate resolution with graceful fallbacks.
+- **Push Notifications (`expo-notifications`):** Foreground and background delivery with automatic token rotation.
 - **Physical Back Button Handling:** Android hardware back button traverses web history before minimizing the application.
 - **Safe Area Insets:** Protected against display notches, status bars, and home indicator gesture bars on both Android and iOS.
 - **Dynamic Dev Host Resolution:** Automatically discovers the development machine's LAN IP (`10.221.100.64:5173`) from Metro's `scriptURL` so physical devices running Expo Go connect effortlessly over local Wi-Fi.

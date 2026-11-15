@@ -17,9 +17,25 @@ export const AuthProvider = ({ children }) => {
         const storedToken = await AsyncStorage.getItem('@foodrescue_token');
         const storedUser = await AsyncStorage.getItem('@foodrescue_user');
         const storedPending = await AsyncStorage.getItem('@foodrescue_pending_email');
+        const storedExpiry = await AsyncStorage.getItem('@foodrescue_auth_expiry');
 
         if (storedPending) {
           setPendingEmail(storedPending);
+        }
+
+        // Check if 7-day session has expired
+        if (storedExpiry && Date.now() > Number(storedExpiry)) {
+          console.log('[NativeAuth] 7-day mobile session expired.');
+          await AsyncStorage.multiRemove([
+            '@foodrescue_token',
+            '@foodrescue_refresh_token',
+            '@foodrescue_user',
+            '@foodrescue_auth_expiry',
+          ]);
+          setToken(null);
+          setUser(null);
+          setLoading(false);
+          return;
         }
 
         if (storedToken && storedUser) {
@@ -27,7 +43,7 @@ export const AuthProvider = ({ children }) => {
           setToken(storedToken);
           setUser(parsedUser);
 
-          // Verify token against backend in background
+          // Verify token against backend in background without logging out on network blips
           client
             .get('/auth/me')
             .then((res) => {
@@ -38,7 +54,7 @@ export const AuthProvider = ({ children }) => {
               }
             })
             .catch(() => {
-              // Token likely invalid or expired
+              // Network offline or blip - maintain 7-day offline login session
             });
         }
       } catch (err) {
@@ -68,10 +84,12 @@ export const AuthProvider = ({ children }) => {
           throw pendingErr;
         }
 
+        const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
         await AsyncStorage.multiSet([
           ['@foodrescue_token', accessToken],
           ['@foodrescue_refresh_token', refreshToken || ''],
           ['@foodrescue_user', JSON.stringify(userData)],
+          ['@foodrescue_auth_expiry', String(Date.now() + SEVEN_DAYS_MS)],
         ]);
         await AsyncStorage.removeItem('@foodrescue_pending_email');
 
@@ -129,6 +147,7 @@ export const AuthProvider = ({ children }) => {
         '@foodrescue_token',
         '@foodrescue_refresh_token',
         '@foodrescue_user',
+        '@foodrescue_auth_expiry',
       ]);
     } catch (err) {
       console.warn('Error during logout:', err);

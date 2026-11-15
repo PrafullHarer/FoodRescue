@@ -8,6 +8,7 @@ const { createDonationSchema, updateDonationSchema } = require('./donation.schem
 
 // List donations (optional auth for role-specific isolation)
 router.get('/', authenticate.optional, donationController.getDonations);
+router.get('/browse', authenticate.optional, donationController.getDonations);
 
 // Protected: Food Provider's own donations
 router.get('/my', authenticate, roleGuard('provider'), donationController.getMyDonations);

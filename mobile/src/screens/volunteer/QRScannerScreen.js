@@ -230,17 +230,15 @@ export default function QRScannerScreen({ route, navigation }) {
   return (
     <View style={styles.container}>
       {/* 1. Base Layer: Real Hardware Camera Feed (Unrestricted Surface) */}
-      <View style={StyleSheet.absoluteFillObject}>
-        <CameraView
-          style={styles.camera}
-          facing={facing}
-          enableTorch={torch}
-          barcodeScannerSettings={{
-            barcodeTypes: ['qr'],
-          }}
-          onBarcodeScanned={scanned || processing ? undefined : handleBarcodeScanned}
-        />
-      </View>
+      <CameraView
+        style={StyleSheet.absoluteFill}
+        facing={facing}
+        enableTorch={torch}
+        barcodeScannerSettings={{
+          barcodeTypes: ['qr'],
+        }}
+        onBarcodeScanned={scanned || processing ? undefined : handleBarcodeScanned}
+      />
 
       {/* 2. Top Solid Black Bar with Back, Flash & Camera Flip Buttons (No "QR Scanner" title) */}
       <View style={[styles.topBlackBar, { height: cameraTop }]}>

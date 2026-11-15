@@ -22,6 +22,7 @@ Every day, restaurants, caterers, bakeries, and grocery stores produce edible su
 
 ### 🥖 1. Food Providers (Restaurants, Caterers, Bakeries, Supermarkets)
 - **Post Surplus Food**: Quick listing form with food categories, quantity, dietary badges (vegan, halal, nut-free, etc.), and expiry countdown timer.
+- **Interactive Location Picker**: Full-screen dark carbon Leaflet map with custom branded center pin, live device GPS auto-detect, Nominatim address reverse-geocoding, and map layer switcher (Dark Matter vs Street Map).
 - **Manage Listings**: Real-time status tracking (`posted` ➔ `claimed` ➔ `in_transit` ➔ `delivered`).
 - **Data Isolation**: Providers can only view, edit, and delete their own donations — never another provider's listings.
 - **ESG Impact Metrics**: Track total kilograms rescued, meals donated, and CO₂ emissions avoided.
@@ -158,6 +159,32 @@ FoodRescue uses a dual-QR code handover system to ensure tamper-proof verificati
 
 ---
 
+## 🗺️ Mobile-First Interactive Location Picker & Geolocation System
+
+FoodRescue provides an edge-to-edge, mobile-optimized location picker modal (`MapAddressPickerModal.jsx`) engineered for precise pickup coordinates and volunteer dispatch accuracy.
+
+### Key Capabilities
+- **FoodRescue VIP Theme Matching**:
+  - Deep carbon base surfaces (`#050505` / `#121214`) with `#232328` borders.
+  - Electric neon lime accents (`#39FF14`) with pulsing active status indicator.
+  - High-contrast, watermark-free Dark Mode map tiles using Leaflet and OpenStreetMap inverted CSS filters (`invert(100%) hue-rotate(180deg)`).
+  - Map Style Switcher (`<Layers />` button) to toggle between Dark Matter and Standard Street tiles on the fly.
+- **Branded Center Pin Marker**:
+  - Animated teardrop pin with dark carbon body, `#39FF14` electric green rim, glowing inner core, and ground target contact ring.
+  - Dynamically lifts on map movement and settles into exact street coordinates on release.
+- **3-Tier Geolocation Engine (`geolocation.js`)**:
+  1. **Tier 1 (Mobile Native GPS)**: Dispatched over the webview bridge via `expo-location` (`ACCESS_FINE_LOCATION`) on Android and iOS devices.
+  2. **Tier 2 (Browser Geolocation API)**: Standard `navigator.geolocation.getCurrentPosition` with high-accuracy timeout fallback.
+  3. **Tier 3 (Network IP Geolocation)**: Automatic fallback resolving network coordinates when GPS permissions are restricted.
+- **Live Nominatim Reverse Geocoding**:
+  - 350ms debounced reverse geocoding on map drag, resolving exact street, landmark, area, district, and postal code.
+  - Collapsible search bar for instant landmark and street queries.
+  - Floating high-z-index (`z-[1500]`) GPS FAB button to recenter map instantly.
+- **Streamlined Donation Listing**:
+  - Replaces cluttered multi-button forms with a clean "Open Location Picker" trigger and live volunteer coordinate readout in `CreateDonationPage.jsx`.
+
+---
+
 ## 📱 Mobile Application (Expo & React Native)
 
 FoodRescue includes a dedicated cross-platform mobile application located in `mobile/`, built on **Expo SDK 52** and **React Native 0.88**. It delivers a 1:1 mobile experience with the desktop web platform, packaged inside a high-performance webview container with direct native hardware access.
@@ -185,6 +212,8 @@ FoodRescue includes a dedicated cross-platform mobile application located in `mo
   - Exposes `window.openNativeCamera()` to trigger the native hardware scanner from web pages.
   - Safely unmounts Chromium WebView when the camera opens, granting 100% of the device's hardware graphics compositor to the camera sensor.
   - Automatically extracts scanned QR codes (`RESCUE-PK-XXXX`, `RESCUE-DL-XXXX`), navigates to `/qr-scan?code=<TOKEN>`, and re-mounts the webview with the 4-point Quality Checklist ready for verification.
+  - **Native Geolocation Bridge**: Integrates `expo-location` to extract real-time GPS coordinates and emits `foodrescue:location-update` events to the WebView DOM for accurate, one-tap map positioning.
+  - **Native Push Notifications**: Registers Expo Push Tokens with `/api/notifications/device-token` using `expo-notifications`, powering system tray push alerts and delivery updates.
 
 ### 🎨 Dark Carbon Styling (1:1 Web Match)
 - Exact Tailwind CSS dark carbon aesthetic matching desktop and mobile web:
@@ -433,9 +462,9 @@ A comprehensive analytics suite available exclusively to administrators.
 
 | Layer | Technologies |
 |---|---|
-| **Frontend** | React 19, Tailwind CSS v4, Lucide React, React Router v7, Axios, React Hot Toast, Leaflet Maps, Vite |
-| **Mobile** | Expo SDK 52, React Native 0.88, expo-camera (CameraView), react-native-webview, @expo/vector-icons, react-native-safe-area-context |
-| **Backend** | Node.js, Express.js, JWT Authentication (access + refresh token rotation), Google OAuth 2.0 (`google-auth-library`), Zod validation, Helmet, Rate Limiting |
+| **Frontend** | React 19, Tailwind CSS v4, Lucide React, React Router v7, Axios, React Hot Toast, Leaflet Maps (Inverted Dark CSS Filters), Nominatim Geocoding, Vite |
+| **Mobile** | Expo SDK 52, React Native 0.88, expo-camera (CameraView), expo-location, expo-notifications, react-native-webview, @expo/vector-icons, react-native-safe-area-context |
+| **Backend** | Node.js, Express.js, JWT Authentication (access + refresh token rotation), Google OAuth 2.0 (`google-auth-library`), Zod validation, Expo Server SDK (Push), Helmet, Rate Limiting |
 | **Database** | PostgreSQL / Neon Cloud Postgres (with PostGIS for geolocation) |
 | **QR System** | Google Lens 4:3 Camera Scanner (mobile), `qrcode` (server-side generation), `crypto` (unique code hashing), web camera fallback |
 | **Real-Time** | WebSocket (`ws`) for live notifications |
@@ -702,6 +731,9 @@ FoodRescue/
 │   │   │   ├── profile/          # User profile page
 │   │   │   ├── reviews/          # ⭐ MyRatings & Trust Hub (/reviews)
 │   │   │   └── volunteer/        # 📱 Deliveries & QR scan page
+│   │   ├── utils/                # Core client utilities
+│   │   │   ├── browserNotifications.js # Desktop browser notification permissions & dispatcher
+│   │   │   └── geolocation.js    # 3-tier mobile GPS, browser & IP reverse geocoder
 │   │   └── App.jsx               # Routing configuration
 │   ├── vite.config.js
 │   └── package.json

@@ -35,7 +35,7 @@ export const getDevHostIp = () => {
     // fallback
   }
   // 3. Current active Wi-Fi LAN IP of this development machine
-  return '10.81.107.64';
+  return '10.220.171.64';
 };
 
 const devHost = getDevHostIp();
@@ -45,7 +45,7 @@ const devHost = getDevHostIp();
  */
 export const DEFAULT_API_URL = Platform.select({
   web: 'http://localhost:3000/api',
-  android: `http://${devHost}:3000/api`,
+  android: 'http://localhost:3000/api',
   ios: `http://${devHost}:3000/api`,
-  default: `http://${devHost}:3000/api`,
+  default: 'http://localhost:3000/api',
 });

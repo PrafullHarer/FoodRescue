@@ -105,6 +105,7 @@ All protected endpoints require: `Authorization: Bearer <access_token>`
 | Method | Path | Auth | Roles | Description |
 |--------|------|------|-------|-------------|
 | GET | `/notifications` | ✓ | any | My notifications (admin: governance only) |
+| POST | `/notifications/test` | ✓ | any | Trigger test notification to verified devices |
 | PATCH | `/notifications/:id/read` | ✓ | any | Mark as read |
 | PATCH | `/notifications/read-all` | ✓ | any | Mark all as read |
 | POST | `/notifications/device-token` | ✓ | any | Register push token |

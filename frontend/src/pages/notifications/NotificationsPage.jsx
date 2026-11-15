@@ -269,7 +269,7 @@ export default function NotificationsPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+        <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
           <button
             onClick={() => fetchNotifications(true)}
             className="p-2.5 rounded-xl border border-neutral-200 dark:border-[#27272e] bg-white dark:bg-[#141416] text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:border-neutral-300 dark:hover:border-[#383842] transition-colors cursor-pointer"

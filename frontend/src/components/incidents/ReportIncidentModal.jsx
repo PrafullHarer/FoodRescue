@@ -54,7 +54,7 @@ export default function ReportIncidentModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-      <div className="bg-[#141416] border border-[#282830] rounded-[28px] max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-5 animate-scale-up">
+      <div className="bg-[#141416] border border-[#282830] rounded-[28px] max-w-lg w-full p-5 sm:p-8 shadow-2xl space-y-5 animate-scale-up max-h-[92vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-start justify-between border-b border-[#232328] pb-4">
           <div className="flex items-center gap-2.5">

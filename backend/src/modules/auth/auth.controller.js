@@ -1,4 +1,62 @@
 const authService = require('./auth.service');
+const config = require('../../config');
+
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Set 7-day login cookies for web and mobile WebView persistence
+ */
+const setAuthCookies = (res, result) => {
+  if (!result) return;
+  const isProd = config.isProduction;
+
+  const cookieOptions = {
+    maxAge: SEVEN_DAYS_MS,
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
+    path: '/',
+  };
+
+  if (result.accessToken) {
+    // 7-day login cookie readable by browser/webview client
+    res.cookie('foodrescue_token', result.accessToken, {
+      ...cookieOptions,
+      httpOnly: false,
+    });
+    res.cookie('foodrescue_session', 'active', {
+      ...cookieOptions,
+      httpOnly: false,
+    });
+    res.cookie('foodrescue_expires_at', String(Date.now() + SEVEN_DAYS_MS), {
+      ...cookieOptions,
+      httpOnly: false,
+    });
+  }
+
+  if (result.refreshToken) {
+    // 7-day refresh token cookie (HttpOnly for security)
+    res.cookie('foodrescue_refresh', result.refreshToken, {
+      ...cookieOptions,
+      httpOnly: true,
+    });
+  }
+};
+
+/**
+ * Clear 7-day login cookies on logout
+ */
+const clearAuthCookies = (res) => {
+  const isProd = config.isProduction;
+  const clearOpts = {
+    path: '/',
+    sameSite: isProd ? 'none' : 'lax',
+    secure: isProd,
+  };
+  res.clearCookie('foodrescue_token', clearOpts);
+  res.clearCookie('foodrescue_refresh', clearOpts);
+  res.clearCookie('foodrescue_session', clearOpts);
+  res.clearCookie('foodrescue_expires_at', clearOpts);
+};
 
 /**
  * POST /api/auth/register
@@ -6,6 +64,9 @@ const authService = require('./auth.service');
 const register = async (req, res, next) => {
   try {
     const result = await authService.register(req.body);
+    if (result?.accessToken) {
+      setAuthCookies(res, result);
+    }
 
     res.status(201).json({
       success: true,
@@ -23,6 +84,7 @@ const register = async (req, res, next) => {
 const login = async (req, res, next) => {
   try {
     const result = await authService.login(req.body);
+    setAuthCookies(res, result);
 
     res.status(200).json({
       success: true,
@@ -39,7 +101,14 @@ const login = async (req, res, next) => {
  */
 const refreshToken = async (req, res, next) => {
   try {
-    const result = await authService.refreshAccessToken(req.body.refresh_token);
+    let rToken = req.body?.refresh_token;
+    if (!rToken && req.headers.cookie) {
+      const match = req.headers.cookie.match(/(?:^|;\s*)foodrescue_refresh=([^;]+)/);
+      if (match) rToken = decodeURIComponent(match[1]);
+    }
+
+    const result = await authService.refreshAccessToken(rToken);
+    setAuthCookies(res, result);
 
     res.status(200).json({
       success: true,
@@ -56,7 +125,16 @@ const refreshToken = async (req, res, next) => {
  */
 const logout = async (req, res, next) => {
   try {
-    await authService.logout(req.body.refresh_token);
+    let rToken = req.body?.refresh_token;
+    if (!rToken && req.headers.cookie) {
+      const match = req.headers.cookie.match(/(?:^|;\s*)foodrescue_refresh=([^;]+)/);
+      if (match) rToken = decodeURIComponent(match[1]);
+    }
+
+    if (rToken) {
+      await authService.logout(rToken);
+    }
+    clearAuthCookies(res);
 
     res.status(200).json({
       success: true,
@@ -73,6 +151,9 @@ const logout = async (req, res, next) => {
 const googleLogin = async (req, res, next) => {
   try {
     const result = await authService.googleAuth(req.body);
+    if (result?.accessToken) {
+      setAuthCookies(res, result);
+    }
 
     res.status(200).json({
       success: true,
@@ -90,6 +171,9 @@ const googleLogin = async (req, res, next) => {
 const completeProfile = async (req, res, next) => {
   try {
     const result = await authService.completeProfile(req.user.id, req.body);
+    if (result?.accessToken) {
+      setAuthCookies(res, result);
+    }
 
     res.status(200).json({
       success: true,

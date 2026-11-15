@@ -123,7 +123,11 @@ const getMyClaims = async (req, res, next) => {
  */
 const getDonationById = async (req, res, next) => {
   try {
-    const donation = await donationService.getDonationById(req.params.id, req.user);
+    const { id } = req.params;
+    if (!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(id)) {
+      return res.status(404).json({ success: false, message: 'Donation not found.' });
+    }
+    const donation = await donationService.getDonationById(id, req.user);
     res.json({ success: true, data: donation });
   } catch (error) {
     next(error);

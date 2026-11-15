@@ -8,6 +8,7 @@ router.use(authenticate);
 router.use(ensureProfileCompleted);
 
 router.get('/', notificationController.getNotifications);
+router.post('/test', notificationController.sendTestNotification);
 router.patch('/:id/read', notificationController.markAsRead);
 router.patch('/read-all', notificationController.markAllAsRead);
 router.post('/device-token', notificationController.registerDeviceToken);

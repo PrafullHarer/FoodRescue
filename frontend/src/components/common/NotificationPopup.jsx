@@ -9,7 +9,7 @@ import {
   sendBrowserNotification,
 } from '../../utils/browserNotifications';
 
-const POLL_INTERVAL = 30000; // 30 seconds
+const POLL_INTERVAL = 10000; // 10 seconds for real-time responsiveness
 
 const getSeenIds = (userId) => {
   if (!userId) return new Set();
@@ -112,34 +112,42 @@ const resolveNotificationRoute = (notification, user) => {
 export default function NotificationPopup() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [permission, setPermission] = useState(getBrowserNotificationPermission());
+  const [permission, setPermission] = useState(() => getBrowserNotificationPermission());
   const intervalRef = useRef(null);
 
   // Request browser permission if default
   useEffect(() => {
     if (!isBrowserNotificationSupported()) return;
 
-    if (Notification.permission === 'default') {
-      // Attempt requesting permission immediately
-      requestBrowserNotificationPermission().then((res) => {
-        setPermission(res);
-      });
+    // Inside mobile native WebView app, permissions are handled natively by Expo
+    if (typeof window !== 'undefined' && (window.isFoodRescueNativeApp || window.ReactNativeWebView)) {
+      setPermission('granted');
+      return;
+    }
 
-      // Also attach a one-time user-interaction trigger as fallback for strict browsers
-      const handleUserGesture = () => {
-        if (Notification.permission === 'default') {
-          requestBrowserNotificationPermission().then((res) => {
-            setPermission(res);
-          });
-        }
-      };
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (window.Notification.permission === 'default') {
+        // Attempt requesting permission immediately
+        requestBrowserNotificationPermission().then((res) => {
+          setPermission(res);
+        });
 
-      window.addEventListener('click', handleUserGesture, { once: true });
-      return () => {
-        window.removeEventListener('click', handleUserGesture);
-      };
-    } else {
-      setPermission(Notification.permission);
+        // Also attach a one-time user-interaction trigger as fallback for strict browsers
+        const handleUserGesture = () => {
+          if (typeof window !== 'undefined' && 'Notification' in window && window.Notification.permission === 'default') {
+            requestBrowserNotificationPermission().then((res) => {
+              setPermission(res);
+            });
+          }
+        };
+
+        window.addEventListener('click', handleUserGesture, { once: true });
+        return () => {
+          window.removeEventListener('click', handleUserGesture);
+        };
+      } else {
+        setPermission(window.Notification.permission);
+      }
     }
   }, []);
 
@@ -162,17 +170,21 @@ export default function NotificationPopup() {
       const freshNotifications = notifications.filter(n => !seenSet.has(n.id));
 
       if (freshNotifications.length > 0) {
+        const isNativeApp = typeof window !== 'undefined' && (window.isFoodRescueNativeApp || window.ReactNativeWebView);
+        const hasBrowserPermission = typeof window !== 'undefined' && 'Notification' in window && window.Notification.permission === 'granted';
+
         freshNotifications.forEach(n => {
           seenSet.add(n.id);
+          const targetRoute = resolveNotificationRoute(n, user);
 
-          // Dispatch native browser notification
-          if (permission === 'granted' || (isBrowserNotificationSupported() && Notification.permission === 'granted')) {
-            const targetRoute = resolveNotificationRoute(n, user);
+          // Dispatch native OS / browser notification directly to phone status bar (NO in-app UI popup)
+          if (isNativeApp || permission === 'granted' || hasBrowserPermission) {
             sendBrowserNotification(
               n.title || 'FoodRescue Notification',
               {
                 body: n.body || n.message || 'New update available on FoodRescue.',
                 tag: `foodrescue-${n.id}`,
+                data: { targetRoute },
                 renotify: true,
               },
               () => {

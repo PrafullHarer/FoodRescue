@@ -616,3 +616,80 @@ sequenceDiagram
     Web->>User: Displays 4-Point Quality Inspection Checklist for handoff confirmation
 ```
 
+---
+
+## 14. Interactive Location Picker & Geolocation Bridge Topology
+
+```mermaid
+flowchart TD
+    subgraph Client["Client Application (Web & Mobile WebView)"]
+        FORM["CreateDonationPage.jsx\n(Section 2: Pickup Location & Map Pin)"]
+        BTN["'Open Location Picker' Button"]
+        MODAL["MapAddressPickerModal.jsx\n(React Portal z-[9999])"]
+        CANVAS["Leaflet Canvas\n(Full-Height Interactive Container)"]
+        PIN["FoodRescue Branded Center Pin\n(#121214 Carbon + #39FF14 Rim & Core)"]
+        STYLE["Tile Style Toggle (<Layers />)\nDark Matter (CSS Inverted OSM) vs Street Map"]
+        CONFIRM["'SELECT LOCATION!' Button\n(.btn-primary Neon Lime #39FF14)"]
+    end
+
+    subgraph GeoEngine["3-Tier Geolocation Resolution Engine (geolocation.js)"]
+        CHECK{"Is Mobile Native Shell?"}
+        NAT_GPS["Tier 1: Native Mobile GPS\n(expo-location via window.ReactNativeWebView)"]
+        BROW_GPS["Tier 2: Browser Geolocation API\n(navigator.geolocation.getCurrentPosition)"]
+        IP_GEO["Tier 3: Network IP Lookup\n(ipapi.co / geoip fallback)"]
+    end
+
+    subgraph Nominatim["OpenStreetMap Nominatim Reverse Geocoding"]
+        REV_API["Reverse Geocode API\n(GET /reverse?lat={lat}&lon={lon}&format=json)"]
+        DEBOUNCE["350ms Debounced Drag Listener"]
+        ADDR_CARD["Resolved Address Card\n(Street, Landmark, Area, District, Lat/Lng)"]
+    end
+
+    FORM --> BTN --> MODAL
+    MODAL --> CANVAS & PIN & STYLE
+    MODAL --> CHECK
+    CHECK -- Yes --> NAT_GPS --> CANVAS
+    CHECK -- No --> BROW_GPS
+    BROW_GPS -- Permitted --> CANVAS
+    BROW_GPS -- Denied / Timeout --> IP_GEO --> CANVAS
+
+    CANVAS -- Map Pan / Center Move --> DEBOUNCE --> REV_API
+    REV_API --> ADDR_CARD
+    MODAL --> CONFIRM
+    CONFIRM -- Emits { address, latitude, longitude } --> FORM
+```
+
+---
+
+## 15. Real-Time & Push Notification Distribution Architecture
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Event as ⚡ Domain Event Trigger (Donation/Claim/Delivery)
+    participant Svc as 🔔 notification.service.js
+    participant DB as 🗄️ PostgreSQL (notifications & push_tokens)
+    participant WS as 🌐 WebSocket Dispatcher (ws)
+    participant Expo as 📱 Expo Push Server (exp.host)
+    participant WebClient as 🖥️ Web Client (NotificationPopup & browserNotifications)
+    participant MobileApp as 📲 Mobile Device (expo-notifications Tray)
+
+    Event->>Svc: notifyRoleUsers / notifyUser(payload)
+    Svc->>DB: INSERT INTO notifications (user_id, title, message, type)
+    
+    par WebSocket Real-Time Broadcast
+        Svc->>WS: wsBroadcast(user_id, notification)
+        WS-->>WebClient: Real-Time WebSocket Message
+        WebClient->>WebClient: Triggers NotificationPopup.jsx (Chime + Auto-dismiss bar)
+        opt Desktop Notification Permitted
+            WebClient->>WebClient: browserNotifications.js displays native desktop notification
+        end
+    and Mobile Push Notification Fanout
+        Svc->>DB: SELECT push_token FROM push_tokens WHERE user_id = :id
+        DB-->>Svc: Active Expo Push Tokens
+        Svc->>Expo: POST https://exp.host/--/api/v2/push/send
+        Expo-->>MobileApp: Native Android / iOS Push Notification
+        MobileApp->>MobileApp: System Tray Alert + Heads-Up Banner
+    end
+```
+

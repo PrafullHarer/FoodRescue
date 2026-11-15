@@ -39,12 +39,16 @@ export default function QRScanPage() {
   }, []);
 
   const handleLaunchCamera = () => {
-    if (typeof window !== 'undefined' && window.ReactNativeWebView) {
+    if (typeof window !== 'undefined' && window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
       window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'OPEN_CAMERA_SCANNER' }));
       return;
     }
+    if (typeof window !== 'undefined' && typeof window.openNativeCamera === 'function') {
+      window.openNativeCamera();
+      return;
+    }
     // Web browser camera fallback
-    setWebCamActive((prev) => !prev);
+    setWebCamActive(true);
   };
 
   useEffect(() => {
@@ -150,6 +154,9 @@ export default function QRScanPage() {
     if (initialCode) {
       setCode(initialCode);
       handlePreview(initialCode);
+    } else {
+      // Auto-launch live camera feed when user enters the QR scanner
+      handleLaunchCamera();
     }
   }, [searchParams]);
 

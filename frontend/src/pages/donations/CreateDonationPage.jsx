@@ -298,10 +298,10 @@ export default function CreateDonationPage() {
               <button
                 type="button"
                 onClick={() => setMapPickerOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-900 text-white dark:bg-[#1c1c22] dark:text-white dark:border dark:border-[#2e2e38] dark:hover:border-neutral-500 font-bold text-xs hover:opacity-90 transition-all shadow-sm cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-900 text-white dark:bg-[#1f1f24] hover:bg-neutral-800 dark:hover:bg-[#282830] border border-neutral-800 dark:border-[#383842] active:scale-95 font-bold text-xs transition-all shadow-sm cursor-pointer"
               >
-                <Compass className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
-                <span>Pick on Interactive Map</span>
+                <Compass className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Open Location Picker</span>
               </button>
             </div>
 
@@ -322,19 +322,19 @@ export default function CreateDonationPage() {
               </div>
             </div>
 
-            {/* Selected Coordinates Status Pill */}
-            <div className="flex items-center justify-between p-3 bg-neutral-50 dark:bg-[#0c0c0e] rounded-xl border border-neutral-200 dark:border-[#232328] text-xs">
+            {/* GPS Coordinates Bar */}
+            <div className="flex items-center justify-between p-3 bg-neutral-50 dark:bg-[#141417] rounded-xl border border-neutral-200 dark:border-[#232328] text-xs">
               <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
-                <Navigation className="w-3.5 h-3.5 text-neutral-900 dark:text-white flex-shrink-0" />
+                <Navigation className="w-3.5 h-3.5 text-neutral-900 dark:text-white shrink-0" />
                 <span>GPS Coordinates for Volunteers & NGOs:</span>
-                <span className="font-mono text-neutral-900 dark:text-white bg-neutral-200/70 dark:bg-[#18181b] px-2 py-0.5 rounded border border-neutral-300 dark:border-[#282830]">
+                <span className="font-mono text-neutral-900 dark:text-white bg-neutral-200/70 dark:bg-[#1f1f24] px-2 py-0.5 rounded border border-neutral-300 dark:border-[#282830]">
                   {form.latitude?.toFixed(4)}, {form.longitude?.toFixed(4)}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setMapPickerOpen(true)}
-                className="text-[11px] font-semibold text-neutral-900 dark:text-white hover:underline cursor-pointer"
+                className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
               >
                 Change Pin
               </button>
@@ -442,7 +442,7 @@ export default function CreateDonationPage() {
         initialAddress={form.pickup_address}
         initialLat={form.latitude || 28.6139}
         initialLng={form.longitude || 77.2090}
-        title="Pin Pickup Location on Map"
+        title="Location Picker"
       />
     </div>
   );

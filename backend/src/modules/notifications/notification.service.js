@@ -132,7 +132,8 @@ const createNotification = async ({ userId, title, body, type = 'in_app', data =
 
 /**
  * Send push notification via Expo's push service.
- * (Wrapper — actual FCM/APNs call would go through Expo's API)
+ * Dispatches real HTTP requests to Expo's push notification service (exp.host)
+ * which forwards to FCM (Android) and APNs (iOS).
  */
 const sendPushNotification = async (userId, title, body, data = {}) => {
   // If user is admin and notification is donation-related, skip
@@ -145,7 +146,7 @@ const sendPushNotification = async (userId, title, body, data = {}) => {
     // continue
   }
 
-  // Get device tokens for user
+  // Get active device tokens for user
   const { rows: tokens } = await db.query(
     'SELECT token, platform FROM device_tokens WHERE user_id = $1 AND is_active = TRUE',
     [userId]
@@ -156,12 +157,37 @@ const sendPushNotification = async (userId, title, body, data = {}) => {
     return null;
   }
 
-  // In production, this would call Expo's push API:
-  // https://exp.host/--/api/v2/push/send
-  console.log(`[PUSH] Would send to ${tokens.length} device(s):`, { title, body, data });
+  // Filter valid Expo push tokens
+  const expoMessages = tokens
+    .map(t => t.token)
+    .filter(token => typeof token === 'string' && (token.startsWith('ExponentPushToken[') || token.startsWith('ExpoPushToken[')))
+    .map(token => ({
+      to: token,
+      title: title || 'FoodRescue Alert',
+      body: body || '',
+      data: data || {},
+      sound: 'default',
+      priority: 'high',
+      channelId: 'foodrescue-alerts',
+    }));
 
-  // Also create in-app notification
-  await createNotification({ userId, title, body, type: 'push', data });
+  if (expoMessages.length > 0) {
+    try {
+      const response = await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Accept-Encoding': 'gzip, deflate',
+        },
+        body: JSON.stringify(expoMessages),
+      });
+      const resJson = await response.json();
+      console.log(`[PUSH] Dispatched Expo push to ${expoMessages.length} device(s):`, resJson);
+    } catch (pushErr) {
+      console.warn('[PUSH] Failed to dispatch Expo push:', pushErr.message);
+    }
+  }
 
   return { sent: tokens.length };
 };
@@ -404,6 +430,15 @@ const notifyNgosOfNewDonation = async (donation) => {
     );
 
     console.log(`[NOTIFY] Sent new-donation notification to ${ngoUsers.length} NGO(s) for "${donation.title}"`);
+
+    // Dispatch push notifications to all registered devices of NGO users
+    for (const ngo of ngoUsers) {
+      sendPushNotification(ngo.user_id, title, body, {
+        type: 'new_donation',
+        donation_id: donation.id,
+        category: donation.category,
+      }).catch(() => {});
+    }
   } catch (error) {
     console.error('[NOTIFY] Failed to notify NGOs:', error.message);
   }
@@ -467,9 +502,42 @@ const notifyVolunteersOfPickupMission = async (donation, deliveryId) => {
     );
 
     console.log(`[NOTIFY] Sent pickup mission notification to ${volunteerUsers.length} volunteer(s) for "${donation.title}"`);
+
+    // Dispatch push notifications to all registered devices of volunteers
+    for (const v of volunteerUsers) {
+      sendPushNotification(v.user_id, title, body, {
+        type: 'delivery_available',
+        donation_id: donation.id,
+        delivery_id: deliveryId,
+      }).catch(() => {});
+    }
   } catch (error) {
     console.error('[NOTIFY] Failed to notify volunteers:', error.message);
   }
+};
+
+/**
+ * Send an immediate test push notification to the current user.
+ */
+const testPushNotification = async (userId) => {
+  const title = '🔔 FoodRescue Notification Test';
+  const body = 'Real-time project push notifications are connected and working properly!';
+  const data = {
+    type: 'test_notification',
+    timestamp: new Date().toISOString(),
+  };
+
+  const notification = await createNotification({
+    userId,
+    title,
+    body,
+    type: 'push',
+    data,
+  });
+
+  await sendPushNotification(userId, title, body, data).catch(() => {});
+
+  return notification;
 };
 
 module.exports = {
@@ -484,5 +552,6 @@ module.exports = {
   markAsRead,
   markAllAsRead,
   registerDeviceToken,
+  testPushNotification,
 };
 

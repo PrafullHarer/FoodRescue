@@ -763,3 +763,46 @@ html.light .bg-neutral-900.text-white svg {
   color: #ffffff !important;
 }
 
+/* ==========================================================================
+   Mobile App & Responsive Touch Experience Refinements
+   ========================================================================== */
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button, a, input, select, textarea {
+  touch-action: manipulation;
+}
+
+/* Prevent auto-zooming on iOS & Android WebViews when inputs are focused */
+@media (max-width: 768px) {
+  input,
+  select,
+  textarea,
+  .input,
+  .input-field {
+    font-size: 16px !important;
+  }
+
+  /* Form button touch target height minimum */
+  .btn:not(.btn-sm):not(.badge) {
+    min-height: 44px;
+  }
+}
+
+/* Safe area padding utilities for edge-to-edge mobile devices */
+.pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
+}
+
+.pt-safe {
+  padding-top: max(1rem, env(safe-area-inset-top, 1rem));
+}
+
+/* Smooth mobile scrolling physics */
+html, body {
+  -webkit-overflow-scrolling: touch;
+}
+
+
