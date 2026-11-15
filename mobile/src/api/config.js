@@ -1,12 +1,26 @@
 import { Platform, NativeModules } from 'react-native';
+import Constants from 'expo-constants';
 
 /**
- * Dynamically extract host IP from Metro bundler's scriptURL.
+ * Dynamically extract host IP from Expo Constants or Metro bundler scriptURL.
  * When testing on a physical phone via Expo Go, this automatically
  * resolves to your development machine's local Wi-Fi IP address.
  */
-const getDevHostIp = () => {
+export const getDevHostIp = () => {
   try {
+    // 1. In Expo Go, hostUri contains the exact IP:Port Metro loaded from (e.g. "10.81.107.64:8081")
+    const hostUri =
+      Constants.expoConfig?.hostUri ||
+      Constants.manifest2?.extra?.expoGo?.debuggerHost ||
+      Constants.manifest?.debuggerHost;
+    if (hostUri) {
+      const ip = hostUri.split(':')[0];
+      if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
+        return ip;
+      }
+    }
+
+    // 2. Fallback to NativeModules scriptURL
     const scriptURL = NativeModules?.SourceCode?.scriptURL;
     if (scriptURL) {
       const match = scriptURL.split('://')[1];
@@ -20,8 +34,8 @@ const getDevHostIp = () => {
   } catch {
     // fallback
   }
-  // Local network IP of current development machine
-  return '10.221.100.64';
+  // 3. Current active Wi-Fi LAN IP of this development machine
+  return '10.81.107.64';
 };
 
 const devHost = getDevHostIp();

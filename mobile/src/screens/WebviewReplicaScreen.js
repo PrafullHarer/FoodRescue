@@ -10,23 +10,39 @@ import {
   RefreshControl,
   ScrollView,
   NativeModules,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import Logo from '../components/Logo';
 import NativeCameraModal from '../components/NativeCameraModal';
 import { colors } from '../theme/colors';
 
 /**
- * Automatically determine the developer computer's host IP from Metro scriptURL.
+ * Automatically determine the developer computer's host IP from Expo Constants or Metro scriptURL.
  * On a physical phone using Expo Go on Wi-Fi, this resolves directly to
- * the host PC's LAN IP (e.g. 10.221.100.64).
+ * the host PC's current LAN IP (e.g. 10.81.107.64).
  */
-const getDevHost = () => {
+export const getDevHost = () => {
   try {
+    // 1. In Expo Go, hostUri contains the exact IP:Port Metro loaded from (e.g. "10.81.107.64:8081")
+    const hostUri =
+      Constants.expoConfig?.hostUri ||
+      Constants.manifest2?.extra?.expoGo?.debuggerHost ||
+      Constants.manifest?.debuggerHost;
+    if (hostUri) {
+      const ip = hostUri.split(':')[0];
+      if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
+        return ip;
+      }
+    }
+
+    // 2. React Native NativeModules SourceCode
     const scriptURL = NativeModules?.SourceCode?.scriptURL;
     if (scriptURL) {
       const match = scriptURL.split('://')[1];
@@ -40,7 +56,8 @@ const getDevHost = () => {
   } catch {
     // fallback
   }
-  return '10.221.100.64';
+  // 3. Current active Wi-Fi LAN IP of development machine
+  return '10.81.107.64';
 };
 
 const devHost = getDevHost();
@@ -61,11 +78,23 @@ export default function WebviewReplicaScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeUrl, setActiveUrl] = useState(DEFAULT_WEB_URL);
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [customIpInput, setCustomIpInput] = useState(devHost);
   const lastAutoOpenedUrl = useRef(null);
 
   useEffect(() => {
     AsyncStorage.getItem('@foodrescue_custom_web_url').then((saved) => {
-      if (saved) setActiveUrl(saved);
+      // Clear outdated 10.221.100.64 IP if previously cached on device
+      if (saved && !saved.includes('10.221.100.64')) {
+        setActiveUrl(saved);
+        const savedHost = saved.split('://')[1]?.split(':')[0];
+        if (savedHost) setCustomIpInput(savedHost);
+      } else {
+        const freshUrl = `http://${devHost}:5173`;
+        setActiveUrl(freshUrl);
+        setCustomIpInput(devHost);
+        AsyncStorage.setItem('@foodrescue_custom_web_url', freshUrl);
+      }
     });
   }, []);
 
@@ -74,6 +103,10 @@ export default function WebviewReplicaScreen() {
     if (Platform.OS !== 'android') return;
 
     const onBackPress = () => {
+      if (settingsModalOpen) {
+        setSettingsModalOpen(false);
+        return true;
+      }
       if (cameraOpen) {
         setCameraOpen(false);
         return true;
@@ -87,15 +120,41 @@ export default function WebviewReplicaScreen() {
 
     const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => subscription.remove();
-  }, [cameraOpen, canGoBack]);
+  }, [cameraOpen, canGoBack, settingsModalOpen]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
+    setErrorOccurred(false);
     if (webViewRef.current) {
       webViewRef.current.reload();
     }
     setTimeout(() => setRefreshing(false), 1200);
   }, []);
+
+  const handleSaveCustomHost = () => {
+    const trimmed = customIpInput.trim();
+    if (!trimmed) return;
+    let newUrl = trimmed;
+    if (!newUrl.startsWith('http://') && !newUrl.startsWith('https://')) {
+      newUrl = `http://${trimmed}:5173`;
+    }
+    setActiveUrl(newUrl);
+    AsyncStorage.setItem('@foodrescue_custom_web_url', newUrl);
+    setSettingsModalOpen(false);
+    setErrorOccurred(false);
+    setLoading(true);
+  };
+
+  const handleResetToAutoHost = () => {
+    const detected = getDevHost();
+    const freshUrl = `http://${detected}:5173`;
+    setCustomIpInput(detected);
+    setActiveUrl(freshUrl);
+    AsyncStorage.setItem('@foodrescue_custom_web_url', freshUrl);
+    setSettingsModalOpen(false);
+    setErrorOccurred(false);
+    setLoading(true);
+  };
 
   // Handle URL change to auto-open camera on QR verification screens
   const handleNavigationStateChange = (navState) => {
@@ -193,10 +252,18 @@ export default function WebviewReplicaScreen() {
                 setLoading(true);
               }}
               onLoadEnd={() => setLoading(false)}
-              onError={() => {
+              onError={(e) => {
+                console.warn('[WebView Error]', e?.nativeEvent?.description);
                 setLoading(false);
                 setErrorOccurred(true);
               }}
+              onHttpError={(e) => {
+                if (e?.nativeEvent?.statusCode >= 400) {
+                  setErrorOccurred(true);
+                }
+              }}
+              // Suppress Android Chromium default white error page
+              renderError={() => <View style={{ flex: 1, backgroundColor: '#050505' }} />}
               // Enable hardware & browser features
               javaScriptEnabled={true}
               domStorageEnabled={true}
@@ -239,29 +306,97 @@ export default function WebviewReplicaScreen() {
                   <Logo size="lg" />
                   <Ionicons
                     name="cloud-offline-outline"
-                    size={54}
+                    size={50}
                     color={colors.warning}
-                    style={{ marginTop: 24 }}
+                    style={{ marginTop: 18 }}
                   />
-                  <Text style={styles.errorTitle}>Connecting to Web Client</Text>
+                  <Text style={styles.errorTitle}>Cannot Connect to Server</Text>
                   <Text style={styles.errorSub}>
-                    Connecting to FoodRescue frontend at:{'\n'}
+                    Connecting to frontend at:{'\n'}
                     <Text style={styles.urlText}>{activeUrl}</Text>
                   </Text>
 
                   <Text style={styles.helpText}>
-                    Ensure the frontend server is running:
-                    {'\n'}• Run <Text style={styles.codeText}>npm run dev -- --host</Text> in the frontend folder.
-                    {'\n'}• Verify your phone and computer are on the same Wi-Fi.
+                    Ensure your phone and computer are on the same Wi-Fi network and frontend is running on your machine.
                   </Text>
 
-                  <TouchableOpacity style={styles.retryBtn} onPress={onRefresh} activeOpacity={0.8}>
-                    <Ionicons name="refresh" size={18} color="#050505" />
-                    <Text style={styles.retryBtnText}>Retry Connection</Text>
-                  </TouchableOpacity>
+                  <View style={styles.errorActions}>
+                    <TouchableOpacity style={styles.retryBtn} onPress={onRefresh} activeOpacity={0.8}>
+                      <Ionicons name="refresh" size={17} color="#050505" />
+                      <Text style={styles.retryBtnText}>Retry Connection</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.changeIpBtn}
+                      onPress={() => setSettingsModalOpen(true)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="settings-outline" size={16} color="#FFFFFF" />
+                      <Text style={styles.changeIpBtnText}>Change Server IP</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </ScrollView>
             )}
+
+            {/* Change Server IP Modal */}
+            <Modal
+              visible={settingsModalOpen}
+              transparent={true}
+              animationType="fade"
+              onRequestClose={() => setSettingsModalOpen(false)}
+            >
+              <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                  <View style={styles.modalHeader}>
+                    <Text style={styles.modalTitle}>Configure Server Host</Text>
+                    <TouchableOpacity onPress={() => setSettingsModalOpen(false)}>
+                      <Ionicons name="close" size={22} color="#9CA3AF" />
+                    </TouchableOpacity>
+                  </View>
+
+                  <Text style={styles.modalDescription}>
+                    Enter your computer's Wi-Fi IP address or full server URL:
+                  </Text>
+
+                  <TextInput
+                    style={styles.input}
+                    value={customIpInput}
+                    onChangeText={setCustomIpInput}
+                    placeholder="e.g. 10.81.107.64"
+                    placeholderTextColor="#6B7280"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+
+                  <TouchableOpacity
+                    style={styles.autoDetectBtn}
+                    onPress={handleResetToAutoHost}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="sparkles" size={15} color={colors.primary} />
+                    <Text style={styles.autoDetectBtnText}>Auto-Detect ({getDevHost()})</Text>
+                  </TouchableOpacity>
+
+                  <View style={styles.modalActions}>
+                    <TouchableOpacity
+                      style={styles.cancelBtn}
+                      onPress={() => setSettingsModalOpen(false)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.cancelBtnText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.saveBtn}
+                      onPress={handleSaveCustomHost}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.saveBtnText}>Save & Connect</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            </Modal>
           </View>
         </SafeAreaView>
       )}
@@ -331,31 +466,133 @@ const styles = StyleSheet.create({
   helpText: {
     fontSize: 11,
     color: '#6B7280',
-    textAlign: 'left',
-    marginTop: 16,
-    lineHeight: 18,
+    textAlign: 'center',
+    marginTop: 14,
+    lineHeight: 16,
     alignSelf: 'stretch',
     backgroundColor: '#18181B',
-    padding: 12,
+    padding: 10,
     borderRadius: 10,
   },
-  codeText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
+  errorActions: {
+    flexDirection: 'column',
+    width: '100%',
+    gap: 10,
+    marginTop: 18,
   },
   retryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
     backgroundColor: '#84CC16',
-    paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
-    marginTop: 20,
+    width: '100%',
   },
   retryBtnText: {
     color: '#050505',
     fontWeight: '700',
     fontSize: 14,
+  },
+  changeIpBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#232328',
+    borderWidth: 1,
+    borderColor: '#383842',
+    paddingVertical: 11,
+    borderRadius: 12,
+    width: '100%',
+  },
+  changeIpBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: '#121214',
+    borderWidth: 1,
+    borderColor: '#232328',
+    borderRadius: 20,
+    padding: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  modalDescription: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginBottom: 14,
+    lineHeight: 16,
+  },
+  input: {
+    backgroundColor: '#18181B',
+    borderWidth: 1,
+    borderColor: '#27272A',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    color: '#FFFFFF',
+    fontSize: 14,
+    marginBottom: 10,
+  },
+  autoDetectBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 20,
+  },
+  autoDetectBtnText: {
+    color: '#84CC16',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: '#232328',
+    alignItems: 'center',
+  },
+  cancelBtnText: {
+    color: '#9CA3AF',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  saveBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: '#84CC16',
+    alignItems: 'center',
+  },
+  saveBtnText: {
+    color: '#050505',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });
