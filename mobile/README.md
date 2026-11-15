@@ -130,6 +130,48 @@ npx expo start
 
 ---
 
+## 📦 Building Standalone Android APK (.apk)
+
+The project includes `eas.json` configured with `"buildType": "apk"` under the `preview` profile to produce an installable Android APK file.
+
+### Option 1: EAS Cloud Build (Recommended & Free)
+Expo's official cloud build servers will compile, sign, and host the `.apk` file without requiring Android Studio or local SDK setup:
+
+1. **Sign In to Expo** (or register a free account at [expo.dev](https://expo.dev)):
+   ```bash
+   cd mobile
+   npx eas login
+   ```
+
+2. **Run APK Build**:
+   ```bash
+   npm run build:apk
+   # or: npx eas build -p android --profile preview
+   ```
+
+3. **Install the APK**:
+   When the cloud build finishes (typically 3–5 minutes), EAS will display a direct `.apk` download URL and QR code to download and install the app directly on your Android device.
+
+---
+
+### Option 2: Local Native Build (Requires Android Studio & SDK)
+If you have Android Studio and the Android SDK configured with `ANDROID_HOME`:
+
+1. **Generate the Android Native Project**:
+   ```bash
+   cd mobile
+   npx expo prebuild --platform android
+   ```
+
+2. **Assemble the Release APK**:
+   ```bash
+   cd android
+   ./gradlew assembleRelease
+   ```
+   *The generated APK will be at `mobile/android/app/build/outputs/apk/release/app-release.apk`.*
+
+---
+
 ## 🛠️ Build & Verification Commands
 
 ```bash
