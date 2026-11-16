@@ -8,10 +8,12 @@ import Constants from 'expo-constants';
  */
 export const getDevHostIp = () => {
   try {
-    // 1. In Expo Go, hostUri contains the exact IP:Port Metro loaded from (e.g. "10.81.107.64:8081")
+    // 1. In Expo Go / Dev Client, hostUri or debuggerHost contains IP:Port
     const hostUri =
       Constants.expoConfig?.hostUri ||
+      Constants.expoGoConfig?.debuggerHost ||
       Constants.manifest2?.extra?.expoGo?.debuggerHost ||
+      Constants.manifest2?.extra?.expoClient?.hostUri ||
       Constants.manifest?.debuggerHost;
     if (hostUri) {
       const ip = hostUri.split(':')[0];
@@ -20,7 +22,16 @@ export const getDevHostIp = () => {
       }
     }
 
-    // 2. Fallback to NativeModules scriptURL
+    // 2. experienceUrl (e.g. "exp://10.81.107.64:8081")
+    const expUrl = Constants.experienceUrl;
+    if (expUrl && typeof expUrl === 'string') {
+      const match = expUrl.replace(/^[a-zA-Z]+:\/\//, '').split('/')[0]?.split(':')[0];
+      if (match && match !== 'localhost' && match !== '127.0.0.1') {
+        return match;
+      }
+    }
+
+    // 3. Fallback to NativeModules scriptURL
     const scriptURL = NativeModules?.SourceCode?.scriptURL;
     if (scriptURL) {
       const match = scriptURL.split('://')[1];
@@ -34,8 +45,8 @@ export const getDevHostIp = () => {
   } catch {
     // fallback
   }
-  // 3. Current active Wi-Fi LAN IP of this development machine
-  return '10.220.171.64';
+  // 4. Current active Wi-Fi LAN IP of this development machine
+  return '10.81.107.64';
 };
 
 const devHost = getDevHostIp();
@@ -45,7 +56,7 @@ const devHost = getDevHostIp();
  */
 export const DEFAULT_API_URL = Platform.select({
   web: 'http://localhost:3000/api',
-  android: 'http://localhost:3000/api',
+  android: `http://${devHost}:3000/api`,
   ios: `http://${devHost}:3000/api`,
-  default: 'http://localhost:3000/api',
+  default: `http://${devHost}:3000/api`,
 });

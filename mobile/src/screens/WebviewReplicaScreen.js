@@ -36,10 +36,12 @@ import {
  */
 export const getDevHost = () => {
   try {
-    // 1. In Expo Go, hostUri contains the exact IP:Port Metro loaded from (e.g. "10.81.107.64:8081")
+    // 1. In Expo Go / Dev Client, hostUri or debuggerHost contains IP:Port
     const hostUri =
       Constants.expoConfig?.hostUri ||
+      Constants.expoGoConfig?.debuggerHost ||
       Constants.manifest2?.extra?.expoGo?.debuggerHost ||
+      Constants.manifest2?.extra?.expoClient?.hostUri ||
       Constants.manifest?.debuggerHost;
     if (hostUri) {
       const ip = hostUri.split(':')[0];
@@ -48,7 +50,16 @@ export const getDevHost = () => {
       }
     }
 
-    // 2. React Native NativeModules SourceCode
+    // 2. experienceUrl (e.g. "exp://10.81.107.64:8081")
+    const expUrl = Constants.experienceUrl;
+    if (expUrl && typeof expUrl === 'string') {
+      const match = expUrl.replace(/^[a-zA-Z]+:\/\//, '').split('/')[0]?.split(':')[0];
+      if (match && match !== 'localhost' && match !== '127.0.0.1') {
+        return match;
+      }
+    }
+
+    // 3. React Native NativeModules SourceCode scriptURL
     const scriptURL = NativeModules?.SourceCode?.scriptURL;
     if (scriptURL) {
       const match = scriptURL.split('://')[1];
@@ -62,19 +73,19 @@ export const getDevHost = () => {
   } catch {
     // fallback
   }
-  // 3. Current active Wi-Fi LAN IP of development machine
-  return '10.220.171.64';
+  // 4. Current active Wi-Fi LAN IP of development machine
+  return '10.81.107.64';
 };
 
 const devHost = getDevHost();
 
 // The FoodRescue frontend Vite dev server runs at port 5173
-// devHost (LAN IP) connects over local Wi-Fi, while localhost connects for web/adb reverse
-const DEFAULT_WEB_URL = Platform.select({
+// devHost (LAN IP) connects over local Wi-Fi for physical phones in Expo Go
+export const DEFAULT_WEB_URL = Platform.select({
   web: 'http://localhost:5173',
-  android: 'http://localhost:5173',
+  android: `http://${devHost}:5173`,
   ios: `http://${devHost}:5173`,
-  default: 'http://localhost:5173',
+  default: `http://${devHost}:5173`,
 });
 
 export default function WebviewReplicaScreen() {
@@ -104,7 +115,7 @@ export default function WebviewReplicaScreen() {
     AsyncStorage.getItem('@foodrescue_user_explicit_ip').then((isExplicit) => {
       if (isExplicit === 'true') {
         AsyncStorage.getItem('@foodrescue_custom_web_url').then((saved) => {
-          if (saved && !saved.includes('10.221.100.64') && !saved.includes('10.81.107.64')) {
+          if (saved) {
             setActiveUrl(saved);
             currentUrlRef.current = saved;
             const savedHost = saved.split('://')[1]?.split(':')[0];
