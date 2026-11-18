@@ -165,9 +165,9 @@ app.listen(PORT, () => {
   console.log(`   Health check: http://localhost:${PORT}/api/health\n`);
 
   // Start background jobs
-  startExpiryChecker();
-  startIncidentDetector();
-  startComplaintEscalator();
+  // startExpiryChecker();
+  // startIncidentDetector();
+  // startComplaintEscalator();
 });
 
 // ─── Process Error Handlers ──────────────────────────────────
