@@ -348,9 +348,7 @@ Fetches all candidate NGO claims submitted for a food donation, scored and ranke
 
 ---
 
-## 📞 Support & Operational Inquiries
+## 📬 Support & Inquiries
 
-For developer queries or API access support:
-- **Central Project Email**: `2026.food.rescue@gmail.com`
-- **India Country Helpline**: `+91 1800 555 7372`
-- **Emergency Dispatch API Support**: `+91 98765 43211`
+For developer queries, integrations, or API access support:
+- **Official Project Email**: [`2026.food.rescue@gmail.com`](mailto:2026.food.rescue@gmail.com)

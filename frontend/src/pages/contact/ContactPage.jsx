@@ -1,16 +1,24 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import Logo from '../../components/common/Logo';
 import ThemeToggle from '../../components/common/ThemeToggle';
 import {
-  Mail, PhoneCall, Building2, MapPin, Clock, ArrowLeft
+  Mail, ArrowLeft, Copy, Check, Send, Sparkles, UtensilsCrossed, Building, Truck, LifeBuoy
 } from 'lucide-react';
 
 const CURRENT_YEAR = new Date().getFullYear();
+const OFFICIAL_EMAIL = '2026.food.rescue@gmail.com';
 
 export default function ContactPage() {
   const { user } = useAuth();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyEmail = () => {
+    navigator.clipboard.writeText(OFFICIAL_EMAIL);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className="min-h-screen w-full bg-[#FAFCF8] dark:bg-[#070907] text-neutral-900 dark:text-neutral-100 flex flex-col font-sans antialiased selection:bg-emerald-500 selection:text-white">
@@ -53,166 +61,134 @@ export default function ContactPage() {
       </header>
 
       {/* ══════════════════════════════════════════════════════════════
-          MAIN CONTENT (Direct Contact Details)
+          MAIN CONTENT (Sole Point of Contact: Email)
       ══════════════════════════════════════════════════════════════ */}
-      <main className="flex-1 max-w-5xl mx-auto px-4 sm:px-6 py-12 md:py-16 w-full flex flex-col justify-center">
+      <main className="flex-1 max-w-4xl mx-auto px-4 sm:px-6 py-12 md:py-16 w-full flex flex-col justify-center">
         {/* Title */}
         <div className="text-center space-y-3 mb-10 md:mb-12">
-          <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-            Company Coordinates
-          </span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider">
+            <Sparkles className="w-3.5 h-3.5" />
+            Direct Communication
+          </div>
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-neutral-900 dark:text-white tracking-tight">
-            Contact Information
+            Contact FoodRescue
           </h1>
-          <p className="text-sm sm:text-base text-neutral-600 dark:text-neutral-400 max-w-xl mx-auto leading-relaxed">
-            Direct communication channels for food businesses, community shelters, volunteer couriers, and partners.
+          <p className="text-sm sm:text-base text-neutral-600 dark:text-neutral-400 max-w-lg mx-auto leading-relaxed">
+            Our central operations and coordination desk is reachable exclusively via our official project email.
           </p>
         </div>
 
-        {/* 3 Contact Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
-          
-          {/* Card 1: Official Email */}
-          <div className="p-7 rounded-3xl bg-white dark:bg-[#0e120e] border border-neutral-200/90 dark:border-neutral-800/90 shadow-xl shadow-black/5 dark:shadow-black/25 flex flex-col justify-between space-y-6">
-            <div className="space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                <Mail className="w-6 h-6" />
+        {/* Central Dedicated Email Hero Card */}
+        <div className="rounded-3xl bg-white dark:bg-[#0e120e] border border-neutral-200/90 dark:border-neutral-800/90 shadow-2xl shadow-black/5 dark:shadow-black/30 p-8 sm:p-10 space-y-8">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6 pb-8 border-b border-neutral-100 dark:border-neutral-800/80">
+            <div className="flex items-center sm:items-start gap-4 text-center sm:text-left flex-col sm:flex-row">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <Mail className="w-8 h-8" />
               </div>
-
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block mb-1">
-                  Email Us
+              <div className="space-y-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block">
+                  Official Point of Contact
                 </span>
-                <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
-                  Official Project Email
-                </h2>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                  Monitored 24/7 for all platform inquiries
-                </p>
-              </div>
-
-              <div className="pt-2 border-t border-neutral-100 dark:border-neutral-800">
-                <a
-                  href="mailto:2026.food.rescue@gmail.com"
-                  className="text-sm font-black text-emerald-600 dark:text-emerald-400 hover:underline break-all block leading-relaxed"
-                >
+                <h2 className="text-xl sm:text-2xl font-black text-neutral-900 dark:text-white">
                   2026.food.rescue@gmail.com
-                </a>
+                </h2>
+                <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400">
+                  Monitored 24/7 across all rescue operations and support inquiries
+                </p>
               </div>
             </div>
 
-            <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800/80">
-              <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                Send us a message anytime. Our coordinators typically respond within 2 to 4 hours.
-              </p>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleCopyEmail}
+                className="px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-800 dark:text-neutral-200 text-xs font-bold flex items-center gap-1.5 transition-all"
+                title="Copy email to clipboard"
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-4 h-4 text-emerald-500" />
+                    <span>Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    <span>Copy Email</span>
+                  </>
+                )}
+              </button>
+
+              <a
+                href={`mailto:${OFFICIAL_EMAIL}`}
+                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>Send Email</span>
+              </a>
             </div>
           </div>
 
-          {/* Card 2: Phone & Helplines */}
-          <div className="p-7 rounded-3xl bg-white dark:bg-[#0e120e] border border-neutral-200/90 dark:border-neutral-800/90 shadow-xl shadow-black/5 dark:shadow-black/25 flex flex-col justify-between space-y-6">
-            <div className="space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                <PhoneCall className="w-6 h-6" />
-              </div>
+          {/* Inquiry Categories */}
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+              What You Can Email Us For
+            </h3>
 
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 block mb-1">
-                  Call Us (+91)
-                </span>
-                <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
-                  Helplines & Dispatch
-                </h2>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                  All-India toll-free and mobile support
-                </p>
-              </div>
-
-              <div className="space-y-2.5 pt-2 border-t border-neutral-100 dark:border-neutral-800 text-xs">
-                <div>
-                  <span className="text-neutral-400 block text-[10px] uppercase font-bold">General Helpline</span>
-                  <a
-                    href="tel:+9118005557372"
-                    className="font-bold text-neutral-900 dark:text-white hover:text-emerald-600 font-mono text-sm"
-                  >
-                    +91 1800 555 7372
-                  </a>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-100 dark:border-neutral-800/60 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                  <UtensilsCrossed className="w-4 h-4" />
                 </div>
                 <div>
-                  <span className="text-neutral-400 block text-[10px] uppercase font-bold">Direct Coordinator</span>
-                  <a
-                    href="tel:+919876543210"
-                    className="font-bold text-neutral-900 dark:text-white hover:text-emerald-600 font-mono text-sm"
-                  >
-                    +91 98765 43210
-                  </a>
-                </div>
-                <div>
-                  <span className="text-amber-600 dark:text-amber-400 block text-[10px] uppercase font-bold">24/7 Food Emergency</span>
-                  <a
-                    href="tel:+919876543211"
-                    className="font-bold text-amber-600 dark:text-amber-400 hover:underline font-mono text-sm"
-                  >
-                    +91 98765 43211
-                  </a>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800/80">
-              <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                For urgent large surplus batches needing immediate pickup, call the 24/7 emergency line.
-              </p>
-            </div>
-          </div>
-
-          {/* Card 3: Headquarters & Hours */}
-          <div className="p-7 rounded-3xl bg-white dark:bg-[#0e120e] border border-neutral-200/90 dark:border-neutral-800/90 shadow-xl shadow-black/5 dark:shadow-black/25 flex flex-col justify-between space-y-6">
-            <div className="space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center">
-                <Building2 className="w-6 h-6" />
-              </div>
-
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400 block mb-1">
-                  Visit Us
-                </span>
-                <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
-                  Headquarters & Hours
-                </h2>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                  FoodRescue India Foundation
-                </p>
-              </div>
-
-              <div className="space-y-3 pt-2 border-t border-neutral-100 dark:border-neutral-800 text-xs">
-                <div className="flex items-start gap-2.5">
-                  <MapPin className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                  <p className="text-neutral-600 dark:text-neutral-300 leading-relaxed text-xs">
-                    <span className="font-bold text-neutral-900 dark:text-white block">
-                      FoodRescue India Foundation
-                    </span>
-                    Level 4, Innov8 Hub, 80 Feet Road<br />
-                    Koramangala 4th Block, Bengaluru, Karnataka 560034, India
+                  <h4 className="text-xs font-bold text-neutral-900 dark:text-white">Commercial Food Donors</h4>
+                  <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-relaxed">
+                    Surplus listings, corporate food recovery partnerships, and kitchen pickup schedules.
                   </p>
                 </div>
+              </div>
 
-                <div className="flex items-start gap-2.5 pt-1">
-                  <Clock className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                  <div className="text-neutral-600 dark:text-neutral-300 leading-relaxed text-xs">
-                    <p><span className="font-bold text-neutral-900 dark:text-white">Live Support:</span> Mon – Sat, 9:00 AM – 8:00 PM IST</p>
-                    <p><span className="font-bold text-neutral-900 dark:text-white">Dispatch Engine:</span> 24/7/365 active</p>
-                  </div>
+              <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-100 dark:border-neutral-800/60 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
+                  <Building className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-neutral-900 dark:text-white">Shelters & NGOs</h4>
+                  <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-relaxed">
+                    Shelter onboarding, meal allocation requirements, and non-profit verification.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-100 dark:border-neutral-800/60 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 mt-0.5">
+                  <Truck className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-neutral-900 dark:text-white">Volunteer Couriers</h4>
+                  <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-relaxed">
+                    Joining the volunteer rescue fleet, delivery mission questions, and verification badges.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-100 dark:border-neutral-800/60 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                  <LifeBuoy className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-neutral-900 dark:text-white">Technical & General Support</h4>
+                  <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-relaxed">
+                    Account access, OTP verification, QR handoff issues, and platform suggestions.
+                  </p>
                 </div>
               </div>
             </div>
-
-            <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800/80">
-              <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                Dispatch engine runs continuously without interruption across all partner networks.
-              </p>
-            </div>
           </div>
 
+          {/* Response Time Guarantee */}
+          <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800/80 flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
+            <span>⚡ Typical response time: <strong>2 – 4 hours</strong></span>
+            <span>Coordination desk active 24/7</span>
+          </div>
         </div>
       </main>
 
@@ -223,7 +199,7 @@ export default function ContactPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-neutral-500 dark:text-neutral-400">
           <div className="flex items-center gap-2">
             <Logo to="/" size="xs" showText={true} />
-            <span>· © {CURRENT_YEAR} FoodRescue India Foundation</span>
+            <span>· © {CURRENT_YEAR} FoodRescue Network</span>
           </div>
 
           <div className="flex items-center gap-6">

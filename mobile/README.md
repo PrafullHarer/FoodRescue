@@ -46,7 +46,7 @@ An exact, production-ready mobile application for the **FoodRescue** platform, f
   - **Volunteer Courier Hub:** Delivery missions, route handovers, and physical verification.
   - **Trust & Reputation:** Click-to-view user reputation cards and verified rating scorecards.
   - **Mobile Map Picker:** Full-screen responsive touch-enabled Leaflet map with center pin panning, dark tiles, and street search.
-  - **Contact & Support:** Instant access to `/contact` directory featuring `2026.food.rescue@gmail.com` and India helplines (`+91 1800 555 7372`).
+  - **Contact & Support:** Instant access to `/contact` directory featuring `2026.food.rescue@gmail.com` as the central point of contact.
 
 ### 4. 📱 Native Device Integrations
 - **Live Device GPS (`expo-location`):** Hardware-level coordinate resolution with graceful fallbacks.

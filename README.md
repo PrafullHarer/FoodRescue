@@ -872,15 +872,11 @@ FoodRescue/
 
 ---
 
-## 📞 Contact & Operations Support
+## 📬 Contact & Support
 
-For general inquiries, business/donor onboarding, logistics coordination, or technical assistance, our operations team is available across India:
+For general inquiries, business/donor onboarding, logistics coordination, shelter partnerships, or technical assistance, our sole official point of contact is our project email:
 
 - **Official Project Email**: [`2026.food.rescue@gmail.com`](mailto:2026.food.rescue@gmail.com)
-- **Toll-Free Operations Helpline**: `+91 1800 555 7372` *(24/7 Rapid Rescue Dispatch)*
-- **Emergency Food Recovery Direct**: `+91 98765 43210`
-- **Technical & Platform Support**: `+91 98765 43211`
-- **Operations Headquarters**: FoodRescue Foundation, 4th Floor, Tech Hub, Koramangala, Bengaluru, Karnataka 560034, India
 
 ---
 
@@ -892,6 +888,8 @@ This is a **group project** built collaboratively by:
 |---|---|
 | Prafull Harer | [@PrafullHarer](https://github.com/PrafullHarer) |
 | Tanish Jadhav | [@TanishJadhav5244](https://github.com/TanishJadhav5244) |
+| Virendra Desai | [@Virendra-Balasaheb-Desai](https://github.com/Virendra-Balasaheb-Desai) |
+| Atharva Dhamdhere | [@AtharvaDhamdhere6462](https://github.com/AtharvaDhamdhere6462) |
 
 > **Upstream Repository**: [github.com/PrafullHarer/FoodRescue](https://github.com/PrafullHarer/FoodRescue)
 
