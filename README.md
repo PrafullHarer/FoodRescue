@@ -14,7 +14,7 @@
 
 ## 🌟 Overview
 
-Every day, restaurants, caterers, bakeries, and grocery stores produce edible surplus food that goes to waste, while local shelters and charities face shortages. **FoodRescue** bridges this gap with an end-to-end full-stack web and native mobile ecosystem (React 19 & Expo SDK 52) featuring real-time claims, route handovers with verification QR codes, Google Lens-style 4:3 camera scanner, automated food expiry management, Google OAuth sign-in, user verification governance, automated donation completion emails, comprehensive complaints & incident management, public feedback collection, admin analytics with geographical donation hotspots, and ESG environmental impact analytics.
+Every day, restaurants, caterers, bakeries, and grocery stores produce edible surplus food that goes to waste, while local shelters and charities face shortages. **FoodRescue** bridges this gap with an end-to-end full-stack web and native mobile ecosystem (React 19 & Expo SDK 52) featuring real-time claims, multi-factor smart shelter selection algorithms, route handovers with dual-QR verification, Google Lens-style 4:3 hardware camera scanner, automated food expiry management, Google OAuth & clean 6-digit email OTP security, user verification governance, automated donation completion emails, comprehensive complaints & incident management, public feedback collection, admin analytics with geographical donation hotspots, and ESG environmental impact analytics.
 
 ---
 
@@ -23,6 +23,7 @@ Every day, restaurants, caterers, bakeries, and grocery stores produce edible su
 ### 🥖 1. Food Providers (Restaurants, Caterers, Bakeries, Supermarkets)
 - **Post Surplus Food**: Quick listing form with food categories, quantity, dietary badges (vegan, halal, nut-free, etc.), and expiry countdown timer.
 - **Interactive Location Picker**: Full-screen dark carbon Leaflet map with custom branded center pin, live device GPS auto-detect, Nominatim address reverse-geocoding, and map layer switcher (Dark Matter vs Street Map).
+- **Intelligent Shelter Selection**: Inspect multiple competing NGO claim requests ranked in real time by the **Smart Shelter Claim Priority Algorithm** (evaluating hunger need, capacity, community reviews, proximity, and reliability) with dynamic badges and 5-factor breakdown bars.
 - **Manage Listings**: Real-time status tracking (`posted` ➔ `claimed` ➔ `in_transit` ➔ `delivered`).
 - **Data Isolation**: Providers can only view, edit, and delete their own donations — never another provider's listings.
 - **ESG Impact Metrics**: Track total kilograms rescued, meals donated, and CO₂ emissions avoided.
@@ -31,7 +32,7 @@ Every day, restaurants, caterers, bakeries, and grocery stores produce edible su
 
 ### 🤝 2. NGOs & Community Shelters
 - **Live Donation Feed**: Filter available surplus food by proximity, category, and servings.
-- **1-Click Reservation**: Instant claim system to secure food packages before expiry.
+- **1-Click Reservation & Fair Selection**: Instant claim system to secure food packages before expiry, with transparent algorithm-backed prioritization factoring in hunger need, days since last donation, and capacity.
 - **Delivery Tracking**: Monitor incoming supplies from assigned volunteer couriers.
 - **Direct Self-Pickup**: NGOs can opt for direct pickup from the food provider with single-step QR verification.
 - **Account Verification Gating**: Mandatory onboarding verification to guarantee shelter legitimacy.
@@ -48,6 +49,7 @@ Every day, restaurants, caterers, bakeries, and grocery stores produce edible su
 ### 🛡️ 4. Administrators
 - **Verification Portal**: Dedicated verification queue (`/admin/verifications`) to review registrations, inspect tax/business IDs, request info, approve, or reject accounts.
 - **User Governance**: Activate, suspend, or manage platform participants.
+- **Super Administrator Protection**: Immutable root administrator credentials protected against accidental or unauthorized account deletion and public password resets.
 - **Advanced Analytics**: KPI dashboard, geographical donation hotspots (Leaflet map with clustered markers), wasted food categories, NGO demand gaps, delivery reliability, and inactive provider tracking.
 - **Complaint Management**: Full lifecycle complaint resolution — submission, assignment, priority management, threaded messaging, audit history, CSV export, and status transitions.
 - **Incident Management**: Automated incident detection, severity tracking, assignment, escalation, notes, and resolution workflows.
@@ -58,33 +60,61 @@ Every day, restaurants, caterers, bakeries, and grocery stores produce edible su
 
 ---
 
-## 🔐 Authentication & Profile Completion
+## 🔐 Authentication, Security & Account Lifecycle
 
-FoodRescue supports two authentication methods:
+FoodRescue implements enterprise-grade authentication, role-based session governance, cryptographic OTP dispatch, and strict data privacy lifecycle protocols:
 
-### Email & Password Registration
-- Traditional registration with full name, email, phone, role selection, and address with map-based location picker.
-- Passwords securely hashed with bcrypt.
+### 1. Registration & Authentication Methods
+- **Email & Password**: Registration with full name, email, phone (strictly formatted with India `+91`), role selection, and Leaflet map location picker. Passwords securely hashed using `bcrypt` (10 rounds).
+- **Clean 6-Digit Email OTP Verification**: Real-time cryptographically generated 6-digit OTPs dispatched directly to user inboxes via Nodemailer. Zero client-side bypasses or exposed development codes in production.
+- **Continue with Google (OAuth 2.0)**:
+  - Integrated via **Google Identity Services** on Login and Register pages.
+  - Backend token verification using `google-auth-library`.
+  - Automatic email linking to prevent duplicate accounts.
+  - Mandatory profile completion redirect (`/complete-profile`) for first-time Google sign-ups.
 
-### Continue with Google (OAuth 2.0)
-- **Google Identity Services** integration on both Login and Register pages.
-- Backend verification of Google ID tokens via the official `google-auth-library`.
-- Automatic account linking by verified email — existing email/password users can seamlessly sign in with Google without creating duplicate accounts.
-- New Google users are directed to a **mandatory profile completion page** (`/complete-profile`) to provide role, phone, and address before accessing the platform.
+### 2. Self-Service Password Recovery (Forgot / Reset Password)
+- Standardized self-service recovery available to **Food Providers**, **NGO Shelters**, and **Volunteers**.
+- **Two-Step Email OTP Flow**:
+  1. `POST /api/auth/forgot-password`: Generates a single-use 6-digit token (10-minute expiry) and emails it to the user.
+  2. `POST /api/auth/reset-password`: Validates the OTP and commits the new `bcrypt` password hash.
+- **Super Administrator Protection Policy**: Root Super Administrators (`role === 'admin'`) are strictly excluded from public forgot-password workflows. Any reset attempt against an admin account is blocked with `403 Forbidden` and audited to prevent takeover attempts.
 
-### Profile Completion Flow
+### 3. Account Deletion & Data Privacy ("Danger Zone")
+- Self-service account termination accessible from the **Profile Page** (`/profile`) under the Security section.
+- **Double Confirmation Safeguards**: Requires re-entering the account password (or typing `"DELETE"` for OAuth-only users).
+- **In-Flight Mission Protection**: Account deletion is strictly prohibited if the user is actively involved in incomplete operations:
+  - Providers with active donations in `posted`, `claimed`, or `in_transit` state.
+  - NGOs with active, unfulfilled claims or incoming deliveries.
+  - Volunteers with assigned or in-transit delivery missions.
+- **Super Administrator Exemption**: The Super Admin account is permanently immune to deletion via API or UI to prevent platform lockout.
+- **Cascading Data Cleanup**: Deletion safely disassociates user data, invalidates active push tokens, cleans up notification records, and marks public review references.
+
 ```
-Google Sign-In ──► Backend Verifies ID Token
-                    │
-                    ├── Existing User Found? ──► Sign In Directly
-                    │
-                    └── New User? ──► Create Account (profile_completed = false)
-                                       │
-                                       └── Redirect to /complete-profile
-                                             │
-                                             └── User Selects Role, Enters Phone & Address
-                                                   │
-                                                   └── Profile Marked Complete ──► Dashboard
+┌────────────────────────────────────────────────────────────────────────┐
+│                      Account Deletion Safeguards                       │
+├────────────────────────────────────────────────────────────────────────┤
+│                                                                        │
+│  User Clicks "Delete Account" in Profile Settings                      │
+│            │                                                           │
+│            ├── Is User Role === 'admin'?                               │
+│            │       │                                                   │
+│            │       └──► YES: 🛑 HTTP 403 Forbidden (Admin Protected)    │
+│            │                                                           │
+│            ├── Validate Credential (Password / "DELETE" confirmation)  │
+│            │       │                                                   │
+│            │       └──► INVALID: 🛑 HTTP 400 Incorrect Confirmation    │
+│            │                                                           │
+│            ├── Check In-Flight Mission Lock:                           │
+│            │   • Active Provider Donations (posted / claimed)?         │
+│            │   • Active NGO Claims / Inbound Deliveries?               │
+│            │   • Active Volunteer In-Transit Deliveries?               │
+│            │       │                                                   │
+│            │       └──► ACTIVE FOUND: 🛑 HTTP 400 Complete/Cancel First │
+│            │                                                           │
+│            └──► ALL CLEAR: ✅ Delete Profile, Roles, & Tokens           │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -335,6 +365,82 @@ Accessible from the sidebar and profile, users can inspect their own reputation 
 | `PATCH` | `/api/reviews/:reviewId` | Edit a review (original reviewer only, within 48-hour audit window) | Authenticated |
 | `POST` | `/api/reviews/:reviewId/report` | Report an inappropriate or policy-violating review | Authenticated |
 | `PATCH` | `/api/reviews/:reviewId/moderate` | Admin moderation endpoint to approve, flag, or hide reviews | Role Guard (`admin`) |
+
+---
+
+## 🎯 Shelter Claim Requests & Selection Priority Algorithm
+
+When multiple community shelters and NGOs submit claim requests for a single surplus food batch, FoodRescue replaces arbitrary first-come-first-served queues with an automated, multi-factor utility model (`claim-ranking.service.js`). The algorithm guarantees equitable food distribution, prevents food hoarding, minimizes cold-chain transport latency, and directs meals to where acute hunger need is greatest.
+
+### Mathematical Formulation
+
+The composite Priority Score ($P \in [0, 100]$) is computed as a weighted linear combination of five normalized dimensional scores:
+
+$$\text{Priority Score} = \text{round}\left(S_{\text{need}} \times 0.35 + S_{\text{reviews}} \times 0.25 + S_{\text{capacity}} \times 0.20 + S_{\text{distance}} \times 0.15 + S_{\text{reliability}} \times 0.05\right)$$
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│             Shelter Selection Algorithm Weight Distribution            │
+├────────────────────────────────────────────────────────────────────────┤
+│                                                                        │
+│   [███████████████████████████████████]  35%  Hunger Need Intensity    │
+│   [█████████████████████████]            25%  Community Trust & Rating │
+│   [████████████████████]                20%  Absorption Capacity Match │
+│   [███████████████]                     15%  Proximity & Cold-Chain    │
+│   [█████]                                5%  Historical Reliability    │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### The 5 Evaluation Factors
+
+#### 1. Hunger Need Intensity ($S_{\text{need}}$, 35% Weight)
+Ensures food reaches shelters experiencing acute deficit rather than those with saturated pantries:
+- **Days Since Last Donation**: Evaluates historical intake timestamps:
+  - $\ge 14\text{ days}$ or first-time recipient: $100\text{ points}$
+  - $7 - 13\text{ days}$: $90\text{ points}$
+  - $3 - 6\text{ days}$: $75\text{ points}$
+  - $1 - 2\text{ days}$: $55\text{ points}$
+  - Received today ($< 24\text{ hrs}$): $35\text{ points}$
+- **Active Hoarding Dampener**: Deducts $10\text{ points}$ for every concurrent pending/in-transit claim already held by the shelter to prevent hoarding.
+- **Beneficiary Scale Factor**: Grants up to $+15\text{ points}$ for large-scale operations ($\ge 500\text{ daily beneficiaries} \to +15$, $\ge 200 \to +10$, $\ge 50 \to +5$).
+
+#### 2. Community Reviews & Trust ($S_{\text{reviews}}$, 25% Weight)
+Prevents manipulation by new or unvetted accounts using Bayesian rating smoothing:
+- **Bayesian Smoothed Score**:
+  $$R_{\text{Bayes}} = \frac{C \cdot m + \sum_{i=1}^{n} r_i}{C + n}$$
+  where prior confidence $C = 3$, platform baseline $m = 4.2$, and $r_i$ represents verified 5-star transaction reviews.
+- **Positive Sentiment Bonus**: Adds $+5\text{ points}$ if $\ge 70\%$ of feedback tags indicate exceptional punctuality and food handling.
+
+#### 3. Absorption Capacity Match ($S_{\text{capacity}}$, 20% Weight)
+Guarantees the shelter has the immediate infrastructure to consume or store the donation without secondary spoilage:
+$$\text{Ratio} = \frac{\text{Donation Quantity (Servings)}}{\text{NGO Daily Absorption Capacity}}$$
+- Optimal Window ($0.20 \le \text{Ratio} \le 1.00$): $100\text{ points}$
+- High Stretch ($1.00 < \text{Ratio} \le 1.50$): $85\text{ points}$
+- Low Intake ($0.05 \le \text{Ratio} < 0.20$): $70\text{ points}$
+- Severe Overcapacity ($\text{Ratio} > 2.00$): $40\text{ points}$ (penalizes accepting more meals than can be safely served).
+
+#### 4. Proximity & Cold-Chain Speed ($S_{\text{distance}}$, 15% Weight)
+Calculates Haversine spherical distance between food provider and shelter location:
+- $\le 2.0\text{ km}$: $100\text{ points}$
+- $\le 5.0\text{ km}$: $90\text{ points}$
+- $\le 10.0\text{ km}$: $75\text{ points}$
+- $\le 20.0\text{ km}$: $50\text{ points}$
+- $> 20.0\text{ km}$: $30\text{ points}$
+
+#### 5. Historical Reliability & Verification ($S_{\text{reliability}}$, 5% Weight)
+- Verified NGO Identity (`verification_status = 'approved'`): $+40\text{ points}$
+- Delivery Completion Record ($\ge 95\%$ completed claims without cancellation): $+40\text{ points}$
+- Clean Operational Record (Zero safety or breach incident flags): $+20\text{ points}$
+
+### Dynamic Recommendation Badges & UI Filters
+- 🏆 **Best Match**: Assigned to the top-scoring NGO across the combined multi-factor model.
+- 🚨 **Highest Need**: Assigned to shelters with critical hunger deficit ($S_{\text{need}} \ge 85$).
+- ⚡ **Proximity Star**: Assigned to nearby facilities ($\le 3.0\text{ km}$) with optimal capacity.
+- ⭐ **Top Community Rated**: Assigned to shelters with Bayesian trust scores $\ge 4.70$.
+- **Provider View (`DonationDetailPage.jsx`)**: Providers can sort claims by "Algorithm Recommended (Priority Score)", "Highest Need First", "Proximity (Nearest First)", or "Best Community Rating", and inspect a visual 5-factor progress breakdown before approving.
+
+---
 
 ---
 
@@ -676,17 +782,17 @@ FoodRescue/
 │   │   ├── modules/
 │   │   │   ├── admin/            # Admin verification & governance
 │   │   │   ├── analytics/        # ESG impact metrics, admin KPIs & donation hotspots
-│   │   │   ├── auth/             # JWT login, register, Google OAuth, token refresh, profile completion
+│   │   │   ├── auth/             # JWT login, register, Google OAuth, token refresh, OTP recovery, profile completion
 │   │   │   ├── complaints/       # 📢 Full complaint lifecycle management
 │   │   │   ├── deliveries/       # Delivery lifecycle management
-│   │   │   ├── donations/        # Food donation CRUD, claiming & data isolation
+│   │   │   ├── donations/        # Food donation CRUD, claiming, ranking & data isolation
 │   │   │   ├── feedback/         # 💬 Public feedback collection & admin review
 │   │   │   ├── incidents/        # 🚨 Incident detection, tracking & resolution
-│   │   │   ├── matching/         # Donor-NGO matching engine
+│   │   │   ├── matching/         # 🎯 Smart Donor-NGO matching & claim priority ranking (claim-ranking.service.js)
 │   │   │   ├── notifications/    # Real-time in-app & WebSocket alerts (admin-isolated)
 │   │   │   ├── qrcodes/          # 🔐 QR generation, preview & scan verification
 │   │   │   ├── reviews/          # ⭐ Trust, ratings & reliability system
-│   │   │   ├── users/            # User profile management
+│   │   │   ├── users/            # User profile management & safe account deletion
 │   │   │   └── volunteers/       # Volunteer registration & dispatch
 │   │   └── app.js                # Express application entry point
 │   └── package.json
@@ -720,15 +826,16 @@ FoodRescue/
 │   │   ├── pages/
 │   │   │   ├── admin/            # Admin dashboard, verifications, complaints, incidents, feedback, analytics
 │   │   │   ├── analytics/        # ESG impact analytics dashboard
-│   │   │   ├── auth/             # Login, Registration & Profile Completion pages
+│   │   │   ├── auth/             # Login, Registration, OTP Verification, Forgot & Reset Password
 │   │   │   ├── complaints/       # 📢 My complaints & complaint detail pages
+│   │   │   ├── contact/          # 📞 Official Contact & Operations Directory
 │   │   │   ├── dashboard/        # Role-based dashboards
-│   │   │   ├── donations/        # Donation management pages
+│   │   │   ├── donations/        # Donation management & Smart Claim Priority evaluation
 │   │   │   ├── feedback/         # 💬 Public feedback submission page
 │   │   │   ├── landing/          # Public landing page
 │   │   │   ├── ngo/              # NGO donation feed & claims
 │   │   │   ├── notifications/    # Notification center
-│   │   │   ├── profile/          # User profile page
+│   │   │   ├── profile/          # User profile, Security & Account Deletion (Danger Zone)
 │   │   │   ├── reviews/          # ⭐ MyRatings & Trust Hub (/reviews)
 │   │   │   └── volunteer/        # 📱 Deliveries & QR scan page
 │   │   ├── utils/                # Core client utilities
@@ -762,6 +869,18 @@ FoodRescue/
 ├── ARCHITECTURE.md               # System architecture & flowcharts
 └── README.md
 ```
+
+---
+
+## 📞 Contact & Operations Support
+
+For general inquiries, business/donor onboarding, logistics coordination, or technical assistance, our operations team is available across India:
+
+- **Official Project Email**: [`2026.food.rescue@gmail.com`](mailto:2026.food.rescue@gmail.com)
+- **Toll-Free Operations Helpline**: `+91 1800 555 7372` *(24/7 Rapid Rescue Dispatch)*
+- **Emergency Food Recovery Direct**: `+91 98765 43210`
+- **Technical & Platform Support**: `+91 98765 43211`
+- **Operations Headquarters**: FoodRescue Foundation, 4th Floor, Tech Hub, Koramangala, Bengaluru, Karnataka 560034, India
 
 ---
 

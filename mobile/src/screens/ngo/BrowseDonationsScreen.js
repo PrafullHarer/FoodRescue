@@ -109,6 +109,7 @@ export default function BrowseDonationsScreen({ navigation }) {
     const matchesSearch =
       !search.trim() ||
       (item.title && item.title.toLowerCase().includes(search.toLowerCase())) ||
+      (item.donation_code && item.donation_code.toLowerCase().includes(search.toLowerCase())) ||
       (item.pickup_address && item.pickup_address.toLowerCase().includes(search.toLowerCase()));
     return matchesCategory && matchesSearch;
   });
@@ -118,6 +119,11 @@ export default function BrowseDonationsScreen({ navigation }) {
       <Card style={styles.card}>
         <View style={styles.cardHeader}>
           <View style={styles.infoCol}>
+            {item.donation_code ? (
+              <Text style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: '700', color: colors.primary, marginBottom: 2 }}>
+                {item.donation_code}
+              </Text>
+            ) : null}
             <Text style={styles.itemTitle}>{item.title}</Text>
             <Text style={styles.itemCategory}>
               {item.category?.replace('_', ' ').toUpperCase()} • {item.quantity} {item.unit || 'servings'}
@@ -149,15 +155,24 @@ export default function BrowseDonationsScreen({ navigation }) {
             </Text>
           </View>
 
-          <Button
-            title="Claim Surplus"
-            icon="hand-right-outline"
-            onPress={() => {
-              setPickupType('volunteer');
-              setClaimModalDonation(item);
-            }}
-            style={styles.claimBtn}
-          />
+          {item.my_claim_status === 'rejected' ? (
+            <Button
+              title="Application Declined"
+              icon="close-circle-outline"
+              disabled
+              style={[styles.claimBtn, { backgroundColor: '#3b1219', opacity: 0.8 }]}
+            />
+          ) : (
+            <Button
+              title="Claim Surplus"
+              icon="hand-right-outline"
+              onPress={() => {
+                setPickupType('volunteer');
+                setClaimModalDonation(item);
+              }}
+              style={styles.claimBtn}
+            />
+          )}
         </View>
       </Card>
     );
@@ -178,7 +193,7 @@ export default function BrowseDonationsScreen({ navigation }) {
           <Ionicons name="search-outline" size={16} color={colors.textMuted} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search by food or location..."
+            placeholder="Search by ID, food, or location..."
             placeholderTextColor={colors.textMuted}
             value={search}
             onChangeText={setSearch}

@@ -189,6 +189,21 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const sendEmailOtp = async (email) => {
+    const { data } = await api.post('/auth/send-email-otp', { email });
+    return data.data;
+  };
+
+  const verifyEmailOtp = async (email, otp) => {
+    const { data } = await api.post('/auth/verify-email-otp', { email, otp });
+    return data.data;
+  };
+
+  const checkEmailAvailability = async (email) => {
+    const { data } = await api.post('/auth/check-email', { email });
+    return data.data;
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -200,6 +215,9 @@ export function AuthProvider({ children }) {
         completeProfile,
         logout,
         fetchUser,
+        sendEmailOtp,
+        verifyEmailOtp,
+        checkEmailAvailability,
       }}
     >
       {children}

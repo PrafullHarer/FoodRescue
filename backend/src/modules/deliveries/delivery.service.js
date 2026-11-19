@@ -195,6 +195,7 @@ const updateDeliveryStatus = async (deliveryId, status, userId, userRole = 'volu
 const getDeliveryById = async (deliveryId, user = null) => {
   const { rows } = await db.query(
     `SELECT d.*,
+            fd.donation_code,
             fd.title AS donation_title,
             fd.category AS donation_category,
             fd.quantity AS donation_quantity,
@@ -309,6 +310,7 @@ const getDeliveries = async ({ page = 1, limit = 20, status, volunteerId, user =
 
   const { rows } = await db.query(
     `SELECT d.*,
+            fd.donation_code,
             fd.title AS donation_title,
             fd.category AS donation_category,
             fd.quantity AS donation_quantity,

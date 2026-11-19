@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../api/client';
-import { Package, Plus, Search, MapPin, Clock, Trash2 } from 'lucide-react';
+import { Package, Plus, Search, MapPin, Clock, Trash2, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function DonationsPage() {
@@ -39,7 +39,9 @@ export default function DonationsPage() {
   };
 
   const filtered = donations.filter((d) =>
-    d.title?.toLowerCase().includes(search.toLowerCase())
+    d.title?.toLowerCase().includes(search.toLowerCase()) ||
+    d.donation_code?.toLowerCase().includes(search.toLowerCase()) ||
+    d.description?.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -64,7 +66,7 @@ export default function DonationsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="input pl-10"
-            placeholder="Search by food title or description..."
+            placeholder="Search by ID, food title, or description..."
           />
         </div>
         <select
@@ -101,6 +103,16 @@ export default function DonationsPage() {
               className="bg-[#121214] rounded-2xl border border-[#232328] overflow-hidden hover:border-neutral-500 transition-all p-5 flex flex-col justify-between group"
             >
               <div>
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  {d.donation_code && (
+                    <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-[#18181b] border border-[#39FF14]/30 text-[#39FF14]">
+                      {d.donation_code}
+                    </span>
+                  )}
+                  <span className="badge badge-neutral uppercase text-[10px] font-bold">
+                    {d.category?.replace('_', ' ') || 'Food'}
+                  </span>
+                </div>
                 <div className="flex items-start justify-between gap-3 mb-2.5">
                   <h3 className="font-bold text-white text-base group-hover:underline underline-offset-2">
                     {d.title}
@@ -144,6 +156,16 @@ export default function DonationsPage() {
                   <Clock className="w-3.5 h-3.5 flex-shrink-0" />
                   <span>Expires: {d.expiry_time ? new Date(d.expiry_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Soon'}</span>
                 </div>
+
+                {parseInt(d.pending_claims_count || 0, 10) > 0 && ['posted', 'matched'].includes(d.status) && (
+                  <div className="mt-2.5 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-between text-xs">
+                    <span className="font-semibold text-amber-400 flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5" />
+                      {d.pending_claims_count} Shelter Claim{d.pending_claims_count > 1 ? 's' : ''} to Review
+                    </span>
+                    <span className="text-[11px] text-amber-300 font-bold underline">Choose NGO &rarr;</span>
+                  </div>
+                )}
               </div>
             </Link>
           ))}

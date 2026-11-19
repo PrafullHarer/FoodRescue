@@ -40,12 +40,13 @@ An exact, production-ready mobile application for the **FoodRescue** platform, f
   - Vibrant brand lime accent (`#84CC16` / `#39FF14`)
 - Full access to all platform features:
   - **Landing Page:** Interactive redistribution flow with dual QR badges.
-  - **Authentication:** Email/password login, demo 1-click credentials, and Google OAuth.
-  - **Provider Hub:** Post surplus food with interactive Location Picker, manage active listings, track ESG environmental metrics.
+  - **Authentication & Security:** Email/password login, demo 1-click credentials, Google OAuth, 6-digit email OTP recovery, clean registration OTP verification, and Danger Zone account deletion safeguards.
+  - **Provider Hub:** Post surplus food with interactive Location Picker, manage active listings, track ESG environmental metrics, and inspect smart claim priority rankings for shelters.
   - **NGO Shelter Hub:** Live donation feed, proximity filtering, 1-click reservation, and claim tracking.
   - **Volunteer Courier Hub:** Delivery missions, route handovers, and physical verification.
   - **Trust & Reputation:** Click-to-view user reputation cards and verified rating scorecards.
   - **Mobile Map Picker:** Full-screen responsive touch-enabled Leaflet map with center pin panning, dark tiles, and street search.
+  - **Contact & Support:** Instant access to `/contact` directory featuring `2026.food.rescue@gmail.com` and India helplines (`+91 1800 555 7372`).
 
 ### 4. 📱 Native Device Integrations
 - **Live Device GPS (`expo-location`):** Hardware-level coordinate resolution with graceful fallbacks.

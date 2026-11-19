@@ -78,8 +78,14 @@ export default function ClaimsPage() {
     }
   };
 
-  const getStatusBadge = (status) => {
-    switch (status) {
+  const getStatusBadge = (donation) => {
+    if (donation.claim_status === 'pending') {
+      return { label: 'Pending Provider Selection', class: 'bg-amber-500/10 text-amber-400 border-amber-500/20' };
+    }
+    if (donation.claim_status === 'rejected') {
+      return { label: 'Application Declined', class: 'bg-rose-500/10 text-rose-400 border-rose-500/20' };
+    }
+    switch (donation.status) {
       case 'completed':
       case 'delivered':
         return { label: 'Delivered', class: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' };
@@ -89,13 +95,16 @@ export default function ClaimsPage() {
         return { label: 'Volunteer Assigned', class: 'bg-purple-500/10 text-purple-400 border-purple-500/20' };
       case 'claimed':
       default:
-        return { label: 'Claimed (Pending Pickup)', class: 'bg-amber-500/10 text-amber-400 border-amber-500/20' };
+        return { label: 'Awarded (Pending Pickup)', class: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' };
     }
   };
 
   const filteredClaims = claims.filter(c => {
+    if (filter === 'pending') {
+      return c.claim_status === 'pending';
+    }
     if (filter === 'active') {
-      return ['claimed', 'volunteer_assigned', 'collected'].includes(c.status);
+      return c.claim_status === 'accepted' && ['claimed', 'volunteer_assigned', 'collected'].includes(c.status);
     }
     if (filter === 'completed') {
       return ['delivered', 'completed'].includes(c.status);
@@ -144,6 +153,16 @@ export default function ClaimsPage() {
           All Claims ({claims.length})
         </button>
         <button
+          onClick={() => setFilter('pending')}
+          className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            filter === 'pending'
+              ? 'bg-neutral-900 text-white dark:bg-[#25252b] dark:text-white dark:border dark:border-[#383842] shadow-md font-bold'
+              : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 dark:bg-[#141416] border border-neutral-200 dark:border-[#232328]'
+          }`}
+        >
+          Pending Selection ({claims.filter(c => c.claim_status === 'pending').length})
+        </button>
+        <button
           onClick={() => setFilter('active')}
           className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
             filter === 'active'
@@ -151,7 +170,7 @@ export default function ClaimsPage() {
               : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 dark:bg-[#141416] border border-neutral-200 dark:border-[#232328]'
           }`}
         >
-          In Progress ({claims.filter(c => ['claimed', 'volunteer_assigned', 'collected'].includes(c.status)).length})
+          In Progress ({claims.filter(c => c.claim_status === 'accepted' && ['claimed', 'volunteer_assigned', 'collected'].includes(c.status)).length})
         </button>
         <button
           onClick={() => setFilter('completed')}
@@ -180,7 +199,7 @@ export default function ClaimsPage() {
       ) : (
         <div className="space-y-4">
           {filteredClaims.map((d) => {
-            const statusBadge = getStatusBadge(d.status);
+            const statusBadge = getStatusBadge(d);
             const review = myReviews[d.id];
             const hasVolunteer = Boolean(d.volunteer_name || d.volunteer_id);
             const isSelfPickup = d.pickup_type === 'self_pickup';
@@ -198,6 +217,11 @@ export default function ClaimsPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap mb-1">
+                        {d.donation_code && (
+                          <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-neutral-100 dark:bg-[#18181b] border border-neutral-300 dark:border-[#39FF14]/40 text-neutral-800 dark:text-[#39FF14]">
+                            {d.donation_code}
+                          </span>
+                        )}
                         <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-white/10 text-neutral-600 dark:text-neutral-300">
                           {d.category?.replace(/_/g, ' ')}
                         </span>
@@ -308,13 +332,25 @@ export default function ClaimsPage() {
                   <div className="p-5 sm:p-6 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 flex items-center gap-1.5">
-                        {isSelfPickup ? (
+                        {d.claim_status === 'pending' ? (
+                          <><Clock className="w-3.5 h-3.5 text-amber-500" /> Application Status</>
+                        ) : d.claim_status === 'rejected' ? (
+                          <><AlertCircle className="w-3.5 h-3.5 text-neutral-500" /> Application Result</>
+                        ) : isSelfPickup ? (
                           <><UserCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Direct NGO Pickup</>
                         ) : (
                           <><Truck className="w-3.5 h-3.5 text-neutral-700 dark:text-white" /> Pickup Volunteer</>
                         )}
                       </span>
-                      {isSelfPickup ? (
+                      {d.claim_status === 'pending' ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                          Awaiting Selection
+                        </span>
+                      ) : d.claim_status === 'rejected' ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-neutral-500/10 text-neutral-400 border border-neutral-500/20">
+                          Declined
+                        </span>
+                      ) : isSelfPickup ? (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                           Self Handled
                         </span>
@@ -325,7 +361,31 @@ export default function ClaimsPage() {
                       ) : null}
                     </div>
 
-                    {isSelfPickup ? (
+                    {d.claim_status === 'pending' ? (
+                      <div className="space-y-3">
+                        <div className="p-3.5 bg-amber-500/10 dark:bg-[#1a1712] rounded-2xl border border-amber-500/20 text-xs space-y-2">
+                          <p className="font-semibold text-amber-400 flex items-center gap-1.5">
+                            <Clock className="w-4 h-4" /> Application Under Review by Donor
+                          </p>
+                          <p className="text-neutral-600 dark:text-neutral-400 text-[11px] leading-relaxed">
+                            Your shelter applied for this donation via {isSelfPickup ? 'Self-Pickup' : 'Volunteer Delivery'}. The food provider is evaluating all applicant shelters based on daily capacity, recent donation receipts, and community reviews.
+                          </p>
+                        </div>
+                        <div className="text-[11px] text-neutral-500 flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                          <span>You will receive an in-app notification when the donor makes a choice.</span>
+                        </div>
+                      </div>
+                    ) : d.claim_status === 'rejected' ? (
+                      <div className="p-3.5 bg-neutral-100 dark:bg-[#141416] rounded-2xl border border-neutral-200 dark:border-[#232328] text-xs space-y-1.5">
+                        <p className="font-semibold text-neutral-700 dark:text-neutral-300 flex items-center gap-1.5">
+                          <AlertCircle className="w-4 h-4 text-neutral-500" /> Donation Awarded to Another Shelter
+                        </p>
+                        <p className="text-neutral-500 dark:text-neutral-400 text-[11px] leading-relaxed">
+                          The donor evaluated applications and selected another organization for this package. Thank you for your commitment to rescuing food!
+                        </p>
+                      </div>
+                    ) : isSelfPickup ? (
                       <div className="space-y-3">
                         <div className="p-3 bg-emerald-500/10 dark:bg-[#14171d] rounded-2xl border border-emerald-500/20 text-xs space-y-2">
                           <p className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">

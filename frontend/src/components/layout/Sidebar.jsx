@@ -268,10 +268,19 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
                 ? 'active'
                 : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-[#1c1c20]'
             } ${collapsed && !mobileOpen ? 'lg:justify-center lg:px-3' : ''}`}
-            title="Profile"
+            title={user?.user_code ? `Profile (${user.user_code})` : 'Profile'}
           >
             <User className="w-4 h-4 flex-shrink-0" />
-            {(!collapsed || mobileOpen) && <span className="text-xs font-medium">Profile</span>}
+            {(!collapsed || mobileOpen) && (
+              <div className="flex items-center justify-between flex-1 min-w-0">
+                <span className="text-xs font-medium">Profile</span>
+                {user?.user_code && (
+                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-neutral-200/60 dark:bg-[#1f1f24] text-neutral-700 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700">
+                    {user.user_code}
+                  </span>
+                )}
+              </div>
+            )}
           </Link>
 
           {/* Theme Toggle Button */}

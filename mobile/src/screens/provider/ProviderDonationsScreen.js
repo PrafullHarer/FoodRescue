@@ -141,6 +141,11 @@ export default function ProviderDonationsScreen({ navigation }) {
       <Card style={styles.card}>
         <View style={styles.cardHeader}>
           <View style={styles.infoCol}>
+            {item.donation_code ? (
+              <Text style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: '700', color: colors.primary, marginBottom: 2 }}>
+                {item.donation_code}
+              </Text>
+            ) : null}
             <Text style={styles.itemTitle}>{item.title}</Text>
             <Text style={styles.itemCategory}>
               {item.category?.replace('_', ' ').toUpperCase()} • {item.quantity} {item.unit || 'servings'}

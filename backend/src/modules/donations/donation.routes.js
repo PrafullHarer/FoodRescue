@@ -58,6 +58,28 @@ router.post(
   donationController.claimDonation
 );
 
+// Protected: Food Provider claim selection and management
+router.get(
+  '/:id/claims',
+  authenticate,
+  roleGuard('provider', 'admin'),
+  donationController.getDonationClaims
+);
+
+router.post(
+  '/:id/claims/:claimId/accept',
+  authenticate,
+  roleGuard('provider'),
+  donationController.acceptClaim
+);
+
+router.post(
+  '/:id/claims/:claimId/reject',
+  authenticate,
+  roleGuard('provider'),
+  donationController.rejectClaim
+);
+
 router.patch(
   '/:id/pickup-type',
   authenticate,

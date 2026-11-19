@@ -64,7 +64,7 @@ const authenticate = async (req, res, next) => {
     // 2. Query DB only on cache miss
     if (!user) {
       const { rows } = await db.query(
-        'SELECT id, email, role, status, verification_status, rejection_reason, profile_completed FROM users WHERE id = $1',
+        'SELECT id, email, role, full_name, status, verification_status, rejection_reason, profile_completed, user_code FROM users WHERE id = $1',
         [decoded.id]
       );
 
@@ -176,7 +176,7 @@ const optionalAuthenticate = async (req, res, next) => {
     let user = getCachedUser(decoded.id);
     if (!user) {
       const { rows } = await db.query(
-        'SELECT id, email, role, status, verification_status, rejection_reason, profile_completed FROM users WHERE id = $1',
+        'SELECT id, email, role, full_name, status, verification_status, rejection_reason, profile_completed, user_code FROM users WHERE id = $1',
         [decoded.id]
       );
       if (rows.length > 0) {

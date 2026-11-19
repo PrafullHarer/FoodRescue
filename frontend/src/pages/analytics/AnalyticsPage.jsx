@@ -4,6 +4,7 @@ import {
   Leaf, Award, TrendingUp, Users, HeartHandshake,
   ArrowUpRight, Flame, Scale, RefreshCw
 } from 'lucide-react';
+import CommunityLeaderboard from '../../components/common/CommunityLeaderboard';
 
 export default function AnalyticsPage() {
   const [metrics, setMetrics] = useState({
@@ -204,80 +205,11 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Leaderboard */}
-      <div className="bg-[#121214] rounded-2xl border border-[#232328] overflow-hidden">
-        <div className="p-4 sm:p-6 border-b border-[#232328]">
-          <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-            <Award className="w-5 h-5 text-white flex-shrink-0" />
-            Community Champions Leaderboard
-          </h3>
-          <p className="text-xs text-neutral-400 mt-0.5">Recognizing top contributors in food waste reduction</p>
-        </div>
-
-        {displayLeaderboard.length > 0 ? (
-          <>
-            {/* Mobile Card View (< md) */}
-            <div className="divide-y divide-[#232328] md:hidden">
-              {displayLeaderboard.map((item, index) => (
-                <div key={index} className="p-4 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="font-bold text-sm text-white w-6 flex-shrink-0">
-                      {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-sm text-white truncate">{item.name || item.full_name}</p>
-                      <span className="badge badge-neutral text-[9px] uppercase font-bold mt-0.5">
-                        {item.type || item.role}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <span className="text-xs font-bold text-white block">
-                      {item.kg ? `${item.kg.toLocaleString()} kg` : `${(item.meals || item.donations || 0).toLocaleString()} meals`}
-                    </span>
-                    <span className="text-[10px] text-neutral-500">Rescued</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Desktop Table (>= md) */}
-            <div className="hidden md:block table-responsive">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-[#0c0c0e] text-neutral-400 uppercase text-[10px] font-semibold tracking-wider border-b border-[#232328]">
-                    <th className="py-3.5 px-6">Rank</th>
-                    <th className="py-3.5 px-6">Organization / Contributor</th>
-                    <th className="py-3.5 px-6">Role</th>
-                    <th className="py-3.5 px-6 text-right">Total Impact</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#232328] text-sm">
-                  {displayLeaderboard.map((item, index) => (
-                    <tr key={index} className="hover:bg-[#18181b] transition-colors">
-                      <td className="py-4 px-6 font-bold text-white">
-                        {index === 0 ? '🥇 #1' : index === 1 ? '🥈 #2' : index === 2 ? '🥉 #3' : `#${index + 1}`}
-                      </td>
-                      <td className="py-4 px-6 font-semibold text-white">
-                        {item.name || item.full_name}
-                      </td>
-                      <td className="py-4 px-6">
-                        <span className="badge badge-neutral text-[10px] uppercase font-bold">{item.type || item.role}</span>
-                      </td>
-                      <td className="py-4 px-6 text-white font-bold text-xs text-right">
-                        {item.kg ? `${item.kg.toLocaleString()} kg rescued` : `${(item.meals || item.donations || 0).toLocaleString()} meals`}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        ) : (
-          <div className="p-8 text-center text-neutral-400 text-sm">
-            No leaderboard entries found.
-          </div>
-        )}
-      </div>
+      <CommunityLeaderboard
+        leaderboard={displayLeaderboard}
+        loading={loading}
+        showPodium={true}
+      />
     </div>
   );
 }

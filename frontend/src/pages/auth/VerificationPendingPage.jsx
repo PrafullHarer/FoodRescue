@@ -287,21 +287,21 @@ export default function VerificationPendingPage() {
             {!email && (
               <form onSubmit={handleEmailSubmit} className="pt-2 text-left space-y-2">
                 <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300">
-                  Enter your registration email to check status:
+                  Enter your registration email or User ID to check status:
                 </label>
                 <div className="flex gap-2">
                   <input
-                    type="email"
+                    type="text"
                     value={inputEmail}
                     onChange={(e) => setInputEmail(e.target.value)}
-                    placeholder="e.g. foodprovider@gmail.com"
+                    placeholder="e.g. foodprovider@gmail.com or PRO-123456"
                     className="flex-1 px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-[#2b2b32] bg-white dark:bg-[#18181c] text-neutral-900 dark:text-white text-sm outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white transition-all"
                   />
                   <button
                     type="submit"
                     className="px-4 py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-100 text-white dark:text-neutral-900 text-sm font-semibold transition-all cursor-pointer"
                   >
-                    Set Email
+                    Track Status
                   </button>
                 </div>
               </form>
@@ -432,8 +432,8 @@ export default function VerificationPendingPage() {
               <div className="font-semibold text-neutral-900 dark:text-white">Need help or wish to appeal?</div>
               <div>
                 If you believe this was an error or would like to submit updated documentation, please contact our administrator team at{' '}
-                <a href="mailto:support@foodrescue.org" className="text-emerald-600 dark:text-emerald-400 underline font-medium">
-                  support@foodrescue.org
+                <a href="mailto:2026.food.rescue@gmail.com" className="text-emerald-600 dark:text-emerald-400 underline font-medium">
+                  2026.food.rescue@gmail.com
                 </a>.
               </div>
             </div>
@@ -485,8 +485,8 @@ export default function VerificationPendingPage() {
               <div className="font-semibold text-neutral-900 dark:text-white">Support & Assistance</div>
               <div>
                 To resolve account suspension or inquire about compliance policies, please get in touch with FoodRescue support at{' '}
-                <a href="mailto:support@foodrescue.org" className="text-emerald-600 dark:text-emerald-400 underline font-medium">
-                  support@foodrescue.org
+                <a href="mailto:2026.food.rescue@gmail.com" className="text-emerald-600 dark:text-emerald-400 underline font-medium">
+                  2026.food.rescue@gmail.com
                 </a>.
               </div>
             </div>

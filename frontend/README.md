@@ -18,22 +18,27 @@ The **FoodRescue** frontend is a modern single-page application built with **Rea
 
 ## Key Features
 
-- **Google OAuth 2.0** — "Continue with Google" sign-in on Login and Register pages
-- **Mandatory Profile Completion** — Google sign-up users must complete role, phone, and address before dashboard access
-- **Account Verification Flow** — Dedicated pending verification page (`/verification-pending`) and admin approval portal
-- **Mobile Native Bridge Integration** — Bi-directional bridge with the Expo mobile app via `window.ReactNativeWebView`, `handleNativeQRScanned`, and `foodrescue:location-update`
+- **Google OAuth 2.0 & Email Authentication** — "Continue with Google" sign-in on Login and Register pages alongside traditional email/password registration.
+- **Clean 6-Digit Email OTP Verification (`EmailVerificationModal.jsx`)** — Production security with direct email verification and removal of dev-code bypasses.
+- **Self-Service Password Recovery (`ForgotPasswordModal.jsx`, `ResetPasswordModal.jsx`)** — 6-digit email OTP password recovery for food providers, NGOs, and volunteers (with Super Admin protection).
+- **Shelter Claim Requests & Selection Priority Algorithm Visualizer (`DonationDetailPage.jsx`)** — Multi-factor ranking of competing NGO claims evaluating Hunger Need (35%), Community Reviews (25%), Absorption Capacity (20%), Proximity (15%), and Reliability (5%). Features dynamic recommendation badges ("Best Match", "Highest Need", "Proximity Star", "Top Community Rated"), 5-factor breakdown bars, and interactive sorting filters.
+- **Profile Security & Account Deletion Danger Zone (`ProfilePage.jsx`)** — Self-service password reset and safe account deletion (`DELETE /api/users/:id`) with credential confirmation, active in-flight mission locks, and Super Admin permanent immunity.
+- **Official Contact & Operations Directory (`ContactPage.jsx`)** — Dedicated contact directory featuring project email (`2026.food.rescue@gmail.com`) and India toll-free and direct phone helplines (`+91`).
+- **Mandatory Profile Completion** — Google sign-up users must complete role, phone (India `+91`), and address before dashboard access.
+- **Account Verification Flow** — Dedicated pending verification page (`/verification-pending`) and admin approval portal.
+- **Mobile Native Bridge Integration** — Bi-directional bridge with the Expo mobile app via `window.ReactNativeWebView`, `handleNativeQRScanned`, and `foodrescue:location-update`.
 - **Themed Interactive Location Picker (`MapAddressPickerModal.jsx`)** — Full-screen mobile-first Leaflet map picker matching the platform's VIP Dark Carbon (`#121214`) & Neon Lime (`#39FF14`) aesthetic. Features custom center-pin marker, live coordinate display, search bar, map layer switcher (Dark Matter vs Street Map), and one-click `SELECT LOCATION!` confirmation.
 - **Unified 3-Tier Geolocation (`geolocation.js`)** — Automatic location resolution: Native Mobile GPS (via bridge) ➔ HTML5 Browser Geolocation ➔ IP Geolocation Fallback with OpenStreetMap Nominatim reverse geocoding.
 - **Browser & In-App Push Notifications (`browserNotifications.js`, `NotificationPopup.jsx`)** — Real-time notification banners with animated progress auto-dismiss, audio chime, and optional desktop browser push permission request.
-- **Role-Based Dashboards** — Separate views for Provider, NGO, Volunteer, and Admin
-- **Data Isolation** — Each user sees only their own data; cross-user access is prevented
-- **Dark / Light Theme** — System-wide theme toggle with CSS custom properties
-- **Real-Time Notifications** — WebSocket-powered popups with role-based filtering (admins receive governance-only alerts)
-- **QR Code Scanning & Verification** — Web camera + native hardware camera handoff with quality checklist inspection
-- **Trust & Ratings** — Click-to-view reputation profiles, review submission, and moderation
-- **Complaint System** — Submit, track, and communicate on complaints with threaded messaging
-- **Public Feedback** — Anonymous or authenticated feedback submission
-- **Admin Analytics** — KPI dashboards, geographical donation hotspots with Leaflet map, and data export
+- **Role-Based Dashboards** — Separate views for Provider, NGO, Volunteer, and Admin.
+- **Data Isolation** — Each user sees only their own data; cross-user access is prevented.
+- **Dark / Light Theme** — System-wide theme toggle with CSS custom properties.
+- **Real-Time Notifications** — WebSocket-powered popups with role-based filtering (admins receive governance-only alerts).
+- **QR Code Scanning & Verification** — Web camera + native hardware camera handoff with quality checklist inspection.
+- **Trust & Ratings** — Click-to-view reputation profiles, review submission, and moderation.
+- **Complaint System** — Submit, track, and communicate on complaints with threaded messaging.
+- **Public Feedback** — Anonymous or authenticated feedback submission.
+- **Admin Analytics** — KPI dashboards, geographical donation hotspots with Leaflet map, and data export.
 - **Streamlined Donation Posting** — Minimal Section 2 in `CreateDonationPage.jsx` with direct map picker launch and live GPS coordinate binding.
 
 ## Project Structure
@@ -56,15 +61,16 @@ frontend/
 │   ├── pages/
 │   │   ├── admin/                # Admin: Analytics, Incidents, Complaints, Feedback, Users, Verifications, Audit Logs
 │   │   ├── analytics/            # ESG impact analytics
-│   │   ├── auth/                 # Login, Register, CompleteProfile
+│   │   ├── auth/                 # Login, Register, CompleteProfile, EmailVerificationModal, ForgotPasswordModal, ResetPasswordModal
 │   │   ├── complaints/           # My complaints & complaint detail
+│   │   ├── contact/              # 📞 Official Contact & Operations Directory (/contact)
 │   │   ├── dashboard/            # Role-based dashboards
-│   │   ├── donations/            # CreateDonationPage (with Location Picker), Donation CRUD & detail
+│   │   ├── donations/            # CreateDonationPage, Donation CRUD & detail with Claim Priority Ranking
 │   │   ├── feedback/             # Public feedback submission
 │   │   ├── landing/              # Public landing page
 │   │   ├── ngo/                  # Browse donations & claims
 │   │   ├── notifications/        # Notification center
-│   │   ├── profile/              # User profile
+│   │   ├── profile/              # User profile, Security & Account Deletion (Danger Zone)
 │   │   ├── reviews/              # My ratings & trust hub
 │   │   └── volunteer/            # Deliveries & QR scan
 │   ├── utils/                    # Core client utilities

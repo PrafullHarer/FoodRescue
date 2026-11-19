@@ -106,6 +106,15 @@ export default function DeliveryDetailScreen({ route, navigation }) {
             <Text style={styles.sectionTitle}>Surplus Food Cargo</Text>
           </View>
 
+          {(delivery.donation_code || donation.donation_code) ? (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Donation ID</Text>
+              <Text style={[styles.detailValue, { fontFamily: 'monospace', color: colors.primary, fontWeight: '700' }]}>
+                {delivery.donation_code || donation.donation_code}
+              </Text>
+            </View>
+          ) : null}
+
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Item / Description</Text>
             <Text style={styles.detailValue}>{donation.title || 'Prepared Surplus Food'}</Text>

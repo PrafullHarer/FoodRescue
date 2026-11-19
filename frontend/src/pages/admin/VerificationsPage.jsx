@@ -480,8 +480,13 @@ export default function VerificationsPage() {
                           {item.full_name?.charAt(0).toUpperCase() || 'U'}
                         </div>
                         <div className="min-w-0">
-                          <div className="font-semibold text-neutral-900 dark:text-white truncate">
-                            {item.full_name}
+                          <div className="font-semibold text-neutral-900 dark:text-white truncate flex items-center gap-2">
+                            <span className="truncate">{item.full_name}</span>
+                            {item.user_code && (
+                              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 font-bold border border-neutral-200 dark:border-neutral-700 flex-shrink-0">
+                                {item.user_code}
+                              </span>
+                            )}
                           </div>
                           <div className="text-[11px] text-neutral-500 truncate flex items-center gap-1.5 mt-0.5">
                             <span className="truncate">{item.email}</span>
@@ -594,9 +599,21 @@ export default function VerificationsPage() {
                     <span>{detailUser?.full_name || 'Loading profile...'}</span>
                     {detailUser && getStatusBadge(detailUser.verification_status)}
                   </h2>
-                  <p className="text-xs text-neutral-500 mt-0.5">
-                    User ID: <span className="font-mono">{detailUser?.id}</span>
-                  </p>
+                  <div className="text-xs text-neutral-500 mt-0.5 flex items-center gap-2">
+                    {detailUser?.user_code ? (
+                      <>
+                        <span>User ID:</span>
+                        <span className="font-mono font-bold text-neutral-900 dark:text-neutral-100 bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded border border-neutral-200 dark:border-neutral-700">
+                          {detailUser.user_code}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span>User ID:</span>
+                        <span className="font-mono">{detailUser?.id}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -644,6 +661,12 @@ export default function VerificationsPage() {
                     </h3>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl bg-neutral-50 dark:bg-[#16161a] border border-neutral-200 dark:border-[#232328]">
+                      <div>
+                        <span className="text-neutral-500 text-[11px] block">Unique User ID</span>
+                        <span className="font-mono font-bold text-neutral-900 dark:text-white">
+                          {detailUser.user_code || 'N/A'}
+                        </span>
+                      </div>
                       <div>
                         <span className="text-neutral-500 text-[11px] block">Full Name</span>
                         <span className="font-semibold text-neutral-900 dark:text-white">
@@ -755,9 +778,9 @@ export default function VerificationsPage() {
                           </span>
                         </div>
                         <div>
-                          <span className="text-neutral-500 text-[11px] block">Daily Feeding Capacity</span>
+                          <span className="text-neutral-500 text-[11px] block">NGO Capacity (People)</span>
                           <span className="font-semibold text-neutral-900 dark:text-white">
-                            {roleProfile?.capacity || 200} meals/day
+                            {roleProfile?.capacity ? `${roleProfile.capacity} people` : '100 people'}
                           </span>
                         </div>
                         <div>

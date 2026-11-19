@@ -102,6 +102,11 @@ export default function AvailableDeliveriesScreen({ navigation }) {
       <Card style={styles.card}>
         <View style={styles.cardHeader}>
           <View style={styles.foodInfo}>
+            {(item.donation_code || donation.donation_code) ? (
+              <Text style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: '700', color: colors.primary, marginBottom: 2 }}>
+                {item.donation_code || donation.donation_code}
+              </Text>
+            ) : null}
             <Text style={styles.foodName} numberOfLines={1}>
               {donation.title || 'Prepared Surplus Food'}
             </Text>

@@ -1,34 +1,120 @@
+# ========================================================
+# FoodRescue Root .gitignore
+# Covers Node.js (Backend & Frontend), Mobile (React Native/Expo),
+# Python (AI Service), AI Agent Tools, and IDE/OS artifacts
+# ========================================================
+
 # Dependencies
 node_modules/
+*/node_modules/
+.pnp/
+.pnp.js
 
-
-# Environment
+# Environment & Secret Files
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+!.env.*.example
+*.env
+*.env.*
+*.local
 
-# Build
+# Build Outputs & Bundles
 dist/
+dist-ssr/
 build/
+web-build/
+.turbo/
+.parcel-cache/
+*.tsbuildinfo
 
-# Logs
+# Test & Coverage
+coverage/
+.nyc_output/
+
+# Logs & Debugging
+logs/
 *.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# OS
-.DS_Store
-Thumbs.db
+# AI Agents & Local Customizations
+.agents/
+.gemini/
+.claude/
+.cursor/
 
-# IDE
-.vscode/
-.idea/
+# Understand Anything Scratch & Intermediate Files
+.ua/intermediate/
+.ua/diff-overlay.json
+.understand-anything/intermediate/
+.understand-anything/diff-overlay.json
 
-# Expo
+# Temporary & Upload Directories
+uploads/
+backend/uploads/
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Mobile / React Native / Expo
+.expo/
+*/.expo/
+expo-env.d.ts
 mobile/.expo/
+mobile/web-build/
 mobile/ios/
 mobile/android/
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.pem
+*.mobileprovision
+.metro-health-check*
 
-# Python
+# Python / AI Service
+__pycache__/
+*/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+ENV/
 ai-service/__pycache__/
 ai-service/*.pyc
 ai-service/venv/
+ai-service/.venv/
+.pytest_cache/
+
+# IDE & Editor Configurations
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.swo
+*.swp
+
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/

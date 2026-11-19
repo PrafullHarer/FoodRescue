@@ -1165,7 +1165,7 @@ export default function AdminAnalyticsPage({ defaultTab }) {
                 </thead>
                 <tbody className="divide-y divide-[#1c1c22]">
                   {wastedCategories.map((c) => (
-                    <tr key={c.category} className="hover:bg-[#18181b]/50 transition-colors">
+                    <tr key={c.category} className="hover:bg-neutral-50 dark:hover:bg-[#18181b]/50 transition-colors">
                       <td className="py-3.5 px-4 font-bold text-white capitalize">
                         {c.category.replace(/_/g, ' ')}
                       </td>
@@ -1224,7 +1224,7 @@ export default function AdminAnalyticsPage({ defaultTab }) {
                   </thead>
                   <tbody className="divide-y divide-[#1c1c22]">
                     {demandData.ngo_activity.map((n) => (
-                      <tr key={n.ngo_id} className="hover:bg-[#18181b]/50">
+                      <tr key={n.ngo_id} className="hover:bg-neutral-50 dark:hover:bg-[#18181b]/50">
                         <td className="py-3 px-3">
                           <span className="font-bold text-white block">{n.organization_name}</span>
                           <span className="text-[10px] text-neutral-500">{n.address}</span>
@@ -1328,7 +1328,7 @@ export default function AdminAnalyticsPage({ defaultTab }) {
                 </thead>
                 <tbody className="divide-y divide-[#1c1c22]">
                   {reliabilityData.top_volunteers.map((v, i) => (
-                    <tr key={i} className="hover:bg-[#18181b]/50">
+                    <tr key={i} className="hover:bg-neutral-50 dark:hover:bg-[#18181b]/50">
                       <td className="py-3 px-4 font-bold text-white">{v.name}</td>
                       <td className="py-3 px-4 capitalize text-neutral-400">{v.vehicle_type || 'Vehicle'}</td>
                       <td className="py-3 px-4 font-bold text-amber-400">★ {v.rating || '5.0'}</td>
@@ -1387,7 +1387,7 @@ export default function AdminAnalyticsPage({ defaultTab }) {
                 </thead>
                 <tbody className="divide-y divide-[#1c1c22]">
                   {inactiveProviders.providers.map((p) => (
-                    <tr key={p.provider_id} className="hover:bg-[#18181b]/50">
+                    <tr key={p.provider_id} className="hover:bg-neutral-50 dark:hover:bg-[#18181b]/50">
                       <td className="py-3.5 px-4">
                         <span className="font-bold text-white block">{p.business_name}</span>
                         <span className="text-[11px] text-neutral-400">{p.address}</span>

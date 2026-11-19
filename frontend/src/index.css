@@ -586,6 +586,15 @@ html.light .bg-\[\#1c1c20\] {
   background-color: #F3F4F6 !important;
 }
 
+html.light .hover\:bg-\[\#18181b\]:hover,
+html.light .hover\:bg-\[\#18181b\]\/50:hover,
+html.light .hover\:bg-\[\#18181b\]\/60:hover,
+html.light .hover\:bg-\[\#1c1c1f\]:hover,
+html.light .hover\:bg-\[\#1c1c20\]:hover,
+html.light .hover\:bg-\[\#1c1c22\]:hover {
+  background-color: #F3F4F6 !important;
+}
+
 html.light .bg-\[\#1b1b1f\] {
   background-color: #E5E7EB !important;
 }

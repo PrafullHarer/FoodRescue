@@ -94,6 +94,11 @@ export default function MyClaimsScreen({ navigation }) {
       <Card style={styles.card}>
         <View style={styles.cardHeader}>
           <View style={styles.infoCol}>
+            {item.donation_code ? (
+              <Text style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: '700', color: colors.primary, marginBottom: 2 }}>
+                {item.donation_code}
+              </Text>
+            ) : null}
             <Text style={styles.claimTitle}>{item.title}</Text>
             <Text style={styles.categorySub}>
               {item.category?.replace('_', ' ').toUpperCase()} • {item.quantity} {item.unit || 'servings'}

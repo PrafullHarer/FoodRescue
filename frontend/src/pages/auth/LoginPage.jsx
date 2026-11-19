@@ -4,12 +4,13 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   Mail, Eye, EyeOff, ArrowLeft,
   Check, Store, HeartHandshake, Truck, ShieldCheck,
-  Clock, XCircle, AlertTriangle, UserX
+  Clock, XCircle, AlertTriangle, UserX, User
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ThemeToggle from '../../components/common/ThemeToggle';
 import Logo from '../../components/common/Logo';
 import GoogleAuthButton from '../../components/common/GoogleAuthButton';
+import ResetPasswordModal from '../../components/common/ResetPasswordModal';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -23,6 +24,7 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [statusNotice, setStatusNotice] = useState(null);
+  const [showResetModal, setShowResetModal] = useState(false);
 
   useEffect(() => {
     if (location.state?.email) {
@@ -229,7 +231,7 @@ export default function LoginPage() {
           <div className="relative flex items-center justify-center my-2">
             <div className="border-t border-neutral-200 dark:border-[#232328] w-full" />
             <span className="bg-white dark:bg-[#121214] px-3 text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider absolute">
-              or continue with email
+              or continue with credentials
             </span>
           </div>
         </div>
@@ -238,19 +240,19 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300 block mb-1.5">
-              Email Address
+              Email or Unique User ID
             </label>
             <div className="relative">
-              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+              <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
               <input
-                type="email"
+                type="text"
                 id="login-email"
                 name="email"
                 autoComplete="username"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 className="w-full bg-neutral-50 dark:bg-[#0c0c0e] border border-neutral-200 dark:border-[#232328] focus:border-neutral-900 dark:focus:border-white focus:outline-none text-neutral-900 dark:text-white placeholder:text-neutral-400 rounded-xl px-4 py-3 pl-10 text-sm transition-all"
-                placeholder="name@example.com"
+                placeholder="name@example.com or PRO-123456"
                 required
               />
             </div>
@@ -261,16 +263,18 @@ export default function LoginPage() {
               <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
                 Password
               </label>
-              <a
-                href="#forgot"
-                onClick={(e) => {
-                  e.preventDefault();
-                  toast('Demo accounts use password: password123', { icon: '🔑' });
-                }}
-                className="text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white underline underline-offset-2 transition-colors"
-              >
-                Forgot?
-              </a>
+              {form.email.toLowerCase().includes('admin') ? (
+                <span className="text-[10px] font-semibold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20">
+                  Super Admin Protected
+                </span>
+              ) : (
+                <Link
+                  to="/forgot-password"
+                  className="text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white underline underline-offset-2 transition-colors cursor-pointer"
+                >
+                  Forgot?
+                </Link>
+              )}
             </div>
             <div className="relative">
               <input
@@ -342,6 +346,13 @@ export default function LoginPage() {
           </p>
         </div>
       </div>
+
+      {/* Reset Password Modal with Live Password Requirements */}
+      <ResetPasswordModal
+        isOpen={showResetModal}
+        onClose={() => setShowResetModal(false)}
+        initialEmail={form.email}
+      />
     </div>
   );
 }

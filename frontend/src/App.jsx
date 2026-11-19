@@ -14,6 +14,7 @@ import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import CompleteProfilePage from './pages/auth/CompleteProfilePage';
 import VerificationPendingPage from './pages/auth/VerificationPendingPage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 
 // Main Pages
 import DashboardPage from './pages/dashboard/DashboardPage';
@@ -46,8 +47,9 @@ import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
 import IncidentsPage from './pages/admin/IncidentsPage';
 import AdminFeedbackPage from './pages/admin/AdminFeedbackPage';
 
-// Public Feedback Page
+// Public Feedback & Contact Pages
 import FeedbackPage from './pages/feedback/FeedbackPage';
+import ContactPage from './pages/contact/ContactPage';
 
 export default function App() {
   return (
@@ -85,11 +87,13 @@ export default function App() {
           <Routes>
             {/* Public Landing & Auth Routes */}
             <Route path="/" element={<LandingPage />} />
+            <Route path="/contact" element={<ContactPage />} />
             <Route path="/feedback" element={<FeedbackPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/complete-profile" element={<CompleteProfilePage />} />
             <Route path="/verification-pending" element={<VerificationPendingPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
             {/* Protected Dashboard Routes */}
             <Route

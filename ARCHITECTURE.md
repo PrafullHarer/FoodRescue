@@ -24,12 +24,15 @@ flowchart TB
     subgraph Backend["Application Server Tier (Node.js & Express.js)"]
         AUTH_MW["JWT Auth & Role Guards\n(Provider / NGO / Volunteer / Admin)"]
         GOOGLE["Google OAuth 2.0\n(google-auth-library)"]
+        OTP_ENGINE["Clean 6-Digit Email OTP Engine\n(Nodemailer / crypto)"]
+        SEC_GUARD["Security & Deletion Guards\n(Super Admin Immunity & In-Flight Lock)"]
         ZOD["Zod Schema Validation Engine"]
         
         subgraph Modules["Core Feature Engines"]
-            MOD_AUTH["Auth Module\n(Bcrypt, Token Rotation, Google OAuth)"]
+            MOD_AUTH["Auth & Recovery Module\n(Bcrypt, Token Rotation, Forgot/Reset OTP)"]
             MOD_DON["Donations Engine\n(CRUD, Statuses, Data Isolation)"]
-            MOD_CLAIM["Claim & Match Service\n(Self-Pickup vs Volunteer)"]
+            MOD_CLAIM["Claim & Selection Orchestrator\n(Self-Pickup vs Volunteer)"]
+            MOD_RANK["Smart Shelter Ranking Engine\n(Multi-factor Need & Capacity Algorithm)"]
             MOD_DELIV["Delivery Orchestrator\n(Route Lifecycle)"]
             MOD_QR["Dual-QR Verification\n(crypto, qrcode generation)"]
             MOD_REV["Trust & Ratings Engine\n(Eligibility, Weighted Scores)"]
@@ -37,6 +40,7 @@ flowchart TB
             MOD_COMP["Complaints Engine\n(Lifecycle, Messaging, Export)"]
             MOD_INC["Incident Management\n(Detection, Escalation)"]
             MOD_FB["Feedback System\n(Public Submission, Admin Review)"]
+            MOD_USER["User Profile & Lifecycle Engine\n(Profile Management & Safe Deletion)"]
             MOD_ADM_AN["Admin Analytics\n(KPIs, Hotspots, Demand Gaps)"]
         end
 
@@ -51,11 +55,12 @@ flowchart TB
     subgraph Data["Data Persistence Tier (PostgreSQL / Neon)"]
         PG[(Lakebase PostgreSQL 16)]
         GIS["PostGIS Spatial Extension\n(ST_DWithin, Coordinates)"]
-        TRIGGERS["Database Triggers\n(Updated_at, Claim Auto-Sync)"]
+        TRIGGERS["Database Triggers\n(Updated_at, Claim Auto-Sync, Cascading Cleanup)"]
     end
 
-    Clients --> VITE --> ROUTER --> AUTH_MW --> ZOD
+    Clients --> VITE --> ROUTER --> AUTH_MW --> SEC_GUARD --> ZOD
     AUTH_MW <--> GOOGLE
+    AUTH_MW <--> OTP_ENGINE
     ZOD --> Modules
     Modules <--> PG
     Modules <--> GIS
@@ -76,16 +81,18 @@ flowchart TD
     A2 -- Time Exceeded Expiry --> A_EXP[Cron Marks Status: Expired]
     A_EXP --> END_EXP([Donation Removed from Feed])
     
-    A2 --> B1[NGO Browses / Proximity Feed]
-    B1 --> B2[NGO Inspects Donor Reputation Profile]
-    B2 --> B3{NGO Claims Listing}
+    A2 --> B1[Multiple NGOs Browse Feed & Submit Claims]
+    B1 --> B2[Smart Shelter Ranking Algorithm Evaluates Competing Claims]
+    B2 --> B3[Multi-Factor Scoring: Need 35%, Reviews 25%, Capacity 20%, Distance 15%, Reliability 5%]
+    B3 --> B4[Claims Displayed to Donor with Badges: Best Match, Highest Need, Proximity Star]
+    B4 --> B5{Donor Approves Preferred NGO Claim}
     
-    B3 -- Mode: Self-Pickup --> SP1[Single Pickup QR Generated]
+    B5 -- Mode: Direct Self-Pickup --> SP1[Single Pickup QR Generated: RESCUE-PK]
     SP1 --> SP2[NGO Team Travels to Donor]
     SP2 --> SP3[NGO Scans Pickup QR on Site]
     SP3 --> C_COMP[Status: Delivered & Completed]
     
-    B3 -- Mode: Volunteer Delivery --> V1[Delivery Record Created & Posted to Pool]
+    B5 -- Mode: Volunteer Delivery --> V1[Delivery Record Created & Posted to Courier Pool]
     V1 --> V2[Two QR Codes Generated: RESCUE-PK & RESCUE-DL]
     V2 --> V3[Volunteer Claims Pickup Mission]
     V3 --> V4[Volunteer Navigates to Food Provider]
@@ -109,7 +116,9 @@ flowchart TD
 
 ---
 
-## 3. Authentication & Google OAuth Flow
+## 3. Authentication, Security & Lifecycle Workflows
+
+### 3.1 Primary Authentication & Google OAuth Flow
 
 ```mermaid
 sequenceDiagram
@@ -145,6 +154,74 @@ sequenceDiagram
         Client->>Server: POST /api/auth/complete-profile
         Server->>DB: Update profile, create role record
         Server-->>Client: Updated user + { profileCompleted: true }
+    end
+```
+
+### 3.2 Self-Service 6-Digit Email OTP Password Recovery
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as 👤 User
+    participant Client as 🖥️ React Client
+    participant Server as ⚙️ Backend API
+    participant Mailer as ✉️ Nodemailer Service
+    participant DB as 🗄️ PostgreSQL
+
+    User->>Client: Enters email & requests reset
+    Client->>Server: POST /api/auth/forgot-password { email }
+    Server->>DB: SELECT * FROM users WHERE email = :email
+    
+    alt User Role === 'admin' (Super Administrator)
+        Server-->>Client: 🛑 403 Forbidden: Super Admin accounts cannot use public reset
+    else Regular User (Provider, NGO, Volunteer)
+        Server->>Server: Generates secure 6-digit OTP (10 min TTL)
+        Server->>DB: INSERT INTO password_resets (user_id, otp_hash, expires_at)
+        Server->>Mailer: Dispatches password reset email
+        Mailer-->>User: Delivery of 6-digit OTP code to inbox
+        Server-->>Client: 200 OK: "OTP sent to registered email"
+        
+        User->>Client: Enters 6-digit OTP + new password
+        Client->>Server: POST /api/auth/reset-password { email, otp, newPassword }
+        Server->>DB: Validate OTP hash, expiry & unconsumed status
+        Server->>Server: Hash new password with bcrypt
+        Server->>DB: UPDATE users SET password_hash = :hash; UPDATE password_resets SET used_at = NOW()
+        Server-->>Client: 200 OK: "Password successfully updated"
+    end
+```
+
+### 3.3 Account Deletion & Danger Zone Governance
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as 👤 User
+    participant Client as 🖥️ React Client
+    participant Server as ⚙️ Backend API
+    participant DB as 🗄️ PostgreSQL
+
+    User->>Client: Clicks "Delete Account" in Profile Settings
+    Client->>User: Prompts for password (or "DELETE" confirmation text)
+    User->>Client: Confirms with credentials
+    Client->>Server: DELETE /api/users/:userId { confirmation }
+
+    Server->>DB: SELECT role, password_hash FROM users WHERE id = :userId
+    
+    alt Target User is Super Admin (role === 'admin')
+        Server-->>Client: 🛑 403 Forbidden: Administrator accounts cannot be deleted
+    else Regular Platform User
+        Server->>Server: Verify credential validity
+        Server->>DB: Check active in-flight missions:
+        Note over Server,DB: • Active donations in 'posted', 'claimed', or 'in_transit'?<br/>• Active deliveries in 'pending', 'accepted', 'in_transit'?<br/>• Active claims waiting for donor response?
+        
+        alt In-Flight Missions Detected
+            Server-->>Client: 🛑 400 Bad Request: Incomplete active missions must be completed or cancelled
+        else Zero Active Missions
+            Server->>DB: Clean cascading deletion:
+            Note over Server,DB: • Disassociate push tokens & notifications<br/>• Delete role record (provider/ngo/volunteer)<br/>• Nullify or anonymize public review links<br/>• DELETE FROM users WHERE id = :userId
+            Server-->>Client: 200 OK: "Account successfully deleted"
+            Client->>Client: Clear JWT tokens & redirect to /login
+        end
     end
 ```
 
@@ -231,7 +308,65 @@ flowchart LR
 
 ---
 
-## 6. Complaint & Incident Resolution Architecture
+## 6. Shelter Claim Priority & Need Ranking Algorithm Architecture
+
+When multiple NGOs claim a single donation, the platform invokes `claim-ranking.service.js` to objectively score and sort candidate claims, balancing humanitarian need, absorption speed, community reputation, and cold-chain transport efficiency.
+
+```mermaid
+flowchart TD
+    subgraph Trigger["Claim Evaluation Trigger"]
+        REQ["GET /api/donations/:id/claims\n(Authenticated Provider / Admin)"]
+    end
+
+    subgraph DataFetch["Parallel Database Lookups"]
+        D_INFO["Donation Data\n(quantity, weight_kg, coordinates)"]
+        CLAIMS["Raw Claims\n(ngo_id, status, claim_time)"]
+        NGO_META["NGO Profile & Stats\n(capacity, beneficiaries, verified_status)"]
+        HIST["Donation History\n(days since last received meal)"]
+        REVS["Review Aggregate\n(Bayesian rating, sentiment tags)"]
+    end
+
+    subgraph Normalization["5-Factor Utility Scoring Pipeline"]
+        direction TB
+        F1["1. Hunger Need Intensity (35%)\nDays since last intake, daily beneficiaries,\n-10 pt pending claim hoarding penalty"]
+        F2["2. Community Trust & Reviews (25%)\nBayesian smoothed rating: (C*m + ∑r)/(C + n)\n+5 pt positive sentiment bonus"]
+        F3["3. Absorption Capacity Match (20%)\nPortion-to-capacity ratio: 0.2-1.0 => 100 pts"]
+        F4["4. Proximity & Cold-Chain (15%)\nHaversine distance: <=2km (100) ... >20km (30)"]
+        F5["5. Historical Reliability (5%)\nVerified status (40), completion rate (40), incidents (20)"]
+    end
+
+    subgraph Aggregator["Composite Score & Badge Allocator"]
+        SUM["Composite Priority Score (0-100)\nP = 0.35*Need + 0.25*Reviews + 0.20*Cap + 0.15*Dist + 0.05*Rel"]
+        BADGE{"Dynamic Badge Assignment"}
+        B_BEST["🏆 Best Match\n(Highest composite score)"]
+        B_NEED["🚨 Highest Need\n(Need score >= 85)"]
+        B_PROX["⚡ Proximity Star\n(Distance <= 3km + capacity)"]
+        B_RATED["⭐ Top Community Rated\n(Bayesian rating >= 4.7)"]
+        REASONS["Generates Contextual Explainer Sentence"]
+    end
+
+    subgraph ClientView["Provider Dashboard (DonationDetailPage.jsx)"]
+        UI_SORT["Interactive Sort Filters:\n• Algorithm Recommended (Score DESC)\n• Highest Need First\n• Nearest First\n• Highest Rated"]
+        UI_CARD["Ranked Claim Card with Factor Progress Bars"]
+    end
+
+    REQ --> DataFetch
+    D_INFO & CLAIMS & NGO_META & HIST & REVS --> Normalization
+    F1 & F2 & F3 & F4 & F5 --> SUM --> BADGE
+    BADGE --> B_BEST & B_NEED & B_PROX & B_RATED
+    B_BEST & B_NEED & B_PROX & B_RATED --> REASONS --> UI_SORT --> UI_CARD
+```
+
+### Mathematical Formula
+
+$$\text{Priority Score} = \text{round}\left(S_{\text{need}} \times 0.35 + S_{\text{reviews}} \times 0.25 + S_{\text{capacity}} \times 0.20 + S_{\text{distance}} \times 0.15 + S_{\text{reliability}} \times 0.05\right)$$
+
+Where Bayesian rating smoothing dampens small-sample variance:
+$$R_{\text{Bayes}} = \frac{C \cdot m + \sum_{i=1}^{n} r_i}{C + n} \quad (C=3, \; m=4.2)$$
+
+---
+
+## 7. Complaint & Incident Resolution Architecture
 
 ```mermaid
 flowchart TD
@@ -272,13 +407,14 @@ flowchart TD
 
 ---
 
-## 7. Relational Database Architecture (Entity Relationship Diagram)
+## 8. Relational Database Architecture (Entity Relationship Diagram)
 
 ```mermaid
 erDiagram
     users ||--o{ food_providers : "profile_for"
     users ||--o{ ngos : "profile_for"
     users ||--o{ volunteers : "profile_for"
+    users ||--o{ password_resets : "requests"
     
     food_providers ||--o{ food_donations : "posts"
     food_donations ||--o{ donation_claims : "claimed_by"
@@ -296,6 +432,7 @@ erDiagram
     food_donations ||--o{ reviews : "donation_context"
     
     users ||--o{ notifications : "receives"
+    users ||--o{ push_tokens : "registers"
     users ||--o{ complaints : "submits"
     users ||--o{ feedback : "optionally_submits"
     food_providers ||--o{ impact_analytics : "tracked_in"
@@ -313,6 +450,15 @@ erDiagram
         timestamptz created_at
     }
 
+    password_resets {
+        uuid id PK
+        uuid user_id FK
+        string otp_hash
+        timestamptz expires_at
+        timestamptz used_at "nullable"
+        timestamptz created_at
+    }
+
     food_donations {
         uuid id PK
         uuid provider_id FK
@@ -326,6 +472,18 @@ erDiagram
         geometry coordinates
         timestamptz expiry_time
         string status "posted | claimed | in_transit | delivered | expired"
+    }
+
+    donation_claims {
+        uuid id PK
+        uuid donation_id FK
+        uuid ngo_id FK
+        string status "pending | accepted | rejected | cancelled"
+        integer priority_score "0 to 100"
+        integer need_score "0 to 100"
+        integer match_score "0 to 100"
+        text rejection_reason
+        timestamptz created_at
     }
 
     deliveries {
@@ -392,9 +550,12 @@ erDiagram
     }
 ```
 
+> [!NOTE]
+> **Cascading Deletion Lifecycle**: When a non-admin account is deleted via `DELETE /api/users/:id`, all child profile rows (`food_providers`, `ngos`, `volunteers`), device push tokens (`push_tokens`), unconsumed OTP tokens (`password_resets`), and unread notifications are cascaded safely. Reviews are preserved with anonymized user linkage to prevent transaction record distortion.
+
 ---
 
-## 8. Automated Expiry & Background Scheduling Flow
+## 9. Automated Expiry & Background Scheduling Flow
 
 ```mermaid
 flowchart TD
@@ -414,7 +575,7 @@ flowchart TD
 
 ---
 
-## 9. Frontend Component Hierarchy & Global State Topology
+## 10. Frontend Component Hierarchy & Global State Topology
 
 ```mermaid
 graph TD
@@ -429,12 +590,13 @@ graph TD
         LOGIN[LoginPage\n/login]
         REGISTER[RegisterPage\n/register]
         COMPLETE[CompleteProfilePage\n/complete-profile]
+        CONTACT_PAGE[ContactPage\n/contact]
         BROWSE[BrowseDonationsPage\n/browse]
-        DETAIL[DonationDetailPage\n/donations/:id]
+        DETAIL[DonationDetailPage\n/donations/:id\nClaim Priority Badges & Explainer]
         DELIV_PAGE[DeliveriesPage\n/deliveries]
         CLAIMS_PAGE[ClaimsPage\n/claims]
         REVIEWS_PAGE[MyReviewsPage\n/reviews]
-        PROFILE[ProfilePage\n/profile]
+        PROFILE[ProfilePage\n/profile\nSecurity & Danger Zone Deletion]
         FEEDBACK[FeedbackPage\n/feedback]
         COMPLAINTS[MyComplaintsPage\n/complaints]
         NOTIF[NotificationsPage\n/notifications]
@@ -448,6 +610,12 @@ graph TD
         ADM_VERIFY[VerificationsPage\n/admin/verifications]
         ADM_USERS[UsersPage\n/admin/users]
         ADM_AUDIT[AuditLogsPage\n/admin/audit-logs]
+    end
+
+    subgraph AuthModals["Security & Auth Modals"]
+        FORGOT_MODAL[ForgotPasswordModal\n6-Digit OTP Request]
+        RESET_MODAL[ResetPasswordModal\nOTP Verification & Reset]
+        EMAIL_MODAL[EmailVerificationModal\nClean OTP Verification]
     end
 
     subgraph ReusableReviews["Trust & Reliability Component Suite"]
@@ -473,18 +641,19 @@ graph TD
     DETAIL --> LINK & INDICATOR
     DELIV_PAGE --> LINK & INDICATOR
     CLAIMS_PAGE --> LINK & INDICATOR
-    PROFILE --> BADGE & LINK
+    PROFILE --> BADGE & LINK & RESET_MODAL
     REVIEWS_PAGE --> LIST & SUBMIT
     LIST --> CARD
     LINK -.->|Clicks Trigger| REP_CTX
     INDICATOR -.->|Eligible Click| SUBMIT
-    LOGIN --> GOOGLE_BTN
-    REGISTER --> GOOGLE_BTN & MAP_PICKER
+    LOGIN --> GOOGLE_BTN & FORGOT_MODAL
+    REGISTER --> GOOGLE_BTN & MAP_PICKER & EMAIL_MODAL
+    FORGOT_MODAL --> RESET_MODAL
 ```
 
 ---
 
-## 10. Data Isolation & Role-Based Access Control
+## 11. Data Isolation & Role-Based Access Control
 
 ```mermaid
 flowchart LR
@@ -511,7 +680,7 @@ flowchart LR
 
 ---
 
-## 11. Notification Isolation Architecture
+## 12. Notification Isolation Architecture
 
 ```mermaid
 flowchart TD
@@ -542,7 +711,7 @@ flowchart TD
 
 ---
 
-## 12. Continuous Integration & Verification Pipeline
+## 13. Continuous Integration & Verification Pipeline
 
 ```mermaid
 flowchart LR
@@ -579,7 +748,7 @@ flowchart LR
 
 ---
 
-## 13. Mobile Native Bridge & 4:3 QR Scanner Architecture
+## 14. Mobile Native Bridge & 4:3 QR Scanner Architecture
 
 ```mermaid
 sequenceDiagram
@@ -618,7 +787,7 @@ sequenceDiagram
 
 ---
 
-## 14. Interactive Location Picker & Geolocation Bridge Topology
+## 15. Interactive Location Picker & Geolocation Bridge Topology
 
 ```mermaid
 flowchart TD
@@ -661,7 +830,7 @@ flowchart TD
 
 ---
 
-## 15. Real-Time & Push Notification Distribution Architecture
+## 16. Real-Time & Push Notification Distribution Architecture
 
 ```mermaid
 sequenceDiagram

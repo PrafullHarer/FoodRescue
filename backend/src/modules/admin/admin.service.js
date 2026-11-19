@@ -63,6 +63,7 @@ const getVerifications = async ({ page = 1, limit = 20, status, role, search }) 
       u.full_name ILIKE $${pIdx} OR
       u.email ILIKE $${pIdx} OR
       u.phone ILIKE $${pIdx} OR
+      u.user_code ILIKE $${pIdx} OR
       fp.business_name ILIKE $${pIdx} OR
       n.organization_name ILIKE $${pIdx}
     )`);
@@ -105,6 +106,7 @@ const getVerifications = async ({ page = 1, limit = 20, status, role, search }) 
   const query = `
     SELECT
       u.id,
+      u.user_code,
       u.email,
       u.role,
       u.full_name,
@@ -171,6 +173,7 @@ const getVerificationDetail = async (userId) => {
   const { rows } = await db.query(
     `SELECT
       u.id,
+      u.user_code,
       u.email,
       u.role,
       u.full_name,

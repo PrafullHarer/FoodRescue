@@ -7,11 +7,18 @@ const config = require('../config');
  */
 // eslint-disable-next-line no-unused-vars
 const errorHandler = (err, req, res, next) => {
-  if (config.nodeEnv !== 'production') {
-    console.error('[ERROR]', err);
+  const isClientError = err.statusCode && err.statusCode < 500;
+
+  // Only log stack traces for unexpected server errors (500+)
+  if (!isClientError && err.name !== 'ZodError') {
+    if (config.nodeEnv !== 'production') {
+      console.error('[SERVER ERROR]', err);
+    } else {
+      console.error(`[SERVER ERROR] ${req.method} ${req.originalUrl}: ${err.message || 'Internal Server Error'}`);
+    }
   } else {
-    // In production, log without sensitive details
-    console.error(`[ERROR] ${req.method} ${req.originalUrl}: ${err.message || 'Internal Server Error'}`);
+    // Client error (400, 401, 403, 404, 409) - log clean warning
+    console.warn(`[CLIENT ${err.statusCode || 400}] ${req.method} ${req.originalUrl}: ${err.message}`);
   }
 
   // Zod validation errors (safe to return formatted field errors)

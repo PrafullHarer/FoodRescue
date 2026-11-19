@@ -63,9 +63,32 @@ const updateUserStatus = async (req, res, next) => {
   }
 };
 
+/**
+ * DELETE /api/users/:id
+ * Permanently delete user account
+ */
+const deleteUser = async (req, res, next) => {
+  try {
+    const deletedUser = await userService.deleteUser(
+      req.params.id,
+      req.user,
+      req.body
+    );
+
+    res.json({
+      success: true,
+      message: 'Account deleted permanently.',
+      data: deletedUser,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getUsers,
   getUserById,
   updateUser,
   updateUserStatus,
+  deleteUser,
 };

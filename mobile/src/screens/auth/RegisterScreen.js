@@ -24,10 +24,22 @@ export default function RegisterScreen({ navigation }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [organizationName, setOrganizationName] = useState('');
+  const [capacity, setCapacity] = useState('');
   const [address, setAddress] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const passwordRules = [
+    { id: 'len', label: '8+ characters', met: password.length >= 8 },
+    { id: 'upper', label: '1 uppercase (A-Z)', met: /[A-Z]/.test(password) },
+    { id: 'lower', label: '1 lowercase (a-z)', met: /[a-z]/.test(password) },
+    { id: 'num', label: '1 number (0-9)', met: /[0-9]/.test(password) },
+    { id: 'spec', label: '1 special (!@#$%)', met: /[^A-Za-z0-9]/.test(password) },
+  ];
+  const isPasswordValid = passwordRules.every(r => r.met);
+  const metCount = passwordRules.filter(r => r.met).length;
 
   const roles = [
     { id: 'provider', title: 'Food Provider', icon: 'storefront-outline', desc: 'Post surplus' },
@@ -41,13 +53,29 @@ export default function RegisterScreen({ navigation }) {
       return;
     }
 
-    if (password.length < 8) {
-      Alert.alert('Password Requirement', 'Password must be at least 8 characters long.');
+    if (!isPasswordValid) {
+      const missing = passwordRules.filter(r => !r.met).map(r => r.label).join(', ');
+      Alert.alert('Password Requirement', `Please satisfy all requirements: ${missing}`);
+      return;
+    }
+
+    if (!confirmPassword) {
+      Alert.alert('Confirm Password', 'Please re-enter your password to confirm.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Password Mismatch', 'The passwords you entered do not match. Please verify both fields.');
       return;
     }
 
     if ((role === 'provider' || role === 'ngo') && !organizationName.trim()) {
       Alert.alert('Organization Required', 'Please enter your organization or business name.');
+      return;
+    }
+
+    if (role === 'ngo' && (!capacity.trim() || parseInt(capacity, 10) <= 0)) {
+      Alert.alert('Capacity Required', 'Please enter the current number of people in the NGO.');
       return;
     }
 
@@ -62,6 +90,7 @@ export default function RegisterScreen({ navigation }) {
         phone: phone.trim(),
         business_name: role === 'provider' ? organizationName.trim() : undefined,
         organization_name: role === 'ngo' ? organizationName.trim() : undefined,
+        capacity: role === 'ngo' ? (parseInt(capacity, 10) || 100) : undefined,
         address: address.trim(),
       });
 
@@ -152,13 +181,58 @@ export default function RegisterScreen({ navigation }) {
             />
 
             <Input
-              label="Password (min 8 chars) *"
+              label="Create Password *"
               value={password}
               onChangeText={setPassword}
               placeholder="••••••••"
               secureTextEntry
               leftIcon="lock-closed-outline"
             />
+
+            {/* Live Password Requirements Checklist */}
+            <View style={styles.passwordRulesContainer}>
+              <View style={styles.passwordRulesHeader}>
+                <Text style={styles.passwordRulesTitle}>PASSWORD REQUIREMENTS</Text>
+                <Text style={[styles.passwordRulesStatus, isPasswordValid && styles.passwordRulesSuccess]}>
+                  {metCount} / 5 Met
+                </Text>
+              </View>
+              <View style={styles.passwordRulesGrid}>
+                {passwordRules.map((rule) => (
+                  <View key={rule.id} style={styles.ruleItem}>
+                    <Ionicons
+                      name={rule.met ? 'checkmark-circle' : 'ellipse-outline'}
+                      size={13}
+                      color={rule.met ? colors.primary : colors.textMuted}
+                    />
+                    <Text style={[styles.ruleText, rule.met && styles.ruleTextMet]}>
+                      {rule.label}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            <Input
+              label="Confirm Password *"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              placeholder="••••••••"
+              secureTextEntry
+              leftIcon="shield-checkmark-outline"
+            />
+            {confirmPassword.length > 0 && (
+              <View style={styles.matchIndicatorRow}>
+                <Ionicons
+                  name={password === confirmPassword ? 'checkmark-circle' : 'alert-circle'}
+                  size={14}
+                  color={password === confirmPassword ? colors.primary : colors.error}
+                />
+                <Text style={[styles.matchText, { color: password === confirmPassword ? colors.primary : colors.error }]}>
+                  {password === confirmPassword ? 'Passwords match' : 'Passwords do not match'}
+                </Text>
+              </View>
+            )}
 
             {(role === 'provider' || role === 'ngo') && (
               <Input
@@ -170,11 +244,22 @@ export default function RegisterScreen({ navigation }) {
               />
             )}
 
+            {role === 'ngo' && (
+              <Input
+                label="NGO Capacity (Number of People) *"
+                value={capacity}
+                onChangeText={setCapacity}
+                placeholder="e.g. 150 people"
+                keyboardType="numeric"
+                leftIcon="people-outline"
+              />
+            )}
+
             <Input
               label="Phone Number"
               value={phone}
               onChangeText={setPhone}
-              placeholder="+1 (555) 000-0000"
+              placeholder="+91 98765 43210"
               keyboardType="phone-pad"
               leftIcon="call-outline"
             />
@@ -303,5 +388,65 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '700',
     fontSize: 13,
+  },
+  passwordRulesContainer: {
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  passwordRulesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  passwordRulesTitle: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: colors.textMuted,
+    letterSpacing: 0.6,
+  },
+  passwordRulesStatus: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.textMuted,
+  },
+  passwordRulesSuccess: {
+    color: colors.primary,
+  },
+  passwordRulesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+  },
+  ruleItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    minWidth: '45%',
+    marginVertical: 2,
+  },
+  ruleText: {
+    fontSize: 10,
+    color: colors.textMuted,
+  },
+  ruleTextMet: {
+    color: colors.text,
+    fontWeight: '600',
+  },
+  matchIndicatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: -spacing.xs,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.xs,
+  },
+  matchText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

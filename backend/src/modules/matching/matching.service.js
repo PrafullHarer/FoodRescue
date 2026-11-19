@@ -220,4 +220,5 @@ module.exports = {
   matchDonation,
   matchAndNotify,
   haversineDistance,
+  ...require('./claim-ranking.service'),
 };

@@ -182,6 +182,11 @@ export default function DeliveriesPage() {
                       </div>
                       <div>
                         <div className="flex items-center gap-2 flex-wrap mb-1">
+                          {d.donation_code && (
+                            <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-[#18181b] border border-[#39FF14]/30 text-[#39FF14]">
+                              {d.donation_code}
+                            </span>
+                          )}
                           <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
                             isDelivered ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
                             isInTransit ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
@@ -394,7 +399,12 @@ export default function DeliveriesPage() {
               <div key={m.id} className="bg-[#121214] rounded-2xl border border-[#232328] p-6 space-y-4 shadow-xl hover:border-[#383842] transition-colors">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#232328] pb-4">
                   <div>
-                    <div className="flex items-center gap-2 mb-1.5">
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      {m.donation_code && (
+                        <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-[#18181b] border border-[#39FF14]/30 text-[#39FF14]">
+                          {m.donation_code}
+                        </span>
+                      )}
                       <span className="badge badge-neutral uppercase text-[10px] font-bold">
                         {m.category?.replace(/_/g, ' ')}
                       </span>

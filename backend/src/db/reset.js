@@ -2,9 +2,6 @@ const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const { pool, getClient } = require('../config/db');
-const migrateIncidents = require('./migrate-incidents');
-const migrateComplaints = require('./migrate-complaints');
-const migrateDataIsolation = require('./migrate-data-isolation');
 
 async function resetDatabase() {
   console.log('\n======================================================');
@@ -42,18 +39,8 @@ async function resetDatabase() {
     if (client) client.release();
   }
 
-  // Run specialized migrations
-  console.log('[RESET] 4. Running Incidents migration...');
-  await migrateIncidents();
-
-  console.log('[RESET] 5. Running Complaints migration...');
-  await migrateComplaints();
-
-  console.log('[RESET] 6. Running Data Isolation migration...');
-  await migrateDataIsolation();
-
   // Seed Clean Demo & Platform Data
-  console.log('[RESET] 7. Seeding clean platform accounts and initial listings...');
+  console.log('[RESET] 4. Seeding clean platform accounts and initial listings...');
   let seedClient;
   try {
     seedClient = await getClient();

@@ -58,6 +58,7 @@ const getDonations = async (req, res, next) => {
       lat: req.query.lat,
       lng: req.query.lng,
       radiusKm: req.query.radius_km,
+      search: req.query.search || req.query.q,
     });
 
     res.json({ success: true, data: result });
@@ -185,6 +186,7 @@ const updateDonation = async (req, res, next) => {
 
 /**
  * POST /api/donations/:id/claim
+ * Allows any verified NGO to submit a claim request with their preferred pickup type.
  */
 const claimDonation = async (req, res, next) => {
   try {
@@ -202,21 +204,55 @@ const claimDonation = async (req, res, next) => {
     }
 
     const pickupType = req.body.pickupType || req.body.pickup_type || 'volunteer';
-    const claim = await donationService.claimDonation(req.params.id, rows[0].id, { pickupType });
-
-    // Notify provider that donation was claimed
-    notificationService.notifyStatusChange(req.params.id, 'claimed').catch(() => {});
-
-    // Auto-mark notifications as read for all NGOs since this donation is now claimed
-    notificationService.markDonationNotificationsReadOnClaim(req.params.id).catch(() => {});
+    const result = await donationService.claimDonation(req.params.id, rows[0].id, { pickupType });
 
     res.status(201).json({
       success: true,
-      message: pickupType === 'self_pickup'
-        ? 'Donation claimed for direct self-pickup by NGO!'
-        : 'Donation claimed! Pickup mission published to community volunteers.',
-      data: claim,
+      message: result.message || 'Claim request submitted successfully! The food provider will review all shelter requests and choose the recipient.',
+      data: result.claim || result,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/donations/:id/claims
+ * Food provider or admin reviews all NGO claim applications with reviews, capacity, and past history.
+ */
+const getDonationClaims = async (req, res, next) => {
+  try {
+    const claims = await donationService.getDonationClaims(req.params.id, req.user);
+    res.json({
+      success: true,
+      data: claims,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/donations/:id/claims/:claimId/accept
+ * Food provider awards the donation to the chosen NGO.
+ */
+const acceptClaim = async (req, res, next) => {
+  try {
+    const result = await donationService.selectClaim(req.params.id, req.params.claimId, req.user.id);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/donations/:id/claims/:claimId/reject
+ * Food provider declines an NGO's claim application.
+ */
+const rejectClaim = async (req, res, next) => {
+  try {
+    const result = await donationService.rejectClaim(req.params.id, req.params.claimId, req.user.id);
+    res.json(result);
   } catch (error) {
     next(error);
   }
@@ -344,6 +380,9 @@ module.exports = {
   getMyDonations,
   getMyClaims,
   getDonationById,
+  getDonationClaims,
+  acceptClaim,
+  rejectClaim,
   updateDonation,
   deleteDonation,
   claimDonation,

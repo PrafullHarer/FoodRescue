@@ -16,7 +16,11 @@ All protected endpoints require: `Authorization: Bearer <access_token>`
 |--------|------|------|-------|-------------|
 | GET | `/auth/google-config` | ✗ | — | Get Google OAuth client configuration |
 | POST | `/auth/register` | ✗ | — | Register new user (provider/ngo/volunteer) |
+| POST | `/auth/verify-email-otp` | ✗ | — | Verify 6-digit email OTP during registration |
+| POST | `/auth/resend-email-otp` | ✗ | — | Resend 6-digit email OTP for pending registration |
 | POST | `/auth/login` | ✗ | — | Login, returns access + refresh tokens |
+| POST | `/auth/forgot-password` | ✗ | — | Request 6-digit password reset OTP (Super Admin excluded) |
+| POST | `/auth/reset-password` | ✗ | — | Commit new password using verified 6-digit OTP |
 | POST | `/auth/google` | ✗ | — | Authenticate via Google ID token |
 | POST | `/auth/refresh` | ✗ | — | Refresh access token |
 | POST | `/auth/logout` | ✗ | — | Revoke refresh token |
@@ -32,6 +36,7 @@ All protected endpoints require: `Authorization: Bearer <access_token>`
 | GET | `/users/:id` | ✓ | any | Get user by ID with role profile |
 | PUT | `/users/:id` | ✓ | self/admin | Update user profile |
 | PATCH | `/users/:id/status` | ✓ | admin | Change user status |
+| DELETE | `/users/:id` | ✓ | self | Delete account (blocked for admin, validates in-flight missions) |
 
 ## Donations
 
@@ -44,7 +49,10 @@ All protected endpoints require: `Authorization: Bearer <access_token>`
 | POST | `/donations` | ✓ | provider | Create donation |
 | PUT | `/donations/:id` | ✓ | provider | Update donation (own, posted only) |
 | DELETE | `/donations/:id` | ✓ | provider | Delete own donation |
-| POST | `/donations/:id/claim` | ✓ | ngo | Claim a donation |
+| GET | `/donations/:id/claims` | ✓ | provider/admin | Get claims ranked by 5-Factor Priority Algorithm |
+| POST | `/donations/:id/claim` | ✓ | ngo | Submit claim for surplus donation |
+| POST | `/donations/:id/claims/:claimId/accept` | ✓ | provider | Accept NGO claim & create delivery record |
+| POST | `/donations/:id/claims/:claimId/reject` | ✓ | provider | Reject claim with optional reason notes |
 | POST | `/donations/:id/cancel` | ✓ | provider | Cancel own donation |
 | PATCH | `/donations/:id/pickup-type` | ✓ | ngo | Update pickup type for claimed donation |
 | GET | `/donations/:id/timeline` | optional | — | Get chronological donation lifecycle timeline events |
@@ -207,3 +215,142 @@ All protected endpoints require: `Authorization: Bearer <access_token>`
 | Method | Path | Auth | Roles | Description |
 |--------|------|------|-------|-------------|
 | GET | `/health` | ✗ | — | API health check |
+
+---
+
+## Detailed Payload Specifications
+
+### 1. Password Reset Flow
+
+#### `POST /auth/forgot-password`
+Initiates self-service password recovery by generating a single-use 6-digit OTP (10-minute expiry) delivered via email.
+> **Security Guard**: Super Administrators (`role === 'admin'`) are strictly rejected with `403 Forbidden`.
+
+- **Request Body**:
+```json
+{
+  "email": "shelter@kindness.org"
+}
+```
+- **Success Response (200 OK)**:
+```json
+{
+  "success": true,
+  "message": "Password reset verification code sent to your email."
+}
+```
+- **Error Response (403 Forbidden - Admin Protection)**:
+```json
+{
+  "success": false,
+  "message": "Super Administrator credentials cannot be reset via public recovery. Contact systems administrator."
+}
+```
+
+#### `POST /auth/reset-password`
+Validates the 6-digit OTP and commits the new `bcrypt` password hash.
+
+- **Request Body**:
+```json
+{
+  "email": "shelter@kindness.org",
+  "otp": "492817",
+  "newPassword": "NewSecurePassword123!"
+}
+```
+- **Success Response (200 OK)**:
+```json
+{
+  "success": true,
+  "message": "Password reset successful. You can now login with your new credentials."
+}
+```
+
+---
+
+### 2. Account Deletion Lifecycle
+
+#### `DELETE /users/:id`
+Permanently deletes the requesting user's account and associated data records.
+> **Security Guards**:
+> 1. Super Administrators (`role === 'admin'`) are strictly prohibited from deletion (`403 Forbidden`).
+> 2. Users with active in-flight missions (active donations, incoming deliveries, or pending claims) cannot delete until completed or cancelled (`400 Bad Request`).
+
+- **Headers**: `Authorization: Bearer <access_token>`
+- **Request Body**:
+```json
+{
+  "confirmation": "password123" // Or "DELETE" for OAuth-linked accounts
+}
+```
+- **Success Response (200 OK)**:
+```json
+{
+  "success": true,
+  "message": "Account and associated profile records have been permanently deleted."
+}
+```
+- **Error Response (400 Bad Request - In-Flight Mission Lock)**:
+```json
+{
+  "success": false,
+  "message": "Cannot delete account while you have active donations or delivery missions in progress."
+}
+```
+
+---
+
+### 3. Smart Shelter Claim Priority & Need Ranking
+
+#### `GET /donations/:id/claims`
+Fetches all candidate NGO claims submitted for a food donation, scored and ranked in real time by the 5-factor priority algorithm (`claim-ranking.service.js`).
+
+- **Headers**: `Authorization: Bearer <access_token>` (Provider or Admin)
+- **Success Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "c1a2b3c4-0000-0000-0000-000000000001",
+      "donation_id": "d1a2b3c4-0000-0000-0000-000000000001",
+      "ngo_id": "n1a2b3c4-0000-0000-0000-000000000001",
+      "ngo_name": "Hope Community Kitchen",
+      "ngo_phone": "+91 98765 43210",
+      "status": "pending",
+      "claim_time": "2026-11-19T10:30:00Z",
+      "priority_score": 94,
+      "need_score": 95,
+      "need_level": "critical",
+      "capacity_score": 100,
+      "distance_score": 90,
+      "reviews_score": 88,
+      "reliability_score": 100,
+      "distance_km": 2.4,
+      "days_since_last_donation": 14,
+      "daily_capacity": 500,
+      "daily_beneficiaries": 450,
+      "bayesian_rating": 4.82,
+      "recommendation_badge": "Best Match",
+      "recommendation_badge_type": "best_match",
+      "recommendation_reason": "Acute hunger deficit (14 days since last food intake), optimal portion intake match, and excellent community trust (4.8★).",
+      "ranking_factors": {
+        "hunger_need": 95,
+        "community_reviews": 88,
+        "absorption_capacity": 100,
+        "proximity": 90,
+        "reliability": 100
+      }
+    }
+  ]
+}
+```
+
+---
+
+## 📞 Support & Operational Inquiries
+
+For developer queries or API access support:
+- **Central Project Email**: `2026.food.rescue@gmail.com`
+- **India Country Helpline**: `+91 1800 555 7372`
+- **Emergency Dispatch API Support**: `+91 98765 43211`

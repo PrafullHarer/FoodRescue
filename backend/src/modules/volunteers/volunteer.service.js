@@ -92,7 +92,7 @@ const updateLocation = async (userId, latitude, longitude) => {
 const getMyDeliveries = async (userId) => {
   const { rows } = await db.query(
     `SELECT d.*,
-            fd.id AS donation_id, fd.title AS donation_title, fd.description AS donation_description,
+            fd.id AS donation_id, fd.donation_code, fd.title AS donation_title, fd.description AS donation_description,
             fd.category, fd.quantity, fd.unit, fd.weight_kg, fd.image_url AS donation_image,
             fd.pickup_address, fd.pickup_window_start, fd.pickup_window_end, fd.expiry_time,
             fd.special_instructions, fd.status AS donation_status,
@@ -143,7 +143,7 @@ const getAvailableMissions = async (userId) => {
 
   const { rows } = await db.query(
     `SELECT d.id AS id, d.id AS delivery_id, d.status AS delivery_status,
-            fd.id AS donation_id, fd.title AS donation_title, fd.description AS donation_description,
+            fd.id AS donation_id, fd.donation_code, fd.title AS donation_title, fd.description AS donation_description,
             fd.category, fd.quantity, fd.unit, fd.weight_kg, fd.image_url AS donation_image,
             fd.pickup_address, fd.latitude AS pickup_lat, fd.longitude AS pickup_lng,
             fd.pickup_window_start, fd.pickup_window_end, fd.expiry_time,

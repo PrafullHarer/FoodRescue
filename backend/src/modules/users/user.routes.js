@@ -21,4 +21,7 @@ router.put('/:id', userController.updateUser);
 // Admin-only: change user status
 router.patch('/:id/status', roleGuard('admin'), userController.updateUserStatus);
 
+// Users can delete their own account; admins can delete any
+router.delete('/:id', userController.deleteUser);
+
 module.exports = router;

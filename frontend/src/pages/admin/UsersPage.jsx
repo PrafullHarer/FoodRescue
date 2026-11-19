@@ -38,7 +38,8 @@ export default function UsersPage() {
 
   const filteredUsers = users.filter((u) => {
     const matchesSearch = (u.full_name || '').toLowerCase().includes(search.toLowerCase()) ||
-                          (u.email || '').toLowerCase().includes(search.toLowerCase());
+                          (u.email || '').toLowerCase().includes(search.toLowerCase()) ||
+                          (u.user_code || '').toLowerCase().includes(search.toLowerCase());
     const matchesRole = roleFilter === 'all' || u.role === roleFilter;
     return matchesSearch && matchesRole;
   });
@@ -108,7 +109,14 @@ export default function UsersPage() {
                         {(u.full_name || u.email || 'U')[0].toUpperCase()}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-semibold text-sm text-white truncate">{u.full_name || 'Anonymous User'}</p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="font-semibold text-sm text-white truncate">{u.full_name || 'Anonymous User'}</p>
+                          {u.user_code && (
+                            <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300 font-bold border border-neutral-700">
+                              {u.user_code}
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-neutral-400 truncate">{u.email}</p>
                       </div>
                     </div>
@@ -152,14 +160,21 @@ export default function UsersPage() {
                 </thead>
                 <tbody className="divide-y divide-[#232328] text-sm">
                   {filteredUsers.map((u) => (
-                    <tr key={u.id} className="hover:bg-[#18181b] transition-colors">
+                    <tr key={u.id} className="hover:bg-neutral-50 dark:hover:bg-[#18181b] transition-colors">
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-full bg-white text-black font-bold flex items-center justify-center flex-shrink-0 text-xs">
                             {(u.full_name || u.email || 'U')[0].toUpperCase()}
                           </div>
                           <div>
-                            <div className="font-semibold text-white">{u.full_name || 'Anonymous User'}</div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-white">{u.full_name || 'Anonymous User'}</span>
+                              {u.user_code && (
+                                <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300 font-bold border border-neutral-700">
+                                  {u.user_code}
+                                </span>
+                              )}
+                            </div>
                             <div className="text-xs text-neutral-400 flex items-center gap-3 mt-0.5">
                               <span className="flex items-center gap-1"><Mail className="w-3 h-3 text-neutral-500" /> {u.email}</span>
                               {u.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3 text-neutral-500" /> {u.phone}</span>}

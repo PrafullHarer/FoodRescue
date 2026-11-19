@@ -6,9 +6,12 @@ import {
   ArrowLeft, Package, Clock, MapPin, CheckCircle2,
   AlertTriangle, QrCode, Share2, Check, Phone, Mail,
   User, Truck, ShieldCheck, Star, ThumbsUp,
-  UserCheck, Trash2, ShieldAlert, Calendar, Building2, RefreshCw
+  UserCheck, Trash2, ShieldAlert, Calendar, Building2, RefreshCw,
+  Warehouse, Users, MessageSquare, Sparkles, Award,
+  SlidersHorizontal, Info, ChevronDown, ChevronUp, TrendingUp, Percent, XCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useReputation } from '../../contexts/ReputationContext';
 import ReviewModal from '../../components/common/ReviewModal';
 import StaticRouteMap from '../../components/common/StaticRouteMap';
 import ClaimDonationModal from '../../components/common/ClaimDonationModal';
@@ -31,6 +34,46 @@ export default function DonationDetailPage() {
   const [showComplaintModal, setShowComplaintModal] = useState(false);
   const [switchingPickupType, setSwitchingPickupType] = useState(false);
   const [retryingEmails, setRetryingEmails] = useState(false);
+  const [selectingClaimId, setSelectingClaimId] = useState(null);
+  const [rejectingClaimId, setRejectingClaimId] = useState(null);
+  const [expandedReviewsClaimId, setExpandedReviewsClaimId] = useState(null);
+  const [claimsSortBy, setClaimsSortBy] = useState('algorithm'); // 'algorithm' | 'need' | 'capacity' | 'distance' | 'rating'
+  const [showAlgoExplainer, setShowAlgoExplainer] = useState(false);
+  const { openReputation } = useReputation();
+
+  const handleSelectClaim = async (claimId, ngoName) => {
+    if (!window.confirm(`Are you sure you want to award this donation to ${ngoName || 'this shelter'}? The shelter will be notified and pickup/delivery will be scheduled.`)) {
+      return;
+    }
+
+    try {
+      setSelectingClaimId(claimId);
+      const { data } = await api.post(`/donations/${id}/claims/${claimId}/accept`);
+      toast.success(data.message || `Donation awarded to ${ngoName}!`);
+      await fetchDonation();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to award donation');
+    } finally {
+      setSelectingClaimId(null);
+    }
+  };
+
+  const handleRejectClaim = async (claimId, ngoName) => {
+    if (!window.confirm(`Decline claim request from ${ngoName || 'this shelter'}?`)) {
+      return;
+    }
+
+    try {
+      setRejectingClaimId(claimId);
+      const { data } = await api.post(`/donations/${id}/claims/${claimId}/reject`);
+      toast.success(data.message || 'Claim request declined');
+      await fetchDonation();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to decline claim request');
+    } finally {
+      setRejectingClaimId(null);
+    }
+  };
 
   const handleRetryEmails = async () => {
     try {
@@ -70,7 +113,7 @@ export default function DonationDetailPage() {
     try {
       setClaiming(true);
       const { data } = await api.post(`/donations/${donationId}/claim`, { pickupType });
-      toast.success(data.message || 'Donation claimed successfully!');
+      toast.success(data.message || 'Claim request submitted! Awaiting food provider selection.');
       setShowClaimModal(false);
       fetchDonation();
     } catch (err) {
@@ -184,6 +227,51 @@ export default function DonationDetailPage() {
         </div>
       )}
 
+      {/* NGO Application Status Banners */}
+      {isNgo && donation.my_claim?.status === 'pending' && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3.5 text-amber-200 text-xs shadow-lg animate-fade-in">
+          <Clock className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <span className="font-bold block text-sm text-white">Your Claim Request is Under Review by the Donor</span>
+            <p className="leading-relaxed text-neutral-300">
+              You submitted a claim request with <strong>{donation.my_claim.pickup_type === 'self_pickup' ? 'Direct Self-Pickup' : 'Volunteer Courier Transport'}</strong>. All verified shelters can apply; the food provider will select the recipient based on daily capacity, recent donations received, and verified community reviews.
+            </p>
+            <span className="inline-block mt-0.5 font-semibold text-amber-400 text-[11px]">
+              You will receive an in-app notification as soon as the donor chooses a shelter.
+            </span>
+          </div>
+        </div>
+      )}
+
+      {isNgo && donation.my_claim?.status === 'rejected' && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-rose-950/20 border border-rose-500/30 flex items-start gap-3.5 text-rose-200 text-xs shadow-lg animate-fade-in">
+          <XCircle className="w-5 h-5 text-rose-400 flex-shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <span className="font-bold block text-sm text-white">Claim Application Declined by Donor</span>
+            <p className="leading-relaxed text-neutral-300">
+              The food provider declined your organization's claim application for this donation. Once declined, you cannot submit another claim for this package.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Provider Notification Banner for Pending Claims */}
+      {isOwner && ['posted', 'matched'].includes(donation.status) && (donation.claims || []).filter(c => c.claim_status === 'pending').length > 0 && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-500/15 to-orange-500/10 border border-amber-500/30 flex items-start justify-between gap-3 text-amber-200 text-xs shadow-lg animate-fade-in">
+          <div className="flex items-start gap-3">
+            <Users className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <span className="font-bold block text-sm text-white">
+                {(donation.claims || []).filter(c => c.claim_status === 'pending').length} Shelter Claim Application{((donation.claims || []).filter(c => c.claim_status === 'pending').length) > 1 ? 's' : ''} Received!
+              </span>
+              <p className="leading-relaxed text-neutral-300">
+                Local shelters have requested to claim your surplus food. Scroll down to review their <strong>daily capacity</strong>, <strong>recent donations received</strong>, and <strong>reviews</strong> to select who gets the donation.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Details Card */}
       <div className="bg-[#121214] rounded-[24px] border border-[#232328] shadow-2xl overflow-hidden p-6 sm:p-8 space-y-6">
         {/* Optional Food Image Banner */}
@@ -205,6 +293,12 @@ export default function DonationDetailPage() {
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-[#232328] pb-6">
           <div>
             <div className="flex items-center gap-2 flex-wrap mb-2">
+              {donation.donation_code && (
+                <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#1c1c22] border border-[#39FF14]/40 text-[#39FF14] flex items-center gap-1 shadow-sm">
+                  <span className="text-neutral-400 font-sans font-medium text-[10px]">ID:</span>
+                  {donation.donation_code}
+                </span>
+              )}
               <span className="badge badge-neutral uppercase text-[10px] font-bold">
                 {donation.category?.replace(/_/g, ' ') || 'Food Parcel'}
               </span>
@@ -330,14 +424,24 @@ export default function DonationDetailPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
           <div className="flex items-center gap-2.5 flex-wrap">
             {isNgo && isAvailable && (
-              <button
-                onClick={() => setShowClaimModal(true)}
-                disabled={claiming}
-                className="btn btn-primary text-xs flex items-center gap-2"
-              >
-                <Package className="w-4 h-4" />
-                {claiming ? 'Claiming...' : 'Claim This Donation'}
-              </button>
+              donation.my_claim?.status === 'pending' ? (
+                <button
+                  disabled
+                  className="btn bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs flex items-center gap-2 cursor-default"
+                >
+                  <Clock className="w-4 h-4 text-amber-400" />
+                  Claim Request Pending Review
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowClaimModal(true)}
+                  disabled={claiming}
+                  className="btn btn-primary text-xs flex items-center gap-2"
+                >
+                  <Package className="w-4 h-4" />
+                  {claiming ? 'Submitting Request...' : 'Claim This Donation'}
+                </button>
+              )
             )}
 
             {isOwner && isAvailable && (
@@ -604,6 +708,546 @@ export default function DonationDetailPage() {
         </div>
       )}
 
+      {/* Shelter Claim Applications Section (For Food Provider to choose which NGO gets the donation) */}
+      {isOwner && (() => {
+        const rawClaims = donation?.claims || [];
+        const sortedClaims = [...rawClaims].sort((a, b) => {
+          // Selected / accepted claim always tops the list
+          if (a.claim_status === 'accepted' && b.claim_status !== 'accepted') return -1;
+          if (b.claim_status === 'accepted' && a.claim_status !== 'accepted') return 1;
+
+          if (claimsSortBy === 'algorithm') {
+            return (a.rank || 99) - (b.rank || 99);
+          }
+          if (claimsSortBy === 'need') {
+            return (b.need_score ?? 0) - (a.need_score ?? 0);
+          }
+          if (claimsSortBy === 'capacity') {
+            return (Number(b.ngo_capacity) || 0) - (Number(a.ngo_capacity) || 0);
+          }
+          if (claimsSortBy === 'distance') {
+            const distA = a.distance_km !== null && a.distance_km !== undefined ? a.distance_km : 9999;
+            const distB = b.distance_km !== null && b.distance_km !== undefined ? b.distance_km : 9999;
+            return distA - distB;
+          }
+          if (claimsSortBy === 'rating') {
+            return (b.average_rating || 0) - (a.average_rating || 0);
+          }
+          return 0;
+        });
+
+        return (
+          <div className="bg-[#121214] rounded-[24px] border border-[#232328] p-6 sm:p-8 space-y-6 shadow-2xl">
+            {/* Header & Meta */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#232328] pb-5">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="badge badge-primary text-[10px] font-bold uppercase">
+                    Shelter Applications
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <Sparkles className="w-3 h-3 text-emerald-400" /> Smart Ranking Enabled
+                  </span>
+                  {rawClaims.filter(c => c.claim_status === 'pending').length > 0 && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                      {rawClaims.filter(c => c.claim_status === 'pending').length} Awaiting Selection
+                    </span>
+                  )}
+                </div>
+                <h3 className="text-xl font-bold text-white tracking-tight mt-1.5">
+                  Shelter Claim Requests & Selection
+                </h3>
+                <p className="text-xs text-neutral-400 mt-1 max-w-2xl leading-relaxed">
+                  Our priority algorithm analyzes applicant hunger need, recent donation history, shelter feeding capacity, donor reviews, and travel distance to recommend the most deserving community shelter.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setShowAlgoExplainer(!showAlgoExplainer)}
+                  className="px-3 py-1.5 rounded-xl bg-[#18181c] hover:bg-[#22222a] border border-[#2a2a34] text-xs font-semibold text-neutral-300 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <Info className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>How Algorithm Ranks</span>
+                  {showAlgoExplainer ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </button>
+                <div className="text-xs text-neutral-400 bg-[#16161a] px-3 py-1.5 rounded-xl border border-[#24242c]">
+                  Total Applicants: <strong className="text-white font-bold">{rawClaims.length}</strong>
+                </div>
+              </div>
+            </div>
+
+            {/* Educational Algorithm Explainer Card (Toggleable) */}
+            {showAlgoExplainer && (
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-emerald-950/20 via-[#101014] to-sky-950/20 border border-emerald-500/30 space-y-3.5 animate-fade-in shadow-xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-emerald-400" />
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                      Shelter Selection Priority Model (5 Core Factors)
+                    </h4>
+                  </div>
+                  <span className="text-[10px] text-emerald-400 font-mono font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                    Weighted Multi-Attribute Utility
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 pt-1">
+                  <div className="p-3 rounded-xl bg-[#16161c] border border-[#262632] space-y-1">
+                    <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wide block">
+                      1. Need & Equity (35%)
+                    </span>
+                    <p className="text-[11px] text-neutral-300 leading-relaxed font-medium">
+                      Tracks donations received in the past 7 and 30 days. Shelters with zero recent food receipts receive maximum priority to prevent hoarding.
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-[#16161c] border border-[#262632] space-y-1">
+                    <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wide block">
+                      2. Reviews & Trust (25%)
+                    </span>
+                    <p className="text-[11px] text-neutral-300 leading-relaxed font-medium">
+                      Bayesian-smoothed provider ratings & review volume. Ensures fair initial standing for new shelters while rewarding proven top-rated NGOs.
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-[#16161c] border border-[#262632] space-y-1">
+                    <span className="text-[10px] font-bold text-sky-400 uppercase tracking-wide block">
+                      3. Capacity Fit (20%)
+                    </span>
+                    <p className="text-[11px] text-neutral-300 leading-relaxed font-medium">
+                      Evaluates shelter daily population against parcel quantity to guarantee quick, complete meal consumption with zero spoilage risk.
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-[#16161c] border border-[#262632] space-y-1">
+                    <span className="text-[10px] font-bold text-teal-400 uppercase tracking-wide block">
+                      4. Proximity (15%)
+                    </span>
+                    <p className="text-[11px] text-neutral-300 leading-relaxed font-medium">
+                      Haversine transit distance from your kitchen. Minimizes courier travel time and keeps prepared warm meals fresh and safe.
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-[#16161c] border border-[#262632] space-y-1">
+                    <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wide block">
+                      5. Reliability (5%)
+                    </span>
+                    <p className="text-[11px] text-neutral-300 leading-relaxed font-medium">
+                      Official NGO registration verification check and completion track record across historical food rescue missions.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Interactive Sort Bar */}
+            {rawClaims.length > 0 && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-2xl bg-[#0c0c0e] border border-[#232328]">
+                <div className="flex items-center gap-2 text-xs text-neutral-400">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-neutral-500" />
+                  <span className="font-semibold text-neutral-300">Sort Shelters:</span>
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {[
+                    { id: 'algorithm', label: '✨ Algorithm Recommended' },
+                    { id: 'need', label: '🎯 Highest Need' },
+                    { id: 'capacity', label: '🏢 Daily Capacity' },
+                    { id: 'distance', label: '📍 Closest Proximity' },
+                    { id: 'rating', label: '⭐ Highest Rating' },
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setClaimsSortBy(tab.id)}
+                      className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                        claimsSortBy === tab.id
+                          ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/20 font-bold'
+                          : 'bg-[#18181c] text-neutral-400 hover:text-white border border-[#26262e]'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {rawClaims.length === 0 ? (
+              <div className="text-center py-10 px-4 rounded-2xl bg-[#0c0c0e] border border-[#232328] space-y-2">
+                <Users className="w-10 h-10 text-neutral-600 mx-auto stroke-1" />
+                <p className="text-sm font-semibold text-white">No Shelter Applications Yet</p>
+                <p className="text-xs text-neutral-400 max-w-md mx-auto">
+                  Nearby verified community shelters will appear here with algorithm rankings, reviews, daily capacity, and recent donation history once they apply.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {sortedClaims.map((claim) => {
+                  const isPending = claim.claim_status === 'pending';
+                  const isAccepted = claim.claim_status === 'accepted';
+                  const isRejected = claim.claim_status === 'rejected';
+                  const isReviewsExpanded = expandedReviewsClaimId === claim.claim_id;
+                  const isTopRanked = claim.rank === 1 && !isAccepted;
+                  const isSecondRanked = claim.rank === 2 && !isAccepted;
+
+                  return (
+                    <div
+                      key={claim.claim_id}
+                      className={`rounded-2xl border transition-all p-5 sm:p-6 space-y-4.5 ${
+                        isAccepted
+                          ? 'bg-emerald-500/5 border-emerald-500/40 shadow-lg shadow-emerald-500/5'
+                          : isTopRanked
+                          ? 'bg-gradient-to-b from-emerald-500/10 via-neutral-50 to-white dark:from-[#181a1f] dark:to-[#141418] border-emerald-500/45 shadow-xl shadow-emerald-500/5'
+                          : isPending
+                          ? 'bg-white dark:bg-[#18181c] border-neutral-200 dark:border-[#2e2e38] hover:border-neutral-400 dark:hover:border-neutral-500 shadow-md'
+                          : 'bg-neutral-50 dark:bg-[#141416]/60 border-neutral-200 dark:border-[#232328] opacity-75'
+                      }`}
+                    >
+                      {/* Top Rank Badge & Priority Score Header */}
+                      <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-neutral-200 dark:border-[#25252e]">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {isAccepted ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-700 dark:text-emerald-300 font-bold text-xs">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
+                              Selected Recipient
+                            </span>
+                          ) : isTopRanked ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-emerald-500/25 via-teal-500/20 to-amber-500/20 border border-emerald-500/40 text-emerald-800 dark:text-emerald-300 font-bold text-xs shadow-sm shadow-emerald-500/10">
+                              <Sparkles className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 animate-pulse" />
+                              #1 Top Algorithm Recommendation
+                            </span>
+                          ) : isSecondRanked ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-500/15 border border-sky-500/30 text-sky-700 dark:text-sky-300 font-bold text-xs">
+                              <Award className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400" />
+                              #2 Strong Match Candidate
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-neutral-100 dark:bg-[#202026] border border-neutral-200 dark:border-[#2c2c36] text-neutral-700 dark:text-neutral-300 font-semibold text-xs">
+                              #{claim.rank || '•'} Applicant Shelter
+                            </span>
+                          )}
+
+                          {claim.priority_score !== undefined && (
+                            <span className={`text-xs font-bold font-mono px-2.5 py-0.5 rounded-full border ${
+                              claim.priority_score >= 85
+                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                : claim.priority_score >= 70
+                                ? 'bg-sky-500/10 text-sky-400 border-sky-500/20'
+                                : 'bg-neutral-800 text-neutral-300 border-neutral-700'
+                            }`}>
+                              {claim.priority_score}% Priority Score
+                            </span>
+                          )}
+                        </div>
+
+                        {isTopRanked && (
+                          <span className="text-[11px] text-emerald-400/90 font-medium flex items-center gap-1">
+                            <TrendingUp className="w-3.5 h-3.5" /> Highest Hunger Urgency & Trust Match
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Header: Shelter Name & Status */}
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                        <div className="flex items-start gap-3.5">
+                          <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 text-white font-bold ${
+                            isAccepted
+                              ? 'bg-emerald-600'
+                              : isTopRanked
+                              ? 'bg-gradient-to-br from-emerald-600 to-teal-700 shadow-md shadow-emerald-600/20'
+                              : 'bg-neutral-800 border border-neutral-700'
+                          }`}>
+                            <Building2 className="w-5 h-5" />
+                          </div>
+
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="text-base font-bold text-white tracking-tight">
+                                {claim.ngo_name}
+                              </h4>
+                              {claim.ngo_is_verified && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                                  <ShieldCheck className="w-3 h-3" /> Verified NGO
+                                </span>
+                              )}
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded-full border border-sky-500/20">
+                                <Users className="w-3 h-3" /> {claim.ngo_capacity ? `${claim.ngo_capacity} People in Shelter` : 'Shelter people info'}
+                              </span>
+                              {claim.distance_km !== null && claim.distance_km !== undefined && (
+                                <span className="text-[11px] text-neutral-400 font-medium">
+                                  ({claim.distance_km} km away)
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-3 text-xs text-neutral-400 mt-1 flex-wrap">
+                              <span className="flex items-center gap-1">
+                                <MapPin className="w-3.5 h-3.5 text-neutral-500" />
+                                <span className="truncate max-w-xs">{claim.ngo_address || 'Address on record'}</span>
+                              </span>
+                              {claim.claimed_at && (
+                                <span className="text-neutral-500">
+                                  Applied {new Date(claim.claimed_at).toLocaleDateString()} {new Date(claim.claimed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Status Badge & Collection Mode */}
+                        <div className="flex items-center sm:flex-col sm:items-end gap-1.5 flex-shrink-0">
+                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${
+                            isAccepted
+                              ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                              : isPending
+                              ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                              : 'bg-neutral-500/15 text-neutral-400 border-neutral-500/30'
+                          }`}>
+                            {isAccepted ? '✓ Selected Recipient' : isPending ? 'Pending Selection' : 'Declined'}
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#202026] text-neutral-300 border border-[#2c2c36]">
+                            {claim.claim_pickup_type === 'self_pickup' ? 'NGO Direct Self-Pickup' : 'Volunteer Courier'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Multi-Factor Algorithm Breakdown Progress Bars */}
+                      <div className="p-3.5 rounded-xl bg-[#0c0c0e] border border-[#232328] space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
+                            <SlidersHorizontal className="w-3 h-3 text-neutral-500" /> Multi-Factor Algorithm Breakdown
+                          </span>
+                          <span className="text-[10px] text-neutral-500">
+                            Need 35% · Reviews 25% · Capacity 20% · Distance 15% · Reliability 5%
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                          {/* 1. Need Factor (35%) */}
+                          <div className="p-2.5 rounded-lg bg-[#141418] border border-[#26262e] space-y-1">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-neutral-400 font-medium">Hunger Need (35%)</span>
+                              <span className={`font-bold font-mono ${
+                                (claim.need_score ?? 80) >= 80 ? 'text-emerald-400' : (claim.need_score ?? 80) >= 60 ? 'text-amber-400' : 'text-neutral-400'
+                              }`}>
+                                {claim.need_score ?? 80}%
+                              </span>
+                            </div>
+                            <div className="w-full h-1.5 bg-[#202026] rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${
+                                  (claim.need_score ?? 80) >= 80 ? 'bg-emerald-500' : (claim.need_score ?? 80) >= 60 ? 'bg-amber-500' : 'bg-neutral-500'
+                                }`}
+                                style={{ width: `${claim.need_score ?? 80}%` }}
+                              />
+                            </div>
+                            <p className="text-[10px] text-neutral-400 truncate">
+                              {claim.past_7_days_count === 0 ? '0 received in 7d (Critical)' : `${claim.past_7_days_count} in past 7d`}
+                            </p>
+                          </div>
+
+                          {/* 2. Reviews Factor (25%) */}
+                          <div className="p-2.5 rounded-lg bg-[#141418] border border-[#26262e] space-y-1">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-neutral-400 font-medium">Reviews & Trust (25%)</span>
+                              <span className="text-amber-400 font-bold font-mono">
+                                {claim.reviews_score ?? 76}%
+                              </span>
+                            </div>
+                            <div className="w-full h-1.5 bg-[#202026] rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-amber-500 rounded-full"
+                                style={{ width: `${claim.reviews_score ?? 76}%` }}
+                              />
+                            </div>
+                            <p className="text-[10px] text-neutral-400 truncate">
+                              {claim.average_rating > 0 ? `${claim.average_rating.toFixed(1)}★ (${claim.total_reviews} rev)` : 'New Verified Shelter'}
+                            </p>
+                          </div>
+
+                          {/* 3. Capacity Factor (20%) */}
+                          <div className="p-2.5 rounded-lg bg-[#141418] border border-[#26262e] space-y-1">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-neutral-400 font-medium">Capacity Fit (20%)</span>
+                              <span className="text-sky-400 font-bold font-mono">
+                                {claim.capacity_score ?? 90}%
+                              </span>
+                            </div>
+                            <div className="w-full h-1.5 bg-[#202026] rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-sky-500 rounded-full"
+                                style={{ width: `${claim.capacity_score ?? 90}%` }}
+                              />
+                            </div>
+                            <p className="text-[10px] text-neutral-400 truncate">
+                              {claim.ngo_capacity ? `${claim.ngo_capacity} meals/day` : '500 meals/day'}
+                            </p>
+                          </div>
+
+                          {/* 4. Distance Factor (15%) */}
+                          <div className="p-2.5 rounded-lg bg-[#141418] border border-[#26262e] space-y-1">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-neutral-400 font-medium">Proximity (15%)</span>
+                              <span className="text-teal-400 font-bold font-mono">
+                                {claim.distance_score ?? 70}%
+                              </span>
+                            </div>
+                            <div className="w-full h-1.5 bg-[#202026] rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-teal-500 rounded-full"
+                                style={{ width: `${claim.distance_score ?? 70}%` }}
+                              />
+                            </div>
+                            <p className="text-[10px] text-neutral-400 truncate">
+                              {claim.distance_km !== null && claim.distance_km !== undefined ? `${claim.distance_km} km away` : 'Distance synced'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 3 Metrics: Capacity, Past Donations, Reviews */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                        {/* 1. Total NGO Capacity & Number of People */}
+                        <div className="p-3.5 rounded-xl bg-[#0e0e11] border border-[#232328] space-y-1.5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 flex items-center gap-1">
+                            <Building2 className="w-3.5 h-3.5 text-sky-400" /> Total NGO Capacity & People
+                          </span>
+                          <div>
+                            <p className="text-base font-bold text-white">
+                              {claim.ngo_capacity ? `${claim.ngo_capacity} meals/day` : '500 meals/day'}
+                            </p>
+                            <p className="text-[11px] text-sky-400 font-semibold flex items-center gap-1.5 mt-0.5">
+                              <Users className="w-3.5 h-3.5 text-sky-400 flex-shrink-0" />
+                              <span>{claim.ngo_capacity || 150} people in shelter</span>
+                            </p>
+                          </div>
+                          <p className="text-[10px] text-neutral-500">
+                            Daily distribution capacity & current population
+                          </p>
+                        </div>
+
+                        {/* 2. Amount of Donations Received in Past Days */}
+                        <div className="p-3.5 rounded-xl bg-[#0e0e11] border border-[#232328] space-y-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 flex items-center gap-1">
+                            <Package className="w-3.5 h-3.5 text-amber-400" /> Recent Donations Received
+                          </span>
+                          <div className="text-xs space-y-0.5">
+                            <p className="text-white font-semibold">
+                              Past 7 Days: <span className="text-amber-300 font-bold">{claim.past_7_days_count} donations</span> ({claim.past_7_days_quantity} meals)
+                            </p>
+                            <p className="text-neutral-400 text-[11px]">
+                              Past 30 Days: <strong className="text-neutral-200">{claim.past_30_days_count} donations</strong> ({claim.past_30_days_quantity} meals)
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* 3. Community Reviews & Trust Rating */}
+                        <div className="p-3.5 rounded-xl bg-[#0e0e11] border border-[#232328] space-y-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 flex items-center gap-1">
+                            <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" /> Community Reviews
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-base font-bold text-white">
+                              ★ {claim.average_rating > 0 ? claim.average_rating.toFixed(1) : 'New'}
+                            </span>
+                            <span className="text-xs text-neutral-400">
+                              ({claim.total_reviews} {claim.total_reviews === 1 ? 'review' : 'reviews'})
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 pt-0.5">
+                            <button
+                              type="button"
+                              onClick={() => openReputation(claim.ngo_user_id)}
+                              className="text-[11px] text-amber-400 hover:text-amber-300 underline font-medium cursor-pointer"
+                            >
+                              Full Profile
+                            </button>
+                            {claim.recent_reviews?.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setExpandedReviewsClaimId(isReviewsExpanded ? null : claim.claim_id)}
+                                className="text-[11px] text-neutral-400 hover:text-white underline font-medium cursor-pointer"
+                              >
+                                {isReviewsExpanded ? 'Hide Reviews' : `Read Reviews (${claim.recent_reviews.length})`}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Expandable Reviews Section */}
+                      {isReviewsExpanded && claim.recent_reviews?.length > 0 && (
+                        <div className="p-4 rounded-xl bg-[#0a0a0c] border border-[#232328] space-y-3 animate-fade-in">
+                          <h5 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                            <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
+                            Verified Reviews from Food Providers
+                          </h5>
+                          <div className="space-y-2.5">
+                            {claim.recent_reviews.map((rev) => (
+                              <div key={rev.id} className="p-3 rounded-lg bg-[#141416] border border-[#232328] text-xs space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-semibold text-white">
+                                    {rev.reviewer_business_name || rev.reviewer_name || 'Verified Food Donor'}
+                                  </span>
+                                  <span className="text-amber-400 font-bold">
+                                    {'★'.repeat(rev.rating)}
+                                    <span className="text-neutral-600">{'★'.repeat(5 - rev.rating)}</span>
+                                  </span>
+                                </div>
+                                {rev.comment && (
+                                  <p className="text-neutral-300 text-[11px] italic leading-relaxed">
+                                    "{rev.comment}"
+                                  </p>
+                                )}
+                                <span className="text-[10px] text-neutral-500 block">
+                                  {new Date(rev.created_at).toLocaleDateString()}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Action Buttons for Provider */}
+                      {isAvailable && isPending && (
+                        <div className="flex items-center gap-3 pt-2 border-t border-[#232328]">
+                          <button
+                            type="button"
+                            onClick={() => handleSelectClaim(claim.claim_id, claim.ngo_name)}
+                            disabled={selectingClaimId === claim.claim_id || rejectingClaimId === claim.claim_id}
+                            className="flex-1 btn btn-primary text-xs py-2.5 flex items-center justify-center gap-2 cursor-pointer font-bold bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/20"
+                          >
+                            {selectingClaimId === claim.claim_id ? (
+                              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : (
+                              <>
+                                <CheckCircle2 className="w-4 h-4" />
+                                <span>Award Donation</span>
+                              </>
+                            )}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRejectClaim(claim.claim_id, claim.ngo_name)}
+                            disabled={selectingClaimId === claim.claim_id || rejectingClaimId === claim.claim_id}
+                            className="btn border border-[#383842] bg-[#1a1a20] hover:bg-[#25252c] text-neutral-300 hover:text-white text-xs py-2.5 px-4 cursor-pointer"
+                          >
+                            {rejectingClaimId === claim.claim_id ? 'Declining...' : 'Decline'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* 2 Cards: Food Provider Details & Claim / Destination Details */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Food Provider Card */}
@@ -702,20 +1346,60 @@ export default function DonationDetailPage() {
           {/* Body Content based on lifecycle state */}
           {isAvailable ? (
             <div className="py-6 text-center space-y-3">
-              <Package className="w-9 h-9 text-emerald-400/80 mx-auto stroke-1" />
-              <div className="space-y-1">
-                <p className="text-xs font-semibold text-white">Available for Shelter Claim</p>
-                <p className="text-[11px] text-neutral-400 max-w-xs mx-auto leading-relaxed">
-                  This food package is available in the community pool. Any registered NGO or community shelter can claim this package for immediate distribution.
-                </p>
-              </div>
-              {isNgo && (
-                <button
-                  onClick={() => setShowClaimModal(true)}
-                  className="btn btn-primary text-xs inline-flex items-center gap-1.5 mt-2"
-                >
-                  <Package className="w-3.5 h-3.5" /> Claim Food Parcel
-                </button>
+              {isNgo && donation.my_claim?.status === 'pending' ? (
+                <>
+                  <Clock className="w-9 h-9 text-amber-400 mx-auto stroke-1" />
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-white">Claim Request Submitted</p>
+                    <p className="text-[11px] text-neutral-400 max-w-xs mx-auto leading-relaxed">
+                      Your organization's claim request has been registered. The donor is evaluating applications based on capacity and trust reviews.
+                    </p>
+                  </div>
+                  <span className="inline-block px-3 py-1 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    Pending Provider Selection
+                  </span>
+                </>
+              ) : isNgo && donation.my_claim?.status === 'rejected' ? (
+                <>
+                  <XCircle className="w-9 h-9 text-rose-400 mx-auto stroke-1" />
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-white">Application Declined by Donor</p>
+                    <p className="text-[11px] text-neutral-400 max-w-xs mx-auto leading-relaxed">
+                      The food provider has declined your organization's claim application for this donation. You cannot re-apply for this listing.
+                    </p>
+                  </div>
+                  <span className="inline-block px-3 py-1 rounded-full text-[11px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                    Application Declined
+                  </span>
+                </>
+              ) : isOwner && (donation.claims || []).filter(c => c.claim_status === 'pending').length > 0 ? (
+                <>
+                  <Users className="w-9 h-9 text-amber-400 mx-auto stroke-1" />
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-white">Shelter Applications Waiting</p>
+                    <p className="text-[11px] text-neutral-400 max-w-xs mx-auto leading-relaxed">
+                      {(donation.claims || []).filter(c => c.claim_status === 'pending').length} shelters have applied. Use the application review section above to choose your recipient.
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Package className="w-9 h-9 text-emerald-400/80 mx-auto stroke-1" />
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-white">Available for Shelter Claim</p>
+                    <p className="text-[11px] text-neutral-400 max-w-xs mx-auto leading-relaxed">
+                      This food package is available in the community pool. Any registered NGO or community shelter can claim this package for immediate distribution.
+                    </p>
+                  </div>
+                  {isNgo && (
+                    <button
+                      onClick={() => setShowClaimModal(true)}
+                      className="btn btn-primary text-xs inline-flex items-center gap-1.5 mt-2"
+                    >
+                      <Package className="w-3.5 h-3.5" /> Claim Food Parcel
+                    </button>
+                  )}
+                </>
               )}
             </div>
           ) : donation.pickup_type === 'self_pickup' ? (
@@ -776,6 +1460,12 @@ export default function DonationDetailPage() {
                   />
                   {donation.ngo_address && (
                     <p className="text-[11px] text-neutral-400 truncate">{donation.ngo_address}</p>
+                  )}
+                  {donation.ngo_capacity && (
+                    <div className="flex items-center gap-1.5 text-[11px] text-sky-400 font-medium">
+                      <Users className="w-3 h-3" />
+                      <span>{donation.ngo_capacity} people in shelter</span>
+                    </div>
                   )}
                   {donation.ngo_phone && (
                     <div className="flex items-center gap-1.5 text-[11px] text-neutral-300">

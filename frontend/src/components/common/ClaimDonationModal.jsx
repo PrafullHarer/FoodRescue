@@ -11,6 +11,9 @@ export default function ClaimDonationModal({
   const [pickupType, setPickupType] = useState('self_pickup'); // 'self_pickup' | 'volunteer'
 
   if (!isOpen || !donation) return null;
+  if (donation.my_claim_status === 'rejected' || donation.my_claim?.status === 'rejected') {
+    return null;
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -24,11 +27,11 @@ export default function ClaimDonationModal({
         <div className="flex items-start justify-between gap-3 border-b border-neutral-200 dark:border-[#232328] pb-4">
           <div>
             <span className="badge badge-primary text-[10px] font-bold uppercase mb-1">
-              Confirm Shelter Claim
+              Shelter Claim Application
             </span>
-            <h3 className="text-xl font-bold text-neutral-900 dark:text-white tracking-tight">How will you collect this food?</h3>
+            <h3 className="text-xl font-bold text-neutral-900 dark:text-white tracking-tight">Request Surplus Food Claim</h3>
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-              Choose whether your NGO will pick it up directly or request community volunteers.
+              Choose your collection method. The food provider will review all applicant shelters and choose who gets the donation.
             </p>
           </div>
           <button
@@ -131,6 +134,14 @@ export default function ClaimDonationModal({
           </div>
         </div>
 
+        {/* Info Note on Provider Selection */}
+        <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 flex items-start gap-2.5">
+          <Sparkles className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+          <p className="leading-relaxed">
+            All registered NGOs are allowed to apply. The donor will review your shelter's <strong>daily capacity</strong>, <strong>recent donations received</strong>, and <strong>trust reviews</strong> to select the recipient.
+          </p>
+        </div>
+
         {/* Action Buttons */}
         <div className="flex items-center gap-3 pt-2">
           <button
@@ -150,7 +161,7 @@ export default function ClaimDonationModal({
               <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
             ) : (
               <>
-                <span>Confirm & Claim</span>
+                <span>Submit Claim Request</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </>
             )}

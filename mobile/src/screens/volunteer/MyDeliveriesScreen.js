@@ -75,7 +75,7 @@ export default function MyDeliveriesScreen({ navigation }) {
               {donation.title || 'Surplus Meal Rescue'}
             </Text>
             <Text style={styles.metaText}>
-              ID: {(item._id || item.id || '').slice(-6).toUpperCase()}
+              {item.donation_code || donation.donation_code ? (item.donation_code || donation.donation_code) : `ID: ${(item._id || item.id || '').slice(-6).toUpperCase()}`}
             </Text>
           </View>
           {getStatusBadge(item.status)}

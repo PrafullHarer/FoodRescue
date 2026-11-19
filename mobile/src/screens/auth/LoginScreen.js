@@ -33,6 +33,16 @@ export default function LoginScreen({ navigation, route }) {
   const [serverModalOpen, setServerModalOpen] = useState(false);
   const [customIpInput, setCustomIpInput] = useState('');
 
+  // Forgot Password State
+  const [forgotModalOpen, setForgotModalOpen] = useState(false);
+  const [forgotStep, setForgotStep] = useState(1);
+  const [forgotIdentifier, setForgotIdentifier] = useState('');
+  const [forgotOtp, setForgotOtp] = useState('');
+  const [forgotNewPass, setForgotNewPass] = useState('');
+  const [forgotConfirmPass, setForgotConfirmPass] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotDemoCode, setForgotDemoCode] = useState(null);
+
   useEffect(() => {
     AsyncStorage.getItem('@foodrescue_custom_api_url').then((saved) => {
       if (saved) setServerUrl(saved);
@@ -44,7 +54,7 @@ export default function LoginScreen({ navigation, route }) {
     const loginPass = customPass !== null ? customPass : password;
 
     if (!loginEmail || !loginPass) {
-      Alert.alert('Required Fields', 'Please enter your email and password.');
+      Alert.alert('Required Fields', 'Please enter your email or User ID and password.');
       return;
     }
 
@@ -98,6 +108,68 @@ export default function LoginScreen({ navigation, route }) {
     setServerUrl(DEFAULT_API_URL);
     setServerModalOpen(false);
     Alert.alert('Server Reset', `Using default ${DEFAULT_API_URL}`);
+  };
+
+  const handleRequestForgotOtp = async () => {
+    const cleanId = (forgotIdentifier || email).trim();
+    if (!cleanId) {
+      Alert.alert('Required', 'Please enter your email address or User ID.');
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      const res = await client.post('/auth/forgot-password', { identifier: cleanId });
+      const demo = res.data?.data?.demo_otp;
+      if (demo) {
+        setForgotDemoCode(demo);
+        setForgotOtp(demo);
+      }
+      setForgotStep(2);
+      Alert.alert('Recovery Code Sent', res.data?.message || 'Check your email for the 6-digit recovery code.');
+    } catch (err) {
+      Alert.alert('Request Failed', err.response?.data?.message || 'Could not find account with that email or User ID.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleExecuteResetPassword = async () => {
+    if (!forgotOtp.trim()) {
+      Alert.alert('Required', 'Please enter the 6-digit recovery code.');
+      return;
+    }
+    if (!forgotNewPass || forgotNewPass.length < 8) {
+      Alert.alert('Password Too Short', 'Password must be at least 8 characters long.');
+      return;
+    }
+    if (forgotNewPass !== forgotConfirmPass) {
+      Alert.alert('Mismatch', 'New password and confirmation do not match.');
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      const cleanId = (forgotIdentifier || email).trim();
+      const res = await client.post('/auth/reset-password', {
+        identifier: cleanId,
+        otp: forgotOtp.trim(),
+        new_password: forgotNewPass,
+        confirm_password: forgotConfirmPass,
+      });
+
+      Alert.alert('Success', res.data?.message || 'Password reset successfully! You can now sign in.');
+      setPassword(forgotNewPass);
+      setForgotModalOpen(false);
+      setForgotStep(1);
+      setForgotOtp('');
+      setForgotNewPass('');
+      setForgotConfirmPass('');
+    } catch (err) {
+      Alert.alert('Reset Failed', err.response?.data?.message || 'Failed to reset password. Please check your recovery code.');
+    } finally {
+      setForgotLoading(false);
+    }
   };
 
   return (
@@ -181,13 +253,14 @@ export default function LoginScreen({ navigation, route }) {
             <Text style={styles.formSubtitle}>Enter your credentials to access your account</Text>
 
             <Input
-              label="Email Address"
+              label="Email or User ID"
               value={email}
               onChangeText={setEmail}
-              placeholder="name@organization.com"
-              keyboardType="email-address"
+              placeholder="name@organization.com or PRO-123456"
+              keyboardType="default"
               autoCapitalize="none"
-              leftIcon="mail-outline"
+              autoCorrect={false}
+              leftIcon="person-outline"
             />
 
             <Input
@@ -207,6 +280,18 @@ export default function LoginScreen({ navigation, route }) {
                 </TouchableOpacity>
               }
             />
+
+            <View style={styles.forgotRow}>
+              <TouchableOpacity
+                onPress={() => {
+                  setForgotIdentifier(email);
+                  setForgotModalOpen(true);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.forgotText}>Forgot Password?</Text>
+              </TouchableOpacity>
+            </View>
 
             <Button
               title="Sign In"
@@ -279,6 +364,108 @@ export default function LoginScreen({ navigation, route }) {
                 style={{ flex: 1 }}
               />
             </View>
+          </View>
+        </View>
+      </Modal>
+      {/* Forgot / Reset Password Modal */}
+      <Modal
+        visible={forgotModalOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setForgotModalOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.modalTitle}>
+                {forgotStep === 1 ? 'Reset Password' : 'Set New Password'}
+              </Text>
+              <TouchableOpacity onPress={() => setForgotModalOpen(false)}>
+                <Ionicons name="close" size={22} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalSub}>
+              {forgotStep === 1
+                ? 'Enter your registered email address or User ID to receive a 6-digit recovery code.'
+                : 'Enter the recovery code sent to your email and choose a new password.'}
+            </Text>
+
+            {forgotStep === 1 && (
+              <View style={{ gap: spacing.md }}>
+                <Input
+                  label="Email or User ID"
+                  value={forgotIdentifier}
+                  onChangeText={setForgotIdentifier}
+                  placeholder="name@org.com or PRO-123456"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  leftIcon="mail-outline"
+                />
+
+                <Button
+                  title={forgotLoading ? 'Sending Code...' : 'Send Recovery Code'}
+                  onPress={handleRequestForgotOtp}
+                  loading={forgotLoading}
+                  style={{ marginTop: spacing.xs }}
+                />
+              </View>
+            )}
+
+            {forgotStep === 2 && (
+              <View style={{ gap: spacing.sm }}>
+                {forgotDemoCode && (
+                  <View style={styles.demoCodeBox}>
+                    <Text style={styles.demoCodeText}>
+                      Demo Code: <Text style={{ fontWeight: 'bold' }}>{forgotDemoCode}</Text>
+                    </Text>
+                  </View>
+                )}
+
+                <Input
+                  label="6-Digit Recovery Code"
+                  value={forgotOtp}
+                  onChangeText={setForgotOtp}
+                  placeholder="123456"
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  leftIcon="key-outline"
+                />
+
+                <Input
+                  label="New Password (min 8 chars)"
+                  value={forgotNewPass}
+                  onChangeText={setForgotNewPass}
+                  placeholder="••••••••"
+                  secureTextEntry
+                  leftIcon="lock-closed-outline"
+                />
+
+                <Input
+                  label="Confirm New Password"
+                  value={forgotConfirmPass}
+                  onChangeText={setForgotConfirmPass}
+                  placeholder="••••••••"
+                  secureTextEntry
+                  leftIcon="lock-closed-outline"
+                />
+
+                <View style={styles.modalBtnRow}>
+                  <Button
+                    title="Back"
+                    variant="outline"
+                    onPress={() => setForgotStep(1)}
+                    style={{ flex: 1 }}
+                  />
+                  <Button
+                    title={forgotLoading ? 'Saving...' : 'Reset Password'}
+                    onPress={handleExecuteResetPassword}
+                    loading={forgotLoading}
+                    style={{ flex: 2 }}
+                  />
+                </View>
+              </View>
+            )}
           </View>
         </View>
       </Modal>
@@ -452,5 +639,34 @@ const styles = StyleSheet.create({
   modalBtnRow: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  forgotRow: {
+    alignItems: 'flex-end',
+    marginTop: -spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  forgotText: {
+    fontSize: 12,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  demoCodeBox: {
+    backgroundColor: 'rgba(57,255,20,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(57,255,20,0.3)',
+    borderRadius: radius.md,
+    padding: spacing.xs + 2,
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  demoCodeText: {
+    fontSize: 12,
+    color: colors.primary,
   },
 });

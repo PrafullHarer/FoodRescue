@@ -7,6 +7,7 @@ import {
   ArrowUpRight, AlertCircle, Plus, ChevronRight, Bell, ShieldAlert
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import CommunityLeaderboard from '../../components/common/CommunityLeaderboard';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -14,6 +15,7 @@ export default function DashboardPage() {
   const [recentDonations, setRecentDonations] = useState([]);
   const [availableMissions, setAvailableMissions] = useState([]);
   const [pendingVerificationsCount, setPendingVerificationsCount] = useState(0);
+  const [topChampions, setTopChampions] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -25,6 +27,7 @@ export default function DashboardPage() {
       setLoading(true);
       const promises = [
         api.get('/analytics/impact').catch(() => ({ data: { data: null } })),
+        api.get('/analytics/leaderboard', { params: { limit: 5 } }).catch(() => ({ data: { data: [] } })),
       ];
 
       if (user?.role === 'provider') {
@@ -54,17 +57,18 @@ export default function DashboardPage() {
 
       const results = await Promise.all(promises);
       setStats(results[0]?.data?.data || null);
+      setTopChampions(results[1]?.data?.data || []);
 
       if (user?.role === 'volunteer') {
-        setRecentDonations(results[1]?.data?.data || []);
-        if (results[2]) {
-          setAvailableMissions(results[2]?.data?.data || []);
+        setRecentDonations(results[2]?.data?.data || []);
+        if (results[3]) {
+          setAvailableMissions(results[3]?.data?.data || []);
         }
       } else if (user?.role === 'admin') {
-        setRecentDonations(results[1]?.data?.data?.donations || []);
-        setPendingVerificationsCount(results[2]?.data?.data?.stats?.pending || 0);
+        setRecentDonations(results[2]?.data?.data?.donations || []);
+        setPendingVerificationsCount(results[3]?.data?.data?.stats?.pending || 0);
       } else {
-        setRecentDonations(results[1]?.data?.data?.donations || []);
+        setRecentDonations(results[2]?.data?.data?.donations || []);
       }
     } catch {
       // ignore
@@ -376,7 +380,12 @@ export default function DashboardPage() {
                         className="p-4 flex items-center justify-between gap-3 hover:bg-neutral-50 dark:hover:bg-[#18181b] transition-colors block"
                       >
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            {d.donation_code && (
+                              <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-[#18181b] border border-neutral-300 dark:border-[#39FF14]/30 text-neutral-800 dark:text-[#39FF14]">
+                                {d.donation_code}
+                              </span>
+                            )}
                             <span className={`badge uppercase text-[9px] font-bold ${
                               (d.status === 'delivered' || d.status === 'completed') ? 'badge-primary' :
                               d.status === 'claimed' ? 'badge-warning' : 'badge-neutral'
@@ -415,8 +424,13 @@ export default function DashboardPage() {
                         {recentDonations.map((d) => (
                           <tr key={d.id} className="hover:bg-neutral-50 dark:hover:bg-[#18181b] transition-colors">
                             <td className="px-6 py-4 font-medium text-neutral-900 dark:text-white">
-                              <Link to={config.getItemLink(d)} className="hover:underline">
-                                {d.title || d.donation_title || 'Food Donation'}
+                              <Link to={config.getItemLink(d)} className="hover:underline flex items-center gap-2">
+                                {d.donation_code && (
+                                  <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-[#18181b] border border-neutral-300 dark:border-[#39FF14]/30 text-neutral-800 dark:text-[#39FF14]">
+                                    {d.donation_code}
+                                  </span>
+                                )}
+                                <span>{d.title || d.donation_title || 'Food Donation'}</span>
                               </Link>
                             </td>
                             <td className="px-6 py-4 text-xs text-neutral-500 dark:text-neutral-400 capitalize">
@@ -447,6 +461,18 @@ export default function DashboardPage() {
           </div>
         );
       })()}
+
+      {/* Community Champions Ranking System Widget */}
+      <CommunityLeaderboard
+        leaderboard={topChampions}
+        loading={loading}
+        showPodium={false}
+        compact={true}
+        limit={5}
+        title="Community Champions Leaderboard"
+        subtitle="Top performing food donors, community shelters, and volunteer couriers"
+        actionLink={{ to: '/analytics', label: 'View Full Rankings & Podium' }}
+      />
     </div>
   );
 }

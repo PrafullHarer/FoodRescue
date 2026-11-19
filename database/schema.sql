@@ -103,9 +103,11 @@ CREATE TABLE users (
   full_name         VARCHAR(255) NOT NULL,
   phone             VARCHAR(20),
   avatar_url        TEXT,
+  user_code         VARCHAR(50) UNIQUE,
   google_id         VARCHAR(255) UNIQUE,
   auth_provider     VARCHAR(50) NOT NULL DEFAULT 'local',
   profile_completed BOOLEAN NOT NULL DEFAULT TRUE,
+  email_verified    BOOLEAN NOT NULL DEFAULT FALSE,
   verification_status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
   approved_by       UUID REFERENCES users(id) ON DELETE SET NULL,
   approved_at       TIMESTAMPTZ,
@@ -170,6 +172,7 @@ CREATE TABLE volunteers (
 -- 5. Food Donations
 CREATE TABLE food_donations (
   id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  donation_code     VARCHAR(50) UNIQUE,
   provider_id       UUID NOT NULL REFERENCES food_providers(id) ON DELETE CASCADE,
   title             VARCHAR(255) NOT NULL,
   description       TEXT,
@@ -294,6 +297,84 @@ CREATE TABLE complaints (
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- 11b. Complaint Messages (Thread communication & internal notes)
+CREATE TABLE IF NOT EXISTS complaint_messages (
+  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  complaint_id      UUID NOT NULL REFERENCES complaints(id) ON DELETE CASCADE,
+  sender_user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  message           TEXT NOT NULL,
+  visibility        VARCHAR(20) NOT NULL DEFAULT 'user',
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 11c. Complaint History (Append-only audit trail)
+CREATE TABLE IF NOT EXISTS complaint_history (
+  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  complaint_id      UUID NOT NULL REFERENCES complaints(id) ON DELETE CASCADE,
+  actor_user_id     UUID REFERENCES users(id) ON DELETE SET NULL,
+  action_type       VARCHAR(50) NOT NULL,
+  previous_value    TEXT,
+  new_value         TEXT,
+  reason            TEXT,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 11d. Incidents (Platform Incident Management & Automated Detection)
+CREATE TABLE IF NOT EXISTS incidents (
+  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  incident_reference VARCHAR(50) UNIQUE NOT NULL,
+  incident_type     VARCHAR(60) NOT NULL,
+  title             VARCHAR(255) NOT NULL,
+  description       TEXT NOT NULL,
+  severity          VARCHAR(20) NOT NULL DEFAULT 'medium',
+  status            VARCHAR(30) NOT NULL DEFAULT 'open',
+  source            VARCHAR(30) NOT NULL DEFAULT 'manual',
+  reporter_user_id  UUID REFERENCES users(id) ON DELETE SET NULL,
+  assigned_admin_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  donation_id       UUID REFERENCES food_donations(id) ON DELETE SET NULL,
+  delivery_id       UUID REFERENCES deliveries(id) ON DELETE SET NULL,
+  related_qr_code   VARCHAR(255),
+  related_organization_id UUID,
+  escalation_level  INTEGER NOT NULL DEFAULT 0,
+  escalated_at      TIMESTAMPTZ,
+  escalation_reason TEXT,
+  detected_at       TIMESTAMPTZ,
+  reported_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  assigned_at       TIMESTAMPTZ,
+  acknowledged_at   TIMESTAMPTZ,
+  resolved_at       TIMESTAMPTZ,
+  closed_at         TIMESTAMPTZ,
+  resolution_summary TEXT,
+  evidence_urls     TEXT[],
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 11e. Incident Audit Logs (Append-only audit trail)
+CREATE TABLE IF NOT EXISTS incident_audit_logs (
+  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  incident_id       UUID NOT NULL REFERENCES incidents(id) ON DELETE CASCADE,
+  actor_id          UUID REFERENCES users(id) ON DELETE SET NULL,
+  actor_type        VARCHAR(30) NOT NULL DEFAULT 'user',
+  action            VARCHAR(60) NOT NULL,
+  previous_value    JSONB,
+  new_value         JSONB,
+  notes             TEXT,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 11f. Incident Notes (Investigation and internal comments)
+CREATE TABLE IF NOT EXISTS incident_notes (
+  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  incident_id       UUID NOT NULL REFERENCES incidents(id) ON DELETE CASCADE,
+  author_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  author_name       VARCHAR(255),
+  author_role       VARCHAR(50),
+  note_type         VARCHAR(30) NOT NULL DEFAULT 'investigation',
+  content           TEXT NOT NULL,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- 12. Audit Logs
 CREATE TABLE audit_logs (
   id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -349,6 +430,37 @@ CREATE TABLE refresh_tokens (
   created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- 16b. Password Resets (OTP & Recovery)
+CREATE TABLE password_resets (
+  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id           UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  otp_hash          VARCHAR(255) NOT NULL,
+  expires_at        TIMESTAMPTZ NOT NULL,
+  used              BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 16c. Email Verifications (Registration OTP)
+CREATE TABLE IF NOT EXISTS email_verifications (
+  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  email             VARCHAR(255) NOT NULL,
+  otp_hash          VARCHAR(255) NOT NULL,
+  expires_at        TIMESTAMPTZ NOT NULL,
+  verified_at       TIMESTAMPTZ,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 16d. User Verification Documents (Document upload & governance audit)
+CREATE TABLE IF NOT EXISTS user_verification_documents (
+  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id           UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  document_name     VARCHAR(255) NOT NULL,
+  document_url      TEXT NOT NULL,
+  document_type     VARCHAR(100),
+  file_size         INTEGER,
+  uploaded_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- 17. Reviews (Trust, Ratings & Reliability System)
 CREATE TABLE reviews (
   id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -375,6 +487,7 @@ CREATE TABLE reviews (
 
 -- Users
 CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_user_code ON users(user_code);
 CREATE INDEX idx_users_role ON users(role);
 CREATE INDEX idx_users_status ON users(status);
 
@@ -392,6 +505,7 @@ CREATE INDEX idx_volunteers_availability ON volunteers(availability);
 CREATE INDEX idx_volunteers_geo ON volunteers(latitude, longitude);
 
 -- Food Donations
+CREATE INDEX idx_food_donations_donation_code ON food_donations(donation_code);
 CREATE INDEX idx_food_donations_provider ON food_donations(provider_id);
 CREATE INDEX idx_food_donations_status ON food_donations(status);
 CREATE INDEX idx_food_donations_expiry ON food_donations(expiry_time);
@@ -435,6 +549,11 @@ CREATE INDEX idx_audit_logs_created ON audit_logs(created_at);
 -- Refresh Tokens
 CREATE INDEX idx_refresh_tokens_user ON refresh_tokens(user_id);
 CREATE INDEX idx_refresh_tokens_hash ON refresh_tokens(token_hash);
+
+-- Password Resets
+CREATE INDEX idx_password_resets_user_id ON password_resets(user_id);
+CREATE INDEX idx_password_resets_expires ON password_resets(expires_at);
+CREATE INDEX idx_password_resets_used ON password_resets(used);
 
 -- -------------------------
 -- Public Feedback
@@ -493,6 +612,36 @@ CREATE TABLE IF NOT EXISTS donation_completion_emails (
 
 CREATE INDEX IF NOT EXISTS idx_donation_completion_emails_donation ON donation_completion_emails(donation_id);
 CREATE INDEX IF NOT EXISTS idx_donation_completion_emails_status ON donation_completion_emails(status);
+
+-- Email Verifications & User Verification Documents
+CREATE INDEX IF NOT EXISTS idx_email_verifications_email ON email_verifications(email);
+CREATE INDEX IF NOT EXISTS idx_user_verification_docs_user ON user_verification_documents(user_id);
+CREATE INDEX IF NOT EXISTS idx_users_verification_status ON users(verification_status);
+
+-- Complaints & Thread History
+CREATE INDEX IF NOT EXISTS idx_complaints_reporter ON complaints(reporter_id);
+CREATE INDEX IF NOT EXISTS idx_complaints_complainant ON complaints(complainant_user_id);
+CREATE INDEX IF NOT EXISTS idx_complaints_status ON complaints(status);
+CREATE INDEX IF NOT EXISTS idx_complaints_priority ON complaints(priority);
+CREATE INDEX IF NOT EXISTS idx_complaints_assigned ON complaints(assigned_admin_user_id);
+CREATE INDEX IF NOT EXISTS idx_complaints_ref ON complaints(complaint_reference);
+CREATE INDEX IF NOT EXISTS idx_complaint_messages_cid ON complaint_messages(complaint_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_complaint_history_cid ON complaint_history(complaint_id, created_at);
+
+-- Incidents, Notes & Audit Logs
+CREATE INDEX IF NOT EXISTS idx_incidents_status ON incidents(status);
+CREATE INDEX IF NOT EXISTS idx_incidents_severity ON incidents(severity);
+CREATE INDEX IF NOT EXISTS idx_incidents_type ON incidents(incident_type);
+CREATE INDEX IF NOT EXISTS idx_incidents_ref ON incidents(incident_reference);
+CREATE INDEX IF NOT EXISTS idx_incidents_assigned ON incidents(assigned_admin_user_id);
+CREATE INDEX IF NOT EXISTS idx_incident_audit_cid ON incident_audit_logs(incident_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_incident_notes_cid ON incident_notes(incident_id, created_at);
+
+-- Data Isolation Composite Indexes
+CREATE INDEX IF NOT EXISTS idx_deliveries_ngo ON deliveries(ngo_id);
+CREATE INDEX IF NOT EXISTS idx_donation_claims_ngo_status ON donation_claims(ngo_id, status);
+CREATE INDEX IF NOT EXISTS idx_food_donations_provider_status ON food_donations(provider_id, status);
+CREATE INDEX IF NOT EXISTS idx_deliveries_volunteer_status ON deliveries(volunteer_id, status);
 
 -- -------------------------
 -- Triggers

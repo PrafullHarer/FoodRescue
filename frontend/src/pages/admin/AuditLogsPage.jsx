@@ -99,7 +99,7 @@ export default function AuditLogsPage() {
                 </thead>
                 <tbody className="divide-y divide-[#232328] text-sm">
                   {filteredLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-[#18181b] transition-colors">
+                    <tr key={log.id} className="hover:bg-neutral-50 dark:hover:bg-[#18181b] transition-colors">
                       <td className="py-4 px-6 text-xs text-neutral-400 whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
                           <Clock className="w-3.5 h-3.5 text-neutral-500" />

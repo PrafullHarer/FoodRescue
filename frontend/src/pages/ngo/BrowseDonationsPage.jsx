@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/client';
-import { Package, MapPin, Clock, Search, CheckCircle2, Map, LayoutGrid } from 'lucide-react';
+import { Package, MapPin, Clock, Search, CheckCircle2, Map, LayoutGrid, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import DonationMapView from '../../components/common/DonationMapView';
 import ClaimDonationModal from '../../components/common/ClaimDonationModal';
@@ -31,15 +31,22 @@ export default function BrowseDonationsPage() {
     setClaiming(donationId);
     try {
       const { data } = await api.post(`/donations/${donationId}/claim`, { pickupType });
-      toast.success(data.message || 'Donation claimed successfully!');
-      setDonations(prev => prev.filter(d => d.id !== donationId));
+      toast.success(data.message || 'Claim request submitted! Awaiting provider selection.');
+      // Mark as claim requested so the NGO knows it's pending review
+      setDonations(prev => prev.map(d => d.id === donationId ? { ...d, my_claim_status: 'pending' } : d));
       setSelectedDonationToClaim(null);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to claim donation');
     } finally { setClaiming(null); }
   };
 
-  const filtered = donations.filter(d => d.title?.toLowerCase().includes(search.toLowerCase()) || d.pickup_address?.toLowerCase().includes(search.toLowerCase()));
+  const filtered = donations.filter(
+    (d) =>
+      d.title?.toLowerCase().includes(search.toLowerCase()) ||
+      d.donation_code?.toLowerCase().includes(search.toLowerCase()) ||
+      d.category?.toLowerCase().includes(search.toLowerCase()) ||
+      d.pickup_address?.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div className="space-y-6 animate-fade-in max-w-7xl mx-auto">
@@ -83,7 +90,7 @@ export default function BrowseDonationsPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="input pl-10"
-          placeholder="Search by title, category, or address..."
+          placeholder="Search by ID, title, category, or address..."
         />
       </div>
 
@@ -117,11 +124,33 @@ export default function BrowseDonationsPage() {
               className="bg-[#121214] rounded-2xl border border-[#232328] hover:border-neutral-500 transition-all p-5 flex flex-col justify-between"
             >
               <div>
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <h3 className="font-bold text-white text-base leading-snug">{d.title}</h3>
+                <div className="flex items-center gap-1.5 flex-wrap mb-2">
+                  {d.donation_code && (
+                    <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-[#18181b] border border-[#39FF14]/30 text-[#39FF14]">
+                      {d.donation_code}
+                    </span>
+                  )}
                   <span className="badge badge-neutral uppercase text-[10px] font-bold">
                     {d.category?.replace('_', ' ') || 'Food'}
                   </span>
+                  {d.my_claim_status === 'pending' && (
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                      Request Pending
+                    </span>
+                  )}
+                  {d.my_claim_status === 'accepted' && (
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      Awarded to You
+                    </span>
+                  )}
+                  {d.my_claim_status === 'rejected' && (
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                      Application Declined
+                    </span>
+                  )}
+                </div>
+                <div className="mb-2">
+                  <h3 className="font-bold text-white text-base leading-snug">{d.title}</h3>
                 </div>
                 {d.provider_name && (
                   <div className="flex items-center gap-1.5 text-xs text-neutral-400 mb-2">
@@ -154,17 +183,41 @@ export default function BrowseDonationsPage() {
                 </div>
 
                 <div className="flex items-center gap-2 pt-1">
-                  <button
-                    onClick={() => handleInitiateClaim(d)}
-                    disabled={claiming === d.id}
-                    className="flex-1 bg-white hover:bg-neutral-200 text-black font-semibold py-2.5 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
-                  >
-                    {claiming === d.id ? (
-                      <div className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                    ) : (
-                      <><CheckCircle2 className="w-3.5 h-3.5" /> Claim</>
-                    )}
-                  </button>
+                  {d.my_claim_status === 'pending' ? (
+                    <button
+                      disabled
+                      className="flex-1 bg-amber-500/10 border border-amber-500/20 text-amber-400 font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-default"
+                    >
+                      <Clock className="w-3.5 h-3.5" /> Claim Request Pending
+                    </button>
+                  ) : d.my_claim_status === 'accepted' ? (
+                    <button
+                      disabled
+                      className="flex-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-default"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Awarded to Your Shelter
+                    </button>
+                  ) : d.my_claim_status === 'rejected' ? (
+                    <button
+                      disabled
+                      className="flex-1 bg-rose-500/10 border border-rose-500/20 text-rose-400 font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-not-allowed opacity-85"
+                      title="The food provider declined your claim request for this donation"
+                    >
+                      <XCircle className="w-3.5 h-3.5" /> Application Declined
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleInitiateClaim(d)}
+                      disabled={claiming === d.id}
+                      className="flex-1 bg-white hover:bg-neutral-200 text-black font-semibold py-2.5 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                    >
+                      {claiming === d.id ? (
+                        <div className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                      ) : (
+                        <><CheckCircle2 className="w-3.5 h-3.5" /> Claim Food</>
+                      )}
+                    </button>
+                  )}
 
                   {d.latitude && d.longitude && (
                     <a

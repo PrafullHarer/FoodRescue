@@ -3,7 +3,7 @@ import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   Store, HeartHandshake, Truck, MapPin, Compass, CheckCircle2,
-  ShieldCheck, AlertCircle, ArrowRight, UserCheck, Phone, Building2
+  ShieldCheck, AlertCircle, ArrowRight, UserCheck, Phone, Building2, Users
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import MapAddressPickerModal from '../../components/common/MapAddressPickerModal';
@@ -55,7 +55,7 @@ export default function CompleteProfilePage() {
     // NGO
     organization_name: '',
     registration_no: '',
-    capacity: 200,
+    capacity: '',
     // Volunteer
     vehicle_type: 'car',
     max_distance_km: 15,
@@ -147,6 +147,10 @@ export default function CompleteProfilePage() {
     } else if (role === 'ngo') {
       if (!form.organization_name.trim()) {
         toast.error('Please enter your NGO or shelter name');
+        return;
+      }
+      if (!form.capacity || parseInt(form.capacity, 10) <= 0) {
+        toast.error('Please enter the NGO capacity (current number of people)');
         return;
       }
       if (!form.address.trim()) {
@@ -542,17 +546,24 @@ export default function CompleteProfilePage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 block mb-1.5">
-                      Daily Beneficiary Capacity (Meals/day)
+                      NGO Capacity (Number of People) <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="number"
-                      value={form.capacity}
-                      onChange={(e) => update('capacity', e.target.value)}
-                      className="input text-sm"
-                      placeholder="e.g. 250"
-                      min="10"
-                      max="10000"
-                    />
+                    <div className="relative">
+                      <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                      <input
+                        type="number"
+                        value={form.capacity}
+                        onChange={(e) => update('capacity', e.target.value)}
+                        className="input pl-9 text-sm"
+                        placeholder="e.g. 150 people"
+                        min="1"
+                        max="100000"
+                        required
+                      />
+                    </div>
+                    <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-1">
+                      Current number of people in the NGO / shelter
+                    </p>
                   </div>
 
                   <div>

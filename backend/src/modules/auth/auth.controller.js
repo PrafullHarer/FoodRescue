@@ -210,7 +210,7 @@ const getMe = async (req, res, next) => {
     const db = require('../../config/db');
 
     const { rows } = await db.query(
-      'SELECT id, email, role, full_name, phone, avatar_url, status, verification_status, rejection_reason, info_requested_notes, approved_at, rejected_at, profile_completed, auth_provider, created_at FROM users WHERE id = $1',
+      'SELECT id, email, role, full_name, phone, avatar_url, status, verification_status, rejection_reason, info_requested_notes, approved_at, rejected_at, profile_completed, auth_provider, user_code, created_at FROM users WHERE id = $1',
       [req.user.id]
     );
 
@@ -250,12 +250,118 @@ const getGoogleConfig = async (req, res) => {
  */
 const getVerificationStatus = async (req, res, next) => {
   try {
-    const email = req.query.email || req.body?.email;
-    const result = await authService.getVerificationStatus(email);
+    const identifier = req.query.email || req.query.identifier || req.query.user_code || req.body?.email || req.body?.identifier || req.body?.user_code;
+    const result = await authService.getVerificationStatus(identifier);
 
     res.status(200).json({
       success: true,
       message: 'Account verification status retrieved.',
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/auth/forgot-password
+ * Request OTP verification code for password reset
+ */
+const forgotPassword = async (req, res, next) => {
+  try {
+    const result = await authService.forgotPassword(req.body);
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/auth/reset-password
+ * Reset password using OTP verification code
+ */
+const resetPassword = async (req, res, next) => {
+  try {
+    const result = await authService.resetPassword(req.body);
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/auth/change-password
+ * Change password for authenticated user
+ */
+const changePassword = async (req, res, next) => {
+  try {
+    const result = await authService.changePassword({
+      userId: req.user.id,
+      current_password: req.body.current_password,
+      new_password: req.body.new_password,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/auth/send-email-otp
+ * Send email verification code
+ */
+const sendEmailOtp = async (req, res, next) => {
+  try {
+    const result = await authService.sendEmailOtp(req.body);
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/auth/verify-email-otp
+ * Verify 6-digit OTP code for email
+ */
+const verifyEmailOtp = async (req, res, next) => {
+  try {
+    const result = await authService.verifyEmailOtp(req.body);
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/auth/check-email
+ * Check email availability
+ */
+const checkEmail = async (req, res, next) => {
+  try {
+    const email = req.body?.email || req.query?.email;
+    const result = await authService.checkEmailAvailability(email);
+    res.status(200).json({
+      success: true,
       data: result,
     });
   } catch (error) {
@@ -274,4 +380,10 @@ module.exports = {
   logout,
   getMe,
   getGoogleConfig,
+  changePassword,
+  forgotPassword,
+  resetPassword,
+  sendEmailOtp,
+  verifyEmailOtp,
+  checkEmail,
 };

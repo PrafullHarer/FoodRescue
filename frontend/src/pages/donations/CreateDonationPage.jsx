@@ -113,8 +113,9 @@ export default function CreateDonationPage() {
         special_instructions: form.special_instructions.trim() || undefined,
       };
 
-      await api.post('/donations', payload);
-      toast.success('🎉 Surplus donation posted successfully!');
+      const res = await api.post('/donations', payload);
+      const code = res?.data?.data?.donation_code;
+      toast.success(code ? `🎉 Surplus donation posted! ID: ${code}` : '🎉 Surplus donation posted successfully!');
       navigate('/donations');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to post donation listing');
