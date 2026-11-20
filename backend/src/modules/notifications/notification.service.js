@@ -388,61 +388,67 @@ const registerDeviceToken = async (userId, token, platform) => {
 };
 
 /**
- * Notify all active NGOs about a new donation.
- * Creates an in-app notification for every NGO user so they can claim it.
+ * Notify eligible NGOs about a new donation.
+ * STRICT RULE: Only sends notifications and claim info to NGOs in the 20km radius of the food provider.
  */
-const notifyNgosOfNewDonation = async (donation) => {
+const notifyNgosOfNewDonation = async (donation, precomputedMatches = null) => {
   try {
-    // Find all active NGO users (explicitly exclude admins)
-    const { rows: ngoUsers } = await db.query(
-      `SELECT id AS user_id
-       FROM users
-       WHERE role = 'ngo' AND role != 'admin' AND (status IS NULL OR status = 'active')`
-    );
+    const matchingService = require('../matching/matching.service');
+    const eligibleNgos = precomputedMatches || await matchingService.matchDonation(donation.id);
 
-    if (ngoUsers.length === 0) {
-      console.log('[NOTIFY] No active NGO users found to notify.');
-      return;
+    if (!eligibleNgos || eligibleNgos.length === 0) {
+      console.log(`[NOTIFY] No verified NGOs within 20km radius of donation "${donation.title}".`);
+      return { notified: 0, radius_km: 20 };
     }
 
-    const title = '🍽️ New Donation Available!';
-    const body = `"${donation.title}" — ${donation.quantity} ${donation.unit || 'servings'} of ${(donation.category || 'food').replace(/_/g, ' ')} just posted. Claim it before it's gone!`;
-    const data = JSON.stringify({
-      type: 'new_donation',
-      donation_id: donation.id,
-      category: donation.category,
-    });
+    console.log(`[NOTIFY] Found ${eligibleNgos.length} NGO(s) within 20km radius of donation "${donation.title}". Dispatching targeted alerts...`);
 
-    // Bulk insert notifications for all NGOs
-    const valuePlaceholders = ngoUsers.map((_, i) => {
-      const base = i * 5;
-      return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5})`;
-    }).join(', ');
-
-    const values = ngoUsers.flatMap(ngo => [
-      ngo.user_id, 'in_app', title, body, data,
-    ]);
-
-    await db.query(
-      `INSERT INTO notifications (user_id, type, title, body, data)
-       VALUES ${valuePlaceholders}`,
-      values
-    );
-
-    console.log(`[NOTIFY] Sent new-donation notification to ${ngoUsers.length} NGO(s) for "${donation.title}"`);
-
-    // Dispatch push notifications to all registered devices of NGO users
-    for (const ngo of ngoUsers) {
-      sendPushNotification(ngo.user_id, title, body, {
+    for (const ngoMatch of eligibleNgos) {
+      const title = '🍽️ Nearby Surplus Food Available (<20km)!';
+      const body = `"${donation.title}" (${donation.quantity} ${donation.unit || 'servings'}) is available ${ngoMatch.distance_km} km away. Smart Match: ${ngoMatch.score}%.`;
+      const data = JSON.stringify({
         type: 'new_donation',
         donation_id: donation.id,
         category: donation.category,
+        distance_km: ngoMatch.distance_km,
+        match_score: ngoMatch.score,
+        recommendation: ngoMatch.recommendation,
+        expiry_time: donation.expiry_time,
+        claim_info: {
+          quantity: donation.quantity,
+          unit: donation.unit,
+          pickup_address: donation.pickup_address,
+          max_radius_km: 20,
+        }
+      });
+
+      await createNotification({
+        userId: ngoMatch.user_id,
+        type: 'in_app',
+        title,
+        body,
+        data,
+      });
+
+      // Dispatch push notification to NGO's active mobile device tokens
+      sendPushNotification(ngoMatch.user_id, title, body, {
+        type: 'new_donation',
+        donation_id: donation.id,
+        category: donation.category,
+        distance_km: ngoMatch.distance_km,
+        match_score: ngoMatch.score,
       }).catch(() => {});
     }
+
+    console.log(`[NOTIFY] Sent targeted new-donation notifications to ${eligibleNgos.length} NGO(s) within 20km for "${donation.title}"`);
+    return { notified: eligibleNgos.length, radius_km: 20, matches: eligibleNgos };
   } catch (error) {
-    console.error('[NOTIFY] Failed to notify NGOs:', error.message);
+    console.error('[NOTIFY] Failed to notify eligible NGOs:', error.message);
+    return { notified: 0, error: error.message };
   }
 };
+
+const notifyEligibleNgosOfDonation = notifyNgosOfNewDonation;
 
 /**
  * Automatically mark donation notifications as read for all NGOs once the donation is claimed.
@@ -465,54 +471,97 @@ const markDonationNotificationsReadOnClaim = async (donationId) => {
 };
 
 /**
- * Notify all active volunteers when a claimed donation needs a pickup mission.
+ * Notify eligible volunteers when a claimed donation needs a pickup mission.
+ * STRICT RULE: Only sends notifications to volunteers present in the range of 30km from
+ * BOTH the food provider AND the destination NGO shelter.
  */
-const notifyVolunteersOfPickupMission = async (donation, deliveryId) => {
+const notifyVolunteersOfPickupMission = async (donation, deliveryId, ngoId = null) => {
   try {
-    const { rows: volunteerUsers } = await db.query(
-      `SELECT u.id AS user_id
-       FROM volunteers v
-       JOIN users u ON u.id = v.user_id
-       WHERE u.role != 'admin' AND (u.status IS NULL OR u.status = 'active')`
-    );
+    // 1. Resolve destination NGO ID if not explicitly passed
+    let targetNgoId = ngoId;
+    if (!targetNgoId && deliveryId) {
+      const { rows: delRows } = await db.query(
+        'SELECT ngo_id FROM deliveries WHERE id = $1',
+        [deliveryId]
+      );
+      if (delRows.length > 0) {
+        targetNgoId = delRows[0].ngo_id;
+      }
+    }
 
-    if (volunteerUsers.length === 0) return;
+    if (!targetNgoId) {
+      const { rows: claimRows } = await db.query(
+        `SELECT ngo_id FROM donation_claims WHERE donation_id = $1 AND status = 'accepted' LIMIT 1`,
+        [donation.id]
+      );
+      if (claimRows.length > 0) {
+        targetNgoId = claimRows[0].ngo_id;
+      }
+    }
 
-    const title = '🚚 Volunteer Pickup Mission Available!';
-    const body = `"${donation.title}" has been claimed by a shelter. Claim the pickup route to deliver ${donation.quantity} ${donation.unit || 'servings'} of food!`;
-    const data = JSON.stringify({
-      type: 'delivery_available',
-      donation_id: donation.id,
-      delivery_id: deliveryId,
-    });
+    if (!targetNgoId) {
+      console.warn(`[NOTIFY] Cannot determine destination NGO for donation ${donation.id}; skipping spatial volunteer notification.`);
+      return { notified: 0, reason: 'Destination NGO unknown' };
+    }
 
-    const valuePlaceholders = volunteerUsers.map((_, i) => {
-      const base = i * 5;
-      return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5})`;
-    }).join(', ');
+    // 2. Fetch destination NGO organization name
+    const { rows: ngoRows } = await db.query('SELECT organization_name FROM ngos WHERE id = $1', [targetNgoId]);
+    const ngoName = ngoRows[0]?.organization_name || 'Destination Shelter';
 
-    const values = volunteerUsers.flatMap(v => [
-      v.user_id, 'in_app', title, body, data,
-    ]);
+    // 3. Find volunteers strictly matching the dual 30km radius condition
+    const matchingService = require('../matching/matching.service');
+    const matchedVolunteers = await matchingService.matchVolunteersForPickup(donation.id, targetNgoId);
 
-    await db.query(
-      `INSERT INTO notifications (user_id, type, title, body, data)
-       VALUES ${valuePlaceholders}`,
-      values
-    );
+    if (!matchedVolunteers || matchedVolunteers.length === 0) {
+      console.log(`[NOTIFY] No available volunteers within 30km of BOTH provider and NGO for "${donation.title}".`);
+      return { notified: 0, reason: 'No volunteers within 30km of both provider and NGO' };
+    }
 
-    console.log(`[NOTIFY] Sent pickup mission notification to ${volunteerUsers.length} volunteer(s) for "${donation.title}"`);
+    console.log(`[NOTIFY] Found ${matchedVolunteers.length} volunteer(s) within 30km of both provider & NGO for "${donation.title}". Dispatching targeted alerts...`);
 
-    // Dispatch push notifications to all registered devices of volunteers
-    for (const v of volunteerUsers) {
-      sendPushNotification(v.user_id, title, body, {
+    const parcelWeight = donation.weight_kg ? `${donation.weight_kg}kg` : `${donation.quantity} servings`;
+
+    for (const vol of matchedVolunteers) {
+      const title = '🚚 Volunteer Pickup Mission Available (<30km)!';
+      const body = `Mission: Deliver ${parcelWeight} of "${donation.title}" to ${ngoName}. Pickup is ${vol.dist_to_provider_km}km away; shelter is ${vol.dist_to_ngo_km}km away (Score: ${vol.score}%).`;
+      const data = JSON.stringify({
         type: 'delivery_available',
         donation_id: donation.id,
         delivery_id: deliveryId,
+        dist_to_provider_km: vol.dist_to_provider_km,
+        dist_to_ngo_km: vol.dist_to_ngo_km,
+        total_route_km: vol.total_route_km,
+        match_score: vol.score,
+        recommendation: vol.recommendation,
+        vehicle_type: vol.vehicle_type,
+        max_provider_radius_km: 30,
+        max_ngo_radius_km: 30,
+      });
+
+      await createNotification({
+        userId: vol.user_id,
+        type: 'in_app',
+        title,
+        body,
+        data,
+      });
+
+      // Dispatch push notification to volunteer's mobile devices
+      sendPushNotification(vol.user_id, title, body, {
+        type: 'delivery_available',
+        donation_id: donation.id,
+        delivery_id: deliveryId,
+        dist_to_provider_km: vol.dist_to_provider_km,
+        dist_to_ngo_km: vol.dist_to_ngo_km,
+        match_score: vol.score,
       }).catch(() => {});
     }
+
+    console.log(`[NOTIFY] Successfully alerted ${matchedVolunteers.length} volunteer(s) within 30km of both provider & NGO for "${donation.title}"`);
+    return { notified: matchedVolunteers.length, matches: matchedVolunteers };
   } catch (error) {
-    console.error('[NOTIFY] Failed to notify volunteers:', error.message);
+    console.error('[NOTIFY] Failed to notify eligible volunteers:', error.message);
+    return { notified: 0, error: error.message };
   }
 };
 
@@ -546,6 +595,7 @@ module.exports = {
   sendEmail,
   notifyStatusChange,
   notifyNgosOfNewDonation,
+  notifyEligibleNgosOfDonation,
   notifyVolunteersOfPickupMission,
   markDonationNotificationsReadOnClaim,
   getUserNotifications,

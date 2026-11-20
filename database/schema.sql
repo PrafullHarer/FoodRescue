@@ -103,6 +103,9 @@ CREATE TABLE users (
   full_name         VARCHAR(255) NOT NULL,
   phone             VARCHAR(20),
   avatar_url        TEXT,
+  address           TEXT,
+  latitude          DOUBLE PRECISION,
+  longitude         DOUBLE PRECISION,
   user_code         VARCHAR(50) UNIQUE,
   google_id         VARCHAR(255) UNIQUE,
   auth_provider     VARCHAR(50) NOT NULL DEFAULT 'local',
@@ -158,6 +161,7 @@ CREATE TABLE ngos (
 CREATE TABLE volunteers (
   id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id           UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  address           TEXT,
   availability      volunteer_availability NOT NULL DEFAULT 'offline',
   latitude          DOUBLE PRECISION,
   longitude         DOUBLE PRECISION,

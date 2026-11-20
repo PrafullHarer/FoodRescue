@@ -55,7 +55,7 @@ const getUsers = async ({ page = 1, limit = 20, role, status }) => {
  */
 const getUserById = async (userId) => {
   const { rows } = await db.query(
-    'SELECT id, email, role, full_name, phone, avatar_url, status, user_code, created_at FROM users WHERE id = $1',
+    'SELECT id, email, role, full_name, phone, avatar_url, address, latitude, longitude, status, user_code, created_at FROM users WHERE id = $1',
     [userId]
   );
 
@@ -74,37 +74,55 @@ const getUserById = async (userId) => {
       [userId]
     );
     user.profile = profile.rows[0] || null;
+    if (user.profile?.address) user.address = user.profile.address;
+    if (user.profile?.latitude) user.latitude = user.profile.latitude;
+    if (user.profile?.longitude) user.longitude = user.profile.longitude;
   } else if (user.role === 'ngo') {
     const profile = await db.query(
       'SELECT * FROM ngos WHERE user_id = $1',
       [userId]
     );
     user.profile = profile.rows[0] || null;
+    if (user.profile?.address) user.address = user.profile.address;
+    if (user.profile?.latitude) user.latitude = user.profile.latitude;
+    if (user.profile?.longitude) user.longitude = user.profile.longitude;
   } else if (user.role === 'volunteer') {
     const profile = await db.query(
       'SELECT * FROM volunteers WHERE user_id = $1',
       [userId]
     );
     user.profile = profile.rows[0] || null;
+    if (user.profile?.address) user.address = user.profile.address;
+    if (user.profile?.latitude) user.latitude = user.profile.latitude;
+    if (user.profile?.longitude) user.longitude = user.profile.longitude;
   }
 
   return user;
 };
 
 /**
- * Update user profile.
+ * Update user profile across all roles (Provider, NGO, Volunteer, Administrator),
+ * ensuring physical address and coordinates stay synchronized.
  */
 const updateUser = async (userId, data) => {
+  const userRes = await db.query('SELECT id, role FROM users WHERE id = $1', [userId]);
+  if (userRes.rows.length === 0) {
+    const err = new Error('User not found.');
+    err.statusCode = 404;
+    throw err;
+  }
+  const user = userRes.rows[0];
+
   const fields = [];
   const params = [];
 
-  if (data.full_name) {
-    params.push(data.full_name);
+  if (data.full_name !== undefined && data.full_name.trim()) {
+    params.push(data.full_name.trim());
     fields.push(`full_name = $${params.length}`);
   }
 
   if (data.phone !== undefined) {
-    params.push(data.phone);
+    params.push(data.phone ? data.phone.trim() : null);
     fields.push(`phone = $${params.length}`);
   }
 
@@ -113,26 +131,118 @@ const updateUser = async (userId, data) => {
     fields.push(`avatar_url = $${params.length}`);
   }
 
-  if (fields.length === 0) {
-    const err = new Error('No fields to update.');
-    err.statusCode = 400;
-    throw err;
+  if (data.address !== undefined) {
+    params.push(data.address ? data.address.trim() : null);
+    fields.push(`address = $${params.length}`);
   }
 
-  params.push(userId);
-  const { rows } = await db.query(
-    `UPDATE users SET ${fields.join(', ')} WHERE id = $${params.length}
-     RETURNING id, email, role, full_name, phone, avatar_url, status, user_code`,
-    params
-  );
-
-  if (rows.length === 0) {
-    const err = new Error('User not found.');
-    err.statusCode = 404;
-    throw err;
+  if (data.latitude !== undefined && data.latitude !== null) {
+    params.push(Number(data.latitude));
+    fields.push(`latitude = $${params.length}`);
   }
 
-  return rows[0];
+  if (data.longitude !== undefined && data.longitude !== null) {
+    params.push(Number(data.longitude));
+    fields.push(`longitude = $${params.length}`);
+  }
+
+  if (fields.length > 0) {
+    fields.push('updated_at = NOW()');
+    params.push(userId);
+    await db.query(
+      `UPDATE users SET ${fields.join(', ')} WHERE id = $${params.length}`,
+      params
+    );
+  }
+
+  // Update role-specific profile address and coordinates
+  if (data.address !== undefined || data.latitude !== undefined || data.longitude !== undefined || data.business_name || data.organization_name || data.vehicle_type) {
+    if (user.role === 'provider') {
+      const pFields = [];
+      const pParams = [];
+      if (data.address !== undefined) {
+        pParams.push(data.address ? data.address.trim() : '');
+        pFields.push(`address = $${pParams.length}`);
+      }
+      if (data.latitude !== undefined && data.latitude !== null) {
+        pParams.push(Number(data.latitude));
+        pFields.push(`latitude = $${pParams.length}`);
+      }
+      if (data.longitude !== undefined && data.longitude !== null) {
+        pParams.push(Number(data.longitude));
+        pFields.push(`longitude = $${pParams.length}`);
+      }
+      if (data.business_name !== undefined && data.business_name.trim()) {
+        pParams.push(data.business_name.trim());
+        pFields.push(`business_name = $${pParams.length}`);
+      }
+      if (pFields.length > 0) {
+        pFields.push('updated_at = NOW()');
+        pParams.push(userId);
+        await db.query(
+          `UPDATE food_providers SET ${pFields.join(', ')} WHERE user_id = $${pParams.length}`,
+          pParams
+        );
+      }
+    } else if (user.role === 'ngo') {
+      const nFields = [];
+      const nParams = [];
+      if (data.address !== undefined) {
+        nParams.push(data.address ? data.address.trim() : '');
+        nFields.push(`address = $${nParams.length}`);
+      }
+      if (data.latitude !== undefined && data.latitude !== null) {
+        nParams.push(Number(data.latitude));
+        nFields.push(`latitude = $${nParams.length}`);
+      }
+      if (data.longitude !== undefined && data.longitude !== null) {
+        nParams.push(Number(data.longitude));
+        nFields.push(`longitude = $${nParams.length}`);
+      }
+      if (data.organization_name !== undefined && data.organization_name.trim()) {
+        nParams.push(data.organization_name.trim());
+        nFields.push(`organization_name = $${nParams.length}`);
+      }
+      if (nFields.length > 0) {
+        nFields.push('updated_at = NOW()');
+        nParams.push(userId);
+        await db.query(
+          `UPDATE ngos SET ${nFields.join(', ')} WHERE user_id = $${nParams.length}`,
+          nParams
+        );
+      }
+    } else if (user.role === 'volunteer') {
+      const vFields = [];
+      const vParams = [];
+      if (data.address !== undefined) {
+        pParams => vParams; // ensure clean variable
+        vParams.push(data.address ? data.address.trim() : null);
+        vFields.push(`address = $${vParams.length}`);
+      }
+      if (data.latitude !== undefined && data.latitude !== null) {
+        vParams.push(Number(data.latitude));
+        vFields.push(`latitude = $${vParams.length}`);
+      }
+      if (data.longitude !== undefined && data.longitude !== null) {
+        vParams.push(Number(data.longitude));
+        vFields.push(`longitude = $${vParams.length}`);
+      }
+      if (data.vehicle_type !== undefined && data.vehicle_type) {
+        vParams.push(data.vehicle_type);
+        vFields.push(`vehicle_type = $${vParams.length}`);
+      }
+      if (vFields.length > 0) {
+        vFields.push('updated_at = NOW()');
+        vParams.push(userId);
+        await db.query(
+          `UPDATE volunteers SET ${vFields.join(', ')} WHERE user_id = $${vParams.length}`,
+          vParams
+        );
+      }
+    }
+  }
+
+  return getUserById(userId);
 };
 
 const bcrypt = require('bcryptjs');

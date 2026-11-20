@@ -6,18 +6,31 @@ const roleGuard = require('../../middleware/roleGuard');
 
 router.use(authenticate);
 
-// Trigger matching (system / admin / provider)
+// Inspect ML Model metrics and constraints
+router.get(
+  '/models/metrics',
+  matchingController.getModelMetrics
+);
+
+// Trigger smart matching and notify NGOs within 20km (admin / provider)
 router.post(
   '/:donationId/match',
   roleGuard('admin', 'provider'),
   matchingController.matchDonation
 );
 
-// Preview scores (admin-only debug endpoint)
+// Preview NGO scores within 20km (admin / provider)
 router.get(
   '/:donationId/scores',
-  roleGuard('admin'),
+  roleGuard('admin', 'provider'),
   matchingController.previewScores
+);
+
+// Preview/rank volunteers within 30km of BOTH provider and NGO (admin / provider / ngo)
+router.get(
+  '/:donationId/volunteers/:ngoId',
+  roleGuard('admin', 'provider', 'ngo'),
+  matchingController.getMatchedVolunteers
 );
 
 module.exports = router;

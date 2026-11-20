@@ -319,7 +319,7 @@ const login = async ({ email, identifier, password }) => {
   const loginIdentifier = (email || identifier || '').trim();
 
   const { rows } = await db.query(
-    `SELECT id, email, password_hash, role, full_name, status, verification_status, rejection_reason, user_code
+    `SELECT id, email, password_hash, role, full_name, address, latitude, longitude, status, verification_status, rejection_reason, user_code
      FROM users
      WHERE LOWER(email) = LOWER($1)
         OR UPPER(user_code) = UPPER($1)
@@ -404,6 +404,26 @@ const login = async ({ email, identifier, password }) => {
 
   // Strip password_hash from response
   delete user.password_hash;
+
+  if (user.role === 'ngo') {
+    const p = await db.query('SELECT * FROM ngos WHERE user_id = $1', [user.id]);
+    user.profile = p.rows[0] || null;
+    if (user.profile?.address && !user.address) user.address = user.profile.address;
+    if (user.profile?.latitude && user.latitude == null) user.latitude = user.profile.latitude;
+    if (user.profile?.longitude && user.longitude == null) user.longitude = user.profile.longitude;
+  } else if (user.role === 'provider') {
+    const p = await db.query('SELECT * FROM food_providers WHERE user_id = $1', [user.id]);
+    user.profile = p.rows[0] || null;
+    if (user.profile?.address && !user.address) user.address = user.profile.address;
+    if (user.profile?.latitude && user.latitude == null) user.latitude = user.profile.latitude;
+    if (user.profile?.longitude && user.longitude == null) user.longitude = user.profile.longitude;
+  } else if (user.role === 'volunteer') {
+    const p = await db.query('SELECT * FROM volunteers WHERE user_id = $1', [user.id]);
+    user.profile = p.rows[0] || null;
+    if (user.profile?.address && !user.address) user.address = user.profile.address;
+    if (user.profile?.latitude && user.latitude == null) user.latitude = user.profile.latitude;
+    if (user.profile?.longitude && user.longitude == null) user.longitude = user.profile.longitude;
+  }
 
   const tokens = await generateTokens(user);
 

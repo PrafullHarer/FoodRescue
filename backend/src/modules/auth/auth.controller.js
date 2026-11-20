@@ -210,7 +210,7 @@ const getMe = async (req, res, next) => {
     const db = require('../../config/db');
 
     const { rows } = await db.query(
-      'SELECT id, email, role, full_name, phone, avatar_url, status, verification_status, rejection_reason, info_requested_notes, approved_at, rejected_at, profile_completed, auth_provider, user_code, created_at FROM users WHERE id = $1',
+      'SELECT id, email, role, full_name, phone, avatar_url, address, latitude, longitude, status, verification_status, rejection_reason, info_requested_notes, approved_at, rejected_at, profile_completed, auth_provider, user_code, created_at FROM users WHERE id = $1',
       [req.user.id]
     );
 
@@ -221,9 +221,30 @@ const getMe = async (req, res, next) => {
       });
     }
 
+    const userData = rows[0];
+    if (userData.role === 'provider') {
+      const p = await db.query('SELECT * FROM food_providers WHERE user_id = $1', [userData.id]);
+      userData.profile = p.rows[0] || null;
+      if (userData.profile?.address) userData.address = userData.profile.address;
+      if (userData.profile?.latitude) userData.latitude = userData.profile.latitude;
+      if (userData.profile?.longitude) userData.longitude = userData.profile.longitude;
+    } else if (userData.role === 'ngo') {
+      const p = await db.query('SELECT * FROM ngos WHERE user_id = $1', [userData.id]);
+      userData.profile = p.rows[0] || null;
+      if (userData.profile?.address) userData.address = userData.profile.address;
+      if (userData.profile?.latitude) userData.latitude = userData.profile.latitude;
+      if (userData.profile?.longitude) userData.longitude = userData.profile.longitude;
+    } else if (userData.role === 'volunteer') {
+      const p = await db.query('SELECT * FROM volunteers WHERE user_id = $1', [userData.id]);
+      userData.profile = p.rows[0] || null;
+      if (userData.profile?.address) userData.address = userData.profile.address;
+      if (userData.profile?.latitude) userData.latitude = userData.profile.latitude;
+      if (userData.profile?.longitude) userData.longitude = userData.profile.longitude;
+    }
+
     res.status(200).json({
       success: true,
-      data: rows[0],
+      data: userData,
     });
   } catch (error) {
     next(error);

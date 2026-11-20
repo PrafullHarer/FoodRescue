@@ -2,10 +2,28 @@ const db = require('../../config/db');
 const { haversineDistance } = require('../matching/matching.service');
 
 /**
- * Get available volunteers ranked by distance from a donation's pickup location.
+ * Get available volunteers ranked by distance from a donation's pickup location
+ * and destination shelter using the smart matching engine.
  */
-const rankVolunteers = async (donationId) => {
-  // Get donation location
+const rankVolunteers = async (donationId, ngoId = null) => {
+  // If ngoId is known or can be discovered, use smart matching engine with 30km dual-radius rule
+  let destinationNgoId = ngoId;
+  if (!destinationNgoId) {
+    const { rows: claimRows } = await db.query(
+      `SELECT ngo_id FROM donation_claims WHERE donation_id = $1 AND status = 'accepted' LIMIT 1`,
+      [donationId]
+    );
+    if (claimRows.length > 0) {
+      destinationNgoId = claimRows[0].ngo_id;
+    }
+  }
+
+  if (destinationNgoId) {
+    const matchingService = require('../matching/matching.service');
+    return matchingService.matchVolunteersForPickup(donationId, destinationNgoId);
+  }
+
+  // Fallback if no destination shelter yet: filter volunteers <= 30km from donation pickup
   const donationResult = await db.query(
     'SELECT latitude, longitude FROM food_donations WHERE id = $1',
     [donationId]
@@ -19,7 +37,6 @@ const rankVolunteers = async (donationId) => {
 
   const donation = donationResult.rows[0];
 
-  // Get available volunteers with location
   const { rows: volunteers } = await db.query(
     `SELECT v.*, u.full_name, u.phone, u.email
      FROM volunteers v
@@ -30,7 +47,7 @@ const rankVolunteers = async (donationId) => {
        AND u.status = 'active'`
   );
 
-  // Calculate distance and rank
+  // Calculate distance and rank within 30km radius
   const rankedVolunteers = volunteers
     .map((v) => {
       const distanceKm = haversineDistance(
@@ -40,11 +57,10 @@ const rankVolunteers = async (donationId) => {
       return {
         ...v,
         distance_km: Math.round(distanceKm * 100) / 100,
-        // Estimated time in minutes (assuming 30 km/h average)
         estimated_eta_min: Math.round((distanceKm / 30) * 60),
       };
     })
-    .filter((v) => v.distance_km <= (v.max_distance_km || 10))
+    .filter((v) => v.distance_km <= 30.0) // 30km limit
     .sort((a, b) => a.distance_km - b.distance_km);
 
   return rankedVolunteers;

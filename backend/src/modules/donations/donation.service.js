@@ -69,6 +69,12 @@ const createDonation = async (providerId, data) => {
     { title: rows[0].title, quantity: rows[0].quantity, category: rows[0].category }
   );
 
+  // Trigger smart matching and notify eligible NGOs strictly within 20km radius of the food provider
+  const matchingService = require('../matching/matching.service');
+  matchingService.matchAndNotify(rows[0].id).catch(err => {
+    console.warn('[SMART_MATCHING] Auto-match notification to nearby NGOs failed:', err.message);
+  });
+
   return rows[0];
 };
 
@@ -115,6 +121,25 @@ const getDonations = async ({
     } else {
       // NGO browsing available donations: only show active/unclaimed/unexpired donations
       conditions.push(`fd.status IN ('posted', 'matched') AND fd.expiry_time > NOW()`);
+
+      // Auto-bind to NGO's registered base location if lat/lng are not explicitly passed in query
+      if (!lat || !lng) {
+        const ngoGeoRes = await db.query(
+          'SELECT latitude, longitude FROM ngos WHERE user_id = $1',
+          [user.id]
+        );
+        if (ngoGeoRes.rows[0]?.latitude != null && ngoGeoRes.rows[0]?.longitude != null) {
+          lat = ngoGeoRes.rows[0].latitude;
+          lng = ngoGeoRes.rows[0].longitude;
+        }
+      }
+
+      // Default to the platform's 20km matching radius unless explicitly set to 'all' or custom radius
+      if (radiusKm === 'all' || radiusKm === 'unlimited') {
+        radiusKm = null;
+      } else if (!radiusKm && lat && lng) {
+        radiusKm = 20.0;
+      }
     }
   } else if (user?.role === 'volunteer') {
     if (!status) {
@@ -214,20 +239,27 @@ const getDonations = async ({
     conditions.push(`(fd.title ILIKE $${params.length} OR fd.donation_code ILIKE $${params.length} OR fd.pickup_address ILIKE $${params.length})`);
   }
 
-  // Geo-filtering using Haversine approximation
-  if (lat && lng && radiusKm) {
+  let countParams = [...params];
+
+  // Geo-filtering and proximity scoring using Haversine formula
+  if (lat && lng) {
     params.push(parseFloat(lat));
     params.push(parseFloat(lng));
-    params.push(parseFloat(radiusKm));
     const haversine = `
       (6371 * acos(
-        cos(radians($${params.length - 2})) * cos(radians(fd.latitude)) *
-        cos(radians(fd.longitude) - radians($${params.length - 1})) +
-        sin(radians($${params.length - 2})) * sin(radians(fd.latitude))
+        LEAST(1.0::float8, GREATEST(-1.0::float8,
+          cos(radians($${params.length - 1})) * cos(radians(fd.latitude)) *
+          cos(radians(fd.longitude) - radians($${params.length})) +
+          sin(radians($${params.length - 1})) * sin(radians(fd.latitude))
+        ))
       ))
     `;
-    conditions.push(`${haversine} <= $${params.length}`);
-    selectFields += `, ${haversine} AS distance_km`;
+    if (radiusKm) {
+      params.push(parseFloat(radiusKm));
+      conditions.push(`(${haversine}) <= $${params.length}`);
+      countParams = [...params];
+    }
+    selectFields += `, ROUND((${haversine})::numeric, 1) AS distance_km`;
   }
 
   const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
@@ -237,7 +269,7 @@ const getDonations = async ({
     `SELECT COUNT(*) FROM food_donations fd
      LEFT JOIN donation_claims c ON ${claimJoinCondition}
      ${whereClause}`,
-    params
+    countParams
   );
 
   // Paginated results
@@ -738,6 +770,24 @@ const claimDonation = async (donationId, ngoId, { pickupType = 'volunteer' } = {
       throw err;
     }
 
+    // Verify distance does not exceed matching radius limit (20km) unless self-pickup
+    if (donation.latitude != null && donation.longitude != null) {
+      const ngoGeoRes = await client.query('SELECT latitude, longitude FROM ngos WHERE id = $1', [ngoId]);
+      const ngoCoords = ngoGeoRes.rows[0];
+      if (ngoCoords?.latitude != null && ngoCoords?.longitude != null) {
+        const { haversineDistance, NGO_MAX_RADIUS_KM } = require('../matching/matching.service');
+        const distKm = haversineDistance(
+          donation.latitude, donation.longitude,
+          ngoCoords.latitude, ngoCoords.longitude
+        );
+        if (distKm > NGO_MAX_RADIUS_KM && cleanPickupType !== 'self_pickup') {
+          const err = new Error(`This donation is located ${Math.round(distKm)} km away, which exceeds the ${NGO_MAX_RADIUS_KM} km maximum matching radius for food rescue dispatches.`);
+          err.statusCode = 400;
+          throw err;
+        }
+      }
+    }
+
     // Check if this NGO has already claimed
     const existingClaim = await client.query(
       'SELECT id, status, claimed_at FROM donation_claims WHERE donation_id = $1 AND ngo_id = $2',
@@ -983,9 +1033,9 @@ const selectClaim = async (donationId, claimId, providerUserId) => {
       }).catch(err => console.error('[NOTIFY] Failed to notify rejected NGOs:', err.message));
     }
 
-    // If volunteer pickup, notify volunteers
+    // If volunteer pickup, notify volunteers within 30km of BOTH provider and NGO
     if (cleanPickupType === 'volunteer') {
-      notifService.notifyVolunteersOfPickupMission(donation, deliveryId).catch(err =>
+      notifService.notifyVolunteersOfPickupMission(donation, deliveryId, chosenClaim.ngo_id).catch(err =>
         console.error('[NOTIFY] Volunteer broadcast failed:', err.message)
       );
     }

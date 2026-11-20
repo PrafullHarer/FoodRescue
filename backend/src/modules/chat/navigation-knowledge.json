@@ -1,0 +1,310 @@
+{
+  "platform": {
+    "name": "FoodRescue",
+    "description": "Smart surplus food donation and redistribution platform connecting commercial food providers, NGOs/shelters, and volunteer couriers to eliminate edible food waste.",
+    "supportEmail": "2026.food.rescue@gmail.com",
+    "supportedLanguages": ["en", "hi", "mr"]
+  },
+  "roles": {
+    "guest": {
+      "title": "Guest / Visitor",
+      "description": "Unauthenticated platform visitor.",
+      "permissions": ["View landing page", "View public impact statistics", "Access contact page", "Submit public feedback", "Sign up or log in"]
+    },
+    "provider": {
+      "title": "Food Provider",
+      "description": "Restaurants, bakeries, caterers, grocery stores, and corporate cafeterias with surplus edible food.",
+      "permissions": ["Post surplus food listings", "Manage active donations", "Review competing NGO claims with 5-factor priority algorithm", "Accept or reject claims", "Present pickup QR code to courier", "View ESG impact receipts and carbon metrics", "Submit courier reviews", "File complaints"]
+    },
+    "ngo": {
+      "title": "NGO / Community Shelter",
+      "description": "Certified non-profit charities, community kitchens, orphanages, and emergency hunger relief shelters.",
+      "permissions": ["Browse live surplus food by proximity & servings", "Claim food batches with volunteer dispatch or self-pickup", "Scan dropoff QR code upon delivery", "Submit donor and courier reviews", "Track intake metrics", "File complaints"]
+    },
+    "volunteer": {
+      "title": "Volunteer Courier",
+      "description": "Community drivers and couriers rescuing meals on foot, bicycle, e-bike, or car.",
+      "permissions": ["Browse available rescue missions", "Accept delivery tasks", "Scan pickup QR at provider location", "Perform 4-point food quality inspection", "Transport meals safely", "Display dropoff QR at shelter", "Earn leaderboard recognition"]
+    },
+    "admin": {
+      "title": "Administrator",
+      "description": "Platform governance and safety manager.",
+      "permissions": ["Review user verifications", "Manage user accounts", "Inspect geographic donation hotspots", "Resolve complaints & dispute threads", "Track automated incidents & food expiry", "Review public feedback", "Audit immutable system logs"]
+    }
+  },
+  "routes": [
+    {
+      "path": "/",
+      "title": "Home / Landing Page",
+      "roles": ["guest", "provider", "ngo", "volunteer", "admin"],
+      "description": "Public overview of FoodRescue platform, environmental impact stats, mission overview, and role registration cards."
+    },
+    {
+      "path": "/contact",
+      "title": "Contact & Support",
+      "roles": ["guest", "provider", "ngo", "volunteer", "admin"],
+      "description": "Official point of contact via email (2026.food.rescue@gmail.com) with 1-click email copy and response time details."
+    },
+    {
+      "path": "/feedback",
+      "title": "Public Feedback",
+      "roles": ["guest", "provider", "ngo", "volunteer", "admin"],
+      "description": "Submit platform feedback, rating, suggestions, or bug reports (anonymous or authenticated)."
+    },
+    {
+      "path": "/login",
+      "title": "Sign In",
+      "roles": ["guest"],
+      "description": "Login with email and password or Google OAuth 2.0. Includes 1-click demo accounts."
+    },
+    {
+      "path": "/register",
+      "title": "Sign Up / Registration",
+      "roles": ["guest"],
+      "description": "Create a new Food Provider, NGO, or Volunteer account with map address picker and email OTP verification."
+    },
+    {
+      "path": "/forgot-password",
+      "title": "Password Recovery",
+      "roles": ["guest", "provider", "ngo", "volunteer"],
+      "description": "Self-service password reset using 6-digit email OTP (Super Admin excluded)."
+    },
+    {
+      "path": "/dashboard",
+      "title": "Role Dashboard",
+      "roles": ["provider", "ngo", "volunteer", "admin"],
+      "description": "Personalized operations overview, active missions, quick action shortcuts, and platform status."
+    },
+    {
+      "path": "/donations",
+      "title": "My Donations",
+      "roles": ["provider", "admin"],
+      "description": "Food provider listing inventory. Filter by status: posted, claimed, in_transit, delivered, expired."
+    },
+    {
+      "path": "/donations/new",
+      "title": "Post Surplus Donation",
+      "roles": ["provider", "admin"],
+      "description": "Form to post perishable food: category, portions, weight (kg), expiry countdown, pickup window, and Leaflet location picker."
+    },
+    {
+      "path": "/donations/:id",
+      "title": "Donation Details & Claim Selection",
+      "roles": ["provider", "ngo", "volunteer", "admin"],
+      "description": "Detailed view of listing, chronological lifecycle events, and Smart Shelter Ranking algorithm breakdown."
+    },
+    {
+      "path": "/browse",
+      "title": "Browse Donations",
+      "roles": ["ngo", "admin"],
+      "description": "Live feed of available surplus food with proximity radius slider, dietary/category filters, and 1-click claim button."
+    },
+    {
+      "path": "/claims",
+      "title": "My Claims",
+      "roles": ["ngo", "admin"],
+      "description": "Shelter's claimed donations, courier dispatch tracking, and direct pickup QR verification triggers."
+    },
+    {
+      "path": "/deliveries",
+      "title": "Available & Active Deliveries",
+      "roles": ["volunteer", "admin"],
+      "description": "Volunteer rescue runs: accept missions, view pickup and shelter addresses, navigate route, and scan QR."
+    },
+    {
+      "path": "/qr-scan",
+      "title": "QR Code Verification Scanner",
+      "roles": ["volunteer", "ngo", "provider", "admin"],
+      "description": "Web and native 4:3 hardware camera scanner with 4-point Quality Checklist verification."
+    },
+    {
+      "path": "/reviews",
+      "title": "Ratings & Trust Hub",
+      "roles": ["provider", "ngo", "volunteer"],
+      "description": "Reputation scorecard, Bayesian average rating, received reviews, submitted reviews, and 48-hour inline edit."
+    },
+    {
+      "path": "/notifications",
+      "title": "Notification Center",
+      "roles": ["provider", "ngo", "volunteer", "admin"],
+      "description": "Real-time alerts for claims, courier arrival, delivery completion, and governance notices."
+    },
+    {
+      "path": "/analytics",
+      "title": "Impact Analytics",
+      "roles": ["provider", "ngo", "volunteer", "admin"],
+      "description": "ESG metrics: kilograms rescued, meals donated, and CO2 emissions prevented."
+    },
+    {
+      "path": "/profile",
+      "title": "User Profile & Danger Zone",
+      "roles": ["provider", "ngo", "volunteer", "admin"],
+      "description": "Update name, phone, address coordinates, password reset, and Danger Zone self-service account deletion."
+    },
+    {
+      "path": "/complaints",
+      "title": "Disputes & Complaints",
+      "roles": ["provider", "ngo", "volunteer", "admin"],
+      "description": "Submit issues regarding missing items, packaging defects, or courier behavior."
+    },
+    {
+      "path": "/complaints/:id",
+      "title": "Complaint Detail & Thread",
+      "roles": ["provider", "ngo", "volunteer", "admin"],
+      "description": "Two-way threaded discussion between complainant and admin team with resolution status."
+    },
+    {
+      "path": "/admin/verifications",
+      "title": "Admin Verification Queue",
+      "roles": ["admin"],
+      "description": "Verify food businesses and NGOs, inspect licenses/tax IDs, approve, reject, or request information."
+    },
+    {
+      "path": "/admin/users",
+      "title": "Admin User Management",
+      "roles": ["admin"],
+      "description": "Search, filter, suspend, or reactivate platform users."
+    },
+    {
+      "path": "/admin/analytics",
+      "title": "Admin Geographic Analytics",
+      "roles": ["admin"],
+      "description": "Leaflet donation hotspots map, category waste breakdowns, and regional demand gap analysis."
+    },
+    {
+      "path": "/admin/complaints",
+      "title": "Admin Complaint Resolution",
+      "roles": ["admin"],
+      "description": "Assign, investigate, prioritize, resolve, or reject platform complaints."
+    },
+    {
+      "path": "/admin/incidents",
+      "title": "Admin Incident Management",
+      "roles": ["admin"],
+      "description": "Automated incident detector flags, pattern analysis, escalation levels, and investigator notes."
+    },
+    {
+      "path": "/admin/feedback",
+      "title": "Admin Feedback Portal",
+      "roles": ["admin"],
+      "description": "Review public visitor feedback, add internal notes, and update review status."
+    },
+    {
+      "path": "/admin/audit-logs",
+      "title": "Admin Security Audit Logs",
+      "roles": ["admin"],
+      "description": "Immutable security log of all authentication, verification, and critical donation updates."
+    }
+  ],
+  "navigationGuides": {
+    "post_donation": {
+      "title": "How to Post a Surplus Food Donation",
+      "role": "provider",
+      "prerequisites": "Must be logged in with a verified Food Provider account.",
+      "steps": [
+        "Sign in to your Food Provider account at /login.",
+        "Click 'Post Donation' in the left sidebar menu (or navigate directly to [Post Donation](/donations/new)).",
+        "Enter the food title, category (e.g. Cooked Meals, Bakery, Produce), quantity/servings, and estimated weight in kilograms.",
+        "Set the consumption expiry countdown and preferred pickup window.",
+        "Under Section 2 (Pickup Location), click 'Open Location Picker' to pin your exact pickup address on the interactive dark Leaflet map, then click 'SELECT LOCATION!'.",
+        "Click 'Submit Surplus Listing'. Your food batch is now live for nearby NGOs to claim."
+      ],
+      "postAction": "Nearby verified NGOs receive instant alerts. You can view competing claims on the listing's details page."
+    },
+    "claim_food": {
+      "title": "How to Claim Surplus Food for a Shelter",
+      "role": "ngo",
+      "prerequisites": "Must be logged in with an approved NGO/Shelter account.",
+      "steps": [
+        "Sign in to your NGO account at /login.",
+        "Click 'Browse Donations' in the sidebar or go to [Browse Donations](/browse).",
+        "Use the category filter or proximity distance slider to discover surplus listings in your locality.",
+        "Click 'Claim Food' on any active card to open the claim modal.",
+        "Select your preferred fulfillment mode: 'Volunteer Courier Dispatch' or 'Direct Self-Pickup'.",
+        "Confirm your claim. The food provider will review competing claims using the smart priority algorithm."
+      ],
+      "postAction": "Track progress in [My Claims](/claims). Once accepted, a courier will be dispatched or your single-step pickup QR code will activate."
+    },
+    "volunteer_delivery": {
+      "title": "How to Accept and Complete a Volunteer Rescue Mission",
+      "role": "volunteer",
+      "prerequisites": "Must be logged in as a Volunteer Courier.",
+      "steps": [
+        "Sign in to your Volunteer account at /login.",
+        "Click 'My Deliveries' in the sidebar or go to [Deliveries](/deliveries).",
+        "Review available rescue tasks showing distance, donor pickup address, and receiving shelter destination.",
+        "Click 'Accept Mission' to claim the delivery run.",
+        "Travel to the food provider and scan their Pickup QR code (RESCUE-PK-XXXX) using the [QR Scanner](/qr-scan).",
+        "Complete the 4-Point Food Quality Inspection Checklist (Freshness, Packaging, Temperature, Portion Match) to transition status to 'in_transit'.",
+        "Transport the food to the receiving shelter and have the shelter representative scan your Dropoff QR code (RESCUE-DL-XXXX) to confirm completion."
+      ],
+      "postAction": "Your successful delivery is verified, ESG metrics are credited, and review eligibility unlocks."
+    },
+    "download_receipt": {
+      "title": "Where and How to View / Download Donation Receipts",
+      "role": "all",
+      "prerequisites": "Must be logged in as the owning Food Provider or receiving NGO.",
+      "steps": [
+        "Sign in to your account at /login.",
+        "Food Providers: Click 'My Donations' in the sidebar ([My Donations](/donations)). NGOs: Click 'My Claims' ([My Claims](/claims)).",
+        "Click on any completed donation with status 'delivered'.",
+        "The Donation Detail page displays the verified meal count, rescued kilograms, CO2 emissions avoided, handover timestamps, and courier confirmation.",
+        "An official automated completion receipt is also sent directly to your registered email address upon final QR dropoff verification."
+      ],
+      "postAction": "You can print or save the email receipt or platform scorecard for your non-profit/tax records."
+    },
+    "reset_password": {
+      "title": "How to Reset Your Account Password",
+      "role": "all",
+      "prerequisites": "Available to Food Providers, NGOs, and Volunteers with a registered email.",
+      "steps": [
+        "Go to the login screen and click 'Forgot Password?' or visit [Password Recovery](/forgot-password).",
+        "Enter your registered account email and click 'Send Verification Code'.",
+        "Check your email inbox for a 6-digit OTP code (valid for 10 minutes).",
+        "Enter the 6-digit code and choose a new secure password.",
+        "Click 'Reset Password'. You can now sign in with your new credentials."
+      ],
+      "note": "Super Administrator credentials cannot be reset via public OTP recovery for security."
+    },
+    "delete_account": {
+      "title": "How to Delete Your Account (Danger Zone)",
+      "role": "all",
+      "prerequisites": "All active donations, in-flight deliveries, or pending claims must be completed or cancelled first.",
+      "steps": [
+        "Sign in to your account and click 'Profile' in the bottom sidebar or user menu ([Profile](/profile)).",
+        "Scroll down to the 'Danger Zone' section at the bottom of the page.",
+        "Click 'Delete Account'.",
+        "Enter your current password to confirm (or type 'DELETE' if signed in with Google OAuth).",
+        "Click 'Permanently Delete My Account'. Your profile, push tokens, and notification records will be safely cleaned up."
+      ],
+      "note": "Super Administrator accounts cannot be deleted to prevent platform lockout."
+    },
+    "contact_support": {
+      "title": "How to Contact FoodRescue Support",
+      "role": "all",
+      "prerequisites": "None (available to guests and all users).",
+      "steps": [
+        "Visit the official contact directory at [Contact Support](/contact).",
+        "Our sole official communication channel is our dedicated project email: 2026.food.rescue@gmail.com.",
+        "Click 'Copy Email' or 'Send Email' to reach our 24/7 coordination desk directly from your mail client.",
+        "Our team typically responds within 2 to 4 hours."
+      ]
+    }
+  },
+  "algorithm": {
+    "name": "Smart Shelter Claim Requests & Selection Priority Algorithm",
+    "weights": {
+      "hungerNeed": "35% (days since last donation, beneficiary scale, active claim dampener)",
+      "communityReviews": "25% (Bayesian smoothed rating R_Bayes = (C*m + sum(r))/(C + n), C=3, m=4.2)",
+      "absorptionCapacity": "20% (donation servings vs NGO daily intake capacity)",
+      "proximity": "15% (Haversine distance <=2km: 100, <=5km: 90, <=10km: 75, <=20km: 50, >20km: 30)",
+      "reliability": "5% (verified NGO badge, delivery completion percentage >=95%, clean record)"
+    },
+    "badges": [
+      {"name": "Best Match", "criteria": "Highest composite priority score across all competing claims"},
+      {"name": "Highest Need", "criteria": "Acute hunger deficit with hunger score >= 85"},
+      {"name": "Proximity Star", "criteria": "Within 3 km with optimal absorption capacity"},
+      {"name": "Top Community Rated", "criteria": "Bayesian trust rating >= 4.7 stars"}
+    ]
+  }
+}

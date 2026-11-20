@@ -1,24 +1,62 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import api from '../../api/client';
-import { Package, MapPin, Clock, Search, CheckCircle2, Map, LayoutGrid, XCircle } from 'lucide-react';
+import { Package, MapPin, Clock, Search, CheckCircle2, Map, LayoutGrid, XCircle, Building2, Compass } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../contexts/AuthContext';
 import DonationMapView from '../../components/common/DonationMapView';
 import ClaimDonationModal from '../../components/common/ClaimDonationModal';
+import MapAddressPickerModal from '../../components/common/MapAddressPickerModal';
 import UserReputationLink from '../../components/reviews/UserReputationLink';
 
 export default function BrowseDonationsPage() {
+  const { user, fetchUser } = useAuth();
   const [donations, setDonations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [claiming, setClaiming] = useState(null);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'map'
   const [selectedDonationToClaim, setSelectedDonationToClaim] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [radiusFilter, setRadiusFilter] = useState('20'); // '20' | '50' | '100' | 'all'
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load('20'); }, []);
 
-  const load = async () => {
+  useEffect(() => {
+    if (user?.id) {
+      api.get(`/users/${user.id}`)
+        .then((res) => setUserProfile(res.data?.data))
+        .catch(() => {});
+    }
+  }, [user?.id]);
+
+  const ngoLocation = useMemo(() => {
+    const lat = user?.latitude ?? userProfile?.latitude ?? user?.profile?.latitude ?? userProfile?.profile?.latitude;
+    const lng = user?.longitude ?? userProfile?.longitude ?? user?.profile?.longitude ?? userProfile?.profile?.longitude;
+    const name = user?.profile?.organization_name ?? userProfile?.profile?.organization_name ?? user?.full_name ?? userProfile?.full_name ?? 'My Shelter Base';
+    const addr = user?.address ?? userProfile?.address ?? user?.profile?.address ?? userProfile?.profile?.address ?? '';
+
+    if (lat != null && lng != null && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng))) {
+      return {
+        latitude: parseFloat(lat),
+        longitude: parseFloat(lng),
+        name,
+        address: addr,
+      };
+    }
+    return null;
+  }, [user, userProfile]);
+
+  const load = async (activeRadius = radiusFilter) => {
+    setLoading(true);
     try {
-      const { data } = await api.get('/donations', { params: { status: 'posted', limit: 50 } });
+      const params = { status: 'posted', limit: 50 };
+      if (activeRadius && activeRadius !== 'all') {
+        params.radius_km = activeRadius;
+      } else if (activeRadius === 'all') {
+        params.radius_km = 'all';
+      }
+      const { data } = await api.get('/donations', { params });
       setDonations(data.data?.donations || []);
     } catch { /* ignore */ } finally { setLoading(false); }
   };
@@ -83,15 +121,46 @@ export default function BrowseDonationsPage() {
         </div>
       </div>
 
-      <div className="relative max-w-md">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="input pl-10"
-          placeholder="Search by ID, title, category, or address..."
-        />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        {/* Search */}
+        <div className="relative max-w-md flex-1">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="input pl-10"
+            placeholder="Search by ID, title, category, or address..."
+          />
+        </div>
+
+        {/* Proximity / Matching Radius Filter */}
+        <div className="flex items-center gap-1.5 p-1 bg-neutral-100 dark:bg-[#141416] border border-neutral-200 dark:border-[#232328] rounded-xl overflow-x-auto self-start sm:self-auto shadow-xs">
+          <span className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400 px-2 flex items-center gap-1 select-none">
+            <Compass className="w-3.5 h-3.5 text-emerald-500" /> Radius:
+          </span>
+          {[
+            { id: '20', label: '20 km (Smart Match)' },
+            { id: '50', label: '50 km' },
+            { id: '100', label: '100 km' },
+            { id: 'all', label: 'All Distances' },
+          ].map((r) => (
+            <button
+              key={r.id}
+              onClick={() => {
+                setRadiusFilter(r.id);
+                load(r.id);
+              }}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                radiusFilter === r.id
+                  ? 'bg-emerald-600 text-white shadow-xs font-bold'
+                  : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+              }`}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {loading ? (
@@ -99,19 +168,63 @@ export default function BrowseDonationsPage() {
           <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-20 bg-[#121214] border border-[#232328] rounded-2xl p-8">
+        <div className="text-center py-16 bg-[#121214] border border-[#232328] rounded-2xl p-8 max-w-xl mx-auto">
           <Package className="w-12 h-12 mx-auto mb-3 text-neutral-600 stroke-1" />
-          <p className="text-white font-semibold text-base">No available donations right now</p>
-          <p className="text-xs text-neutral-400 mt-1">New surplus food is posted regularly by local donors.</p>
+          <p className="text-white font-semibold text-base">
+            {radiusFilter === '20' 
+              ? 'No surplus food within your 20 km Smart Match radius'
+              : 'No available donations matching your search'}
+          </p>
+          <p className="text-xs text-neutral-400 mt-1.5 leading-relaxed">
+            {radiusFilter === '20' 
+              ? 'FoodRescue restricts active surplus food dispatches within 20 km of your shelter base to guarantee prompt transit and hot meal safety.'
+              : 'Check back soon as local food providers post surplus batches regularly.'}
+          </p>
+          {radiusFilter === '20' && (
+            <button
+              onClick={() => {
+                setRadiusFilter('all');
+                load('all');
+              }}
+              className="mt-4 px-4 py-2 rounded-xl text-xs font-bold bg-neutral-800 hover:bg-neutral-700 text-emerald-400 border border-emerald-500/30 transition-all cursor-pointer"
+            >
+              Expand to All Distances
+            </button>
+          )}
         </div>
       ) : viewMode === 'map' ? (
         <div className="space-y-4">
-          <div className="bg-[#121214] rounded-2xl border border-[#232328] p-4 flex items-center justify-between text-xs text-neutral-400">
-            <span>Showing <strong className="text-white">{filtered.length}</strong> food donation listings on the map</span>
-            <span>Click on any pin badge to inspect and get directions</span>
+          <div className="bg-[#121214] rounded-2xl border border-[#232328] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-neutral-400">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span>Showing <strong className="text-white">{filtered.length}</strong> food donation listings on the map</span>
+              {ngoLocation ? (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-500/15 border border-purple-500/30 text-purple-300 font-medium">
+                  <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
+                  <span>Base: <strong className="text-white">{ngoLocation.name}</strong></span>
+                  {ngoLocation.address && <span className="opacity-75 truncate max-w-[200px]">({ngoLocation.address})</span>}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 font-medium">
+                  <span>⚠️ Shelter GPS not pinned</span>
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setShowLocationPicker(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs border border-neutral-700 transition-colors cursor-pointer"
+              >
+                <MapPin className="w-3.5 h-3.5 text-purple-400" />
+                <span>{ngoLocation ? 'Update Shelter Base' : 'Pin My Shelter Base'}</span>
+              </button>
+            </div>
           </div>
+
           <DonationMapView
             donations={filtered}
+            ngoLocation={ngoLocation}
             onClaimDonation={handleInitiateClaim}
             className="h-[580px] shadow-2xl"
           />
@@ -173,9 +286,23 @@ export default function BrowseDonationsPage() {
                   <span>{d.quantity} {d.unit}</span>
                   <span className="text-neutral-500 font-normal">{d.weight_kg ? `${d.weight_kg} kg` : ''}</span>
                 </div>
-                <div className="flex items-center gap-1.5 text-neutral-500 truncate">
-                  <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span className="truncate">{d.pickup_address}</span>
+                <div className="flex items-center justify-between text-neutral-400 gap-2">
+                  <div className="flex items-center gap-1.5 truncate flex-1 text-neutral-500">
+                    <MapPin className="w-3.5 h-3.5 flex-shrink-0 text-emerald-500" />
+                    <span className="truncate">{d.pickup_address}</span>
+                  </div>
+                  {d.distance_km != null && (
+                    <span
+                      className={`px-2 py-0.5 rounded text-[11px] font-bold shrink-0 ${
+                        Number(d.distance_km) <= 20
+                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                          : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                      }`}
+                      title={`${d.distance_km} km from your shelter base`}
+                    >
+                      {Number(d.distance_km).toFixed(1)} km
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-1.5 text-neutral-500">
                   <Clock className="w-3.5 h-3.5 flex-shrink-0" />
@@ -245,6 +372,37 @@ export default function BrowseDonationsPage() {
           donation={selectedDonationToClaim}
           onConfirmClaim={handleConfirmClaim}
           isClaiming={claiming === selectedDonationToClaim.id}
+        />
+      )}
+
+      {/* Interactive Shelter Base Location Picker Modal */}
+      {showLocationPicker && (
+        <MapAddressPickerModal
+          isOpen={showLocationPicker}
+          onClose={() => setShowLocationPicker(false)}
+          initialAddress={ngoLocation?.address || ''}
+          initialLat={ngoLocation?.latitude || 28.6139}
+          initialLng={ngoLocation?.longitude || 77.2090}
+          title="Set Shelter Base Location"
+          onSelectLocation={async ({ address, latitude, longitude }) => {
+            try {
+              if (user?.id) {
+                await api.put(`/users/${user.id}`, {
+                  address,
+                  latitude,
+                  longitude,
+                });
+                toast.success('Shelter base location pinned!');
+                if (fetchUser) await fetchUser();
+                const res = await api.get(`/users/${user.id}`);
+                setUserProfile(res.data?.data);
+              }
+            } catch (err) {
+              toast.error(err.response?.data?.message || 'Failed to update location');
+            } finally {
+              setShowLocationPicker(false);
+            }
+          }}
         />
       )}
     </div>

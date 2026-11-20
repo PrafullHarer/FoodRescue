@@ -23,6 +23,7 @@ const reviewRoutes = require('./modules/reviews/review.routes');
 const complaintRoutes = require('./modules/complaints/complaint.routes');
 const incidentRoutes = require('./modules/incidents/incident.routes');
 const feedbackRoutes = require('./modules/feedback/feedback.routes');
+const chatRoutes = require('./modules/chat/chat.routes');
 
 // Import background jobs
 const { startExpiryChecker } = require('./jobs/expiry-checker.cron');
@@ -144,6 +145,7 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/complaints', complaintRoutes);
 app.use('/api/incidents', incidentRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/chat', chatRoutes);
 
 // ─── 8. 404 Handler ──────────────────────────────────────────
 app.use((req, res) => {

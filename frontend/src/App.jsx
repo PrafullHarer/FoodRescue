@@ -51,6 +51,9 @@ import AdminFeedbackPage from './pages/admin/AdminFeedbackPage';
 import FeedbackPage from './pages/feedback/FeedbackPage';
 import ContactPage from './pages/contact/ContactPage';
 
+// AI Chatbot Widget
+import ChatWidget from './components/chat/ChatWidget';
+
 export default function App() {
   return (
     <ThemeProvider>
@@ -235,6 +238,9 @@ export default function App() {
             {/* Catch-all redirect */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
+
+          {/* AI Chatbot Widget embedded across all pages */}
+          <ChatWidget />
         </BrowserRouter>
       </ReputationProvider>
     </AuthProvider>

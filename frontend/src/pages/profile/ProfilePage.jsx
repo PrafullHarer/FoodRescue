@@ -13,6 +13,7 @@ import toast from 'react-hot-toast';
 import UserRatingBadge from '../../components/reviews/UserRatingBadge';
 import PasswordRequirements, { evaluatePassword } from '../../components/common/PasswordRequirements';
 import ResetPasswordModal from '../../components/common/ResetPasswordModal';
+import MapAddressPickerModal from '../../components/common/MapAddressPickerModal';
 
 const roleLabel = {
   provider: 'Food Provider',
@@ -36,7 +37,14 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ full_name: '', phone: '' });
+  const [form, setForm] = useState({
+    full_name: '',
+    phone: '',
+    address: '',
+    latitude: null,
+    longitude: null,
+  });
+  const [showMapPicker, setShowMapPicker] = useState(false);
 
   // Password management state
   const [showPasswordSection, setShowPasswordSection] = useState(false);
@@ -144,9 +152,15 @@ export default function ProfilePage() {
     try {
       const { data } = await api.get(`/users/${user.id}`);
       setProfile(data.data);
+      const userAddress = data.data.address || data.data.profile?.address || '';
+      const userLat = data.data.latitude ?? data.data.profile?.latitude ?? null;
+      const userLng = data.data.longitude ?? data.data.profile?.longitude ?? null;
       setForm({
         full_name: data.data.full_name || '',
         phone: data.data.phone || '',
+        address: userAddress,
+        latitude: userLat,
+        longitude: userLng,
       });
     } catch {
       toast.error('Failed to load profile');
@@ -165,8 +179,11 @@ export default function ProfilePage() {
       await api.put(`/users/${user.id}`, {
         full_name: form.full_name.trim(),
         phone: form.phone.trim() || null,
+        address: form.address ? form.address.trim() : null,
+        latitude: form.latitude !== null ? Number(form.latitude) : null,
+        longitude: form.longitude !== null ? Number(form.longitude) : null,
       });
-      toast.success('Profile updated');
+      toast.success('Profile and address updated');
       await fetchUser();
       await loadProfile();
       setEditing(false);
@@ -178,9 +195,15 @@ export default function ProfilePage() {
   };
 
   const handleCancel = () => {
+    const userAddress = profile?.address || profile?.profile?.address || '';
+    const userLat = profile?.latitude ?? profile?.profile?.latitude ?? null;
+    const userLng = profile?.longitude ?? profile?.profile?.longitude ?? null;
     setForm({
       full_name: profile?.full_name || '',
       phone: profile?.phone || '',
+      address: userAddress,
+      latitude: userLat,
+      longitude: userLng,
     });
     setEditing(false);
   };
@@ -201,8 +224,7 @@ export default function ProfilePage() {
   };
 
   const getAddress = () => {
-    if (!profile?.profile) return null;
-    return profile.profile.address || null;
+    return profile?.address || profile?.profile?.address || null;
   };
 
   const getRoleSpecificFields = () => {
@@ -361,18 +383,74 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Address */}
-            {address && (
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-neutral-100 dark:bg-[#1c1c20] border border-neutral-200 dark:border-[#27272e] flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <MapPin className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] text-neutral-500 uppercase font-bold">Address</p>
-                  <p className="text-sm text-neutral-900 dark:text-white">{address}</p>
-                </div>
+            {/* Address & Physical Location (All Profiles) */}
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-neutral-100 dark:bg-[#1c1c20] border border-neutral-200 dark:border-[#27272e] flex items-center justify-center flex-shrink-0 mt-0.5">
+                <MapPin className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
               </div>
-            )}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[10px] text-neutral-500 uppercase font-bold">Address & Location</p>
+                  {editing && (
+                    <button
+                      type="button"
+                      onClick={() => setShowMapPicker(true)}
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-[#39FF14] hover:underline cursor-pointer"
+                    >
+                      <MapPin className="w-3 h-3" />
+                      <span>Choose on Map / GPS</span>
+                    </button>
+                  )}
+                </div>
+
+                {editing ? (
+                  <div className="space-y-1.5 mt-1">
+                    <textarea
+                      value={form.address}
+                      onChange={(e) => setForm({ ...form, address: e.target.value })}
+                      rows={2}
+                      className="input-field text-sm py-1.5 w-full resize-none"
+                      placeholder="Street address, City, State / Province, Postal Code"
+                    />
+                    <div className="flex items-center justify-between gap-2 flex-wrap text-[11px]">
+                      {form.latitude !== null && form.longitude !== null ? (
+                        <span className="font-mono text-neutral-500 dark:text-neutral-400">
+                          📍 Coordinates: {Number(form.latitude).toFixed(4)}, {Number(form.longitude).toFixed(4)}
+                        </span>
+                      ) : (
+                        <span className="text-neutral-400 dark:text-neutral-500 italic">
+                          No GPS coordinates pinned yet
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setShowMapPicker(true)}
+                        className="px-2 py-0.5 rounded-md bg-neutral-100 dark:bg-[#18181b] border border-neutral-300 dark:border-[#282830] text-neutral-700 dark:text-neutral-300 hover:text-emerald-500 dark:hover:text-[#39FF14] transition-colors cursor-pointer"
+                      >
+                        Pin Location
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-0.5">
+                    {address ? (
+                      <div>
+                        <p className="text-sm text-neutral-900 dark:text-white leading-relaxed">{address}</p>
+                        {profile.latitude !== null && profile.latitude !== undefined && (
+                          <p className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 mt-0.5">
+                            GPS: {Number(profile.latitude).toFixed(4)}, {Number(profile.longitude).toFixed(4)}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-neutral-400 dark:text-neutral-500 italic">
+                        Not provided — click &quot;Edit Profile&quot; to set your address &amp; coordinates
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -903,6 +981,28 @@ export default function ProfilePage() {
         onClose={() => setShowForgotModal(false)}
         initialEmail={profile?.email || user?.email || ''}
       />
+
+      {/* Map Location & Address Picker Modal */}
+      {showMapPicker && (
+        <MapAddressPickerModal
+          isOpen={showMapPicker}
+          onClose={() => setShowMapPicker(false)}
+          initialAddress={form.address || ''}
+          initialLat={form.latitude !== null && form.latitude !== undefined ? Number(form.latitude) : 28.6139}
+          initialLng={form.longitude !== null && form.longitude !== undefined ? Number(form.longitude) : 77.2090}
+          title="Select Profile Address & Coordinates"
+          onSelectLocation={({ address: pickedAddress, latitude, longitude }) => {
+            setForm((prev) => ({
+              ...prev,
+              address: pickedAddress || prev.address,
+              latitude: latitude !== undefined ? latitude : prev.latitude,
+              longitude: longitude !== undefined ? longitude : prev.longitude,
+            }));
+            setShowMapPicker(false);
+            toast.success('Address and map coordinates selected');
+          }}
+        />
+      )}
     </div>
   );
 }

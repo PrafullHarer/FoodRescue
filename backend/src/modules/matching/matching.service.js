@@ -1,29 +1,27 @@
 const db = require('../../config/db');
 const { MATCHING_WEIGHTS } = require('../../config/constants');
+const { predictNgoMatch, predictVolunteerMatch } = require('../../ml/model_inference');
 
 /**
- * Smart Matching Engine
- *
- * Computes match score: M = wd·D + wq·Q + wf·F + wt·T + wp·P
- *
- * Where:
- *   D = Distance score (inverse of distance, closer = higher)
- *   Q = Quantity/Capacity match score
- *   F = Food preference alignment score
- *   T = Time urgency score (less time remaining = more urgent = higher)
- *   P = Past performance score (NGO reliability)
+ * Spatial Boundary Constants
  */
+const NGO_MAX_RADIUS_KM = 20.0;
+const VOLUNTEER_MAX_RADIUS_KM = 30.0;
 
 /**
  * Calculate Haversine distance between two lat/lng points (in km).
  */
 const haversineDistance = (lat1, lng1, lat2, lng2) => {
+  if (lat1 === null || lat1 === undefined || lng1 === null || lng1 === undefined ||
+      lat2 === null || lat2 === undefined || lng2 === null || lng2 === undefined) {
+    return Infinity;
+  }
   const R = 6371; // Earth's radius in km
-  const dLat = toRadians(lat2 - lat1);
-  const dLng = toRadians(lng2 - lng1);
+  const dLat = toRadians(Number(lat2) - Number(lat1));
+  const dLng = toRadians(Number(lng2) - Number(lng1));
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
+    Math.cos(toRadians(Number(lat1))) * Math.cos(toRadians(Number(lat2))) *
     Math.sin(dLng / 2) * Math.sin(dLng / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
@@ -32,55 +30,24 @@ const haversineDistance = (lat1, lng1, lat2, lng2) => {
 const toRadians = (degrees) => degrees * (Math.PI / 180);
 
 /**
- * Distance score: 1.0 for < 1 km, decaying to 0 at max range (50 km).
+ * Get days since last donation accepted by this NGO.
  */
-const computeDistanceScore = (distanceKm) => {
-  const MAX_RANGE = 50;
-  if (distanceKm <= 1) return 1.0;
-  if (distanceKm >= MAX_RANGE) return 0.0;
-  return 1 - (distanceKm / MAX_RANGE);
+const getDaysSinceLastDonation = async (ngoId) => {
+  const { rows } = await db.query(
+    `SELECT MAX(claimed_at) as last_claimed
+     FROM donation_claims
+     WHERE ngo_id = $1 AND status = 'accepted'`,
+    [ngoId]
+  );
+  if (!rows[0] || !rows[0].last_claimed) return 30; // 30+ days (high urgency)
+  const diffMs = Date.now() - new Date(rows[0].last_claimed).getTime();
+  return Math.min(30, Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24))));
 };
 
 /**
- * Quantity match score: how well does the NGO's capacity match the donation quantity.
+ * Get NGO historical completion rate and rating.
  */
-const computeQuantityScore = (donationQty, ngoCapacity) => {
-  if (!ngoCapacity || ngoCapacity === 0) return 0.5; // neutral if capacity unknown
-  const ratio = donationQty / ngoCapacity;
-  if (ratio <= 1) return 1.0; // can handle full donation
-  if (ratio <= 2) return 0.5; // can handle half
-  return 0.2;
-};
-
-/**
- * Food preference alignment: does the NGO prefer this food category?
- */
-const computeFoodPrefScore = (donationCategory, ngoPreferences) => {
-  if (!ngoPreferences || ngoPreferences.length === 0) return 0.7; // no preference = accepts most
-  if (ngoPreferences.includes(donationCategory)) return 1.0;
-  return 0.3;
-};
-
-/**
- * Time urgency: closer to expiry = higher urgency = higher score.
- */
-const computeTimeScore = (expiryTime) => {
-  const now = Date.now();
-  const expiry = new Date(expiryTime).getTime();
-  const hoursLeft = (expiry - now) / (1000 * 60 * 60);
-
-  if (hoursLeft <= 1) return 1.0;   // very urgent
-  if (hoursLeft <= 3) return 0.9;
-  if (hoursLeft <= 6) return 0.7;
-  if (hoursLeft <= 12) return 0.5;
-  if (hoursLeft <= 24) return 0.3;
-  return 0.1;
-};
-
-/**
- * Past performance: based on successful pickups vs total claims.
- */
-const computePerformanceScore = async (ngoId) => {
+const getNgoHistory = async (ngoId) => {
   const { rows } = await db.query(
     `SELECT
        COUNT(*) FILTER (WHERE status = 'accepted') AS accepted,
@@ -90,18 +57,30 @@ const computePerformanceScore = async (ngoId) => {
     [ngoId]
   );
 
-  if (rows[0].total === 0) return 0.5; // new NGO, neutral score
-  return parseFloat(rows[0].accepted) / parseFloat(rows[0].total);
+  const total = parseInt(rows[0]?.total || 0, 10);
+  const accepted = parseInt(rows[0]?.accepted || 0, 10);
+  const completionRate = total === 0 ? 0.90 : (accepted / total);
+
+  // Review rating
+  const { rows: reviewRows } = await db.query(
+    `SELECT AVG(rating) as avg_rating
+     FROM reviews
+     WHERE reviewee_id = (SELECT user_id FROM ngos WHERE id = $1)`,
+    [ngoId]
+  );
+  const avgRating = reviewRows[0]?.avg_rating ? parseFloat(reviewRows[0].avg_rating) : 4.5;
+
+  return { completionRate, avgRating };
 };
 
 /**
- * Match a donation to eligible NGOs and score them.
+ * Match a donation to eligible NGOs strictly within 20km radius of the food provider.
+ * Uses ML model inference to predict match suitability.
  *
- * @param {string} donationId - The donation to match
- * @returns {Array<{ngo_id, score, distance_km, scores_breakdown}>}
+ * @param {string} donationId
+ * @returns {Promise<Array>} Array of matched, ranked NGOs within 20km
  */
 const matchDonation = async (donationId) => {
-  // Get donation details
   const donationResult = await db.query(
     'SELECT * FROM food_donations WHERE id = $1',
     [donationId]
@@ -117,69 +96,200 @@ const matchDonation = async (donationId) => {
 
   // Get all verified, active NGOs
   const ngosResult = await db.query(
-    `SELECT n.*, u.status AS user_status
+    `SELECT n.*, u.status AS user_status, u.full_name AS contact_name, u.email, u.phone
      FROM ngos n
      JOIN users u ON u.id = n.user_id
      WHERE n.is_verified = TRUE AND u.status = 'active'`
   );
 
+  const hoursToExpiry = donation.expiry_time
+    ? Math.max(0.5, (new Date(donation.expiry_time).getTime() - Date.now()) / (1000 * 60 * 60))
+    : 12.0;
+
   const scoredNgos = [];
 
   for (const ngo of ngosResult.rows) {
-    // Calculate individual scores
+    // 1. Calculate Haversine distance from food provider pickup location
     const distanceKm = haversineDistance(
       donation.latitude, donation.longitude,
       ngo.latitude, ngo.longitude
     );
 
-    // Skip NGOs that are too far
-    if (distanceKm > 50) continue;
+    // 2. STRICT RULE: Only NGOs in the radius of 20km of the food provider
+    if (distanceKm > NGO_MAX_RADIUS_KM) {
+      continue; // Strictly exclude NGOs outside 20km
+    }
 
-    const D = computeDistanceScore(distanceKm);
-    const Q = computeQuantityScore(donation.quantity, ngo.capacity);
-    const F = computeFoodPrefScore(donation.category, ngo.food_preferences);
-    const T = computeTimeScore(donation.expiry_time);
-    const P = await computePerformanceScore(ngo.id);
+    // Category preference match
+    let categoryMatch = 0.7; // default neutral
+    if (Array.isArray(ngo.food_preferences) && ngo.food_preferences.length > 0) {
+      categoryMatch = ngo.food_preferences.includes(donation.category) ? 1.0 : 0.2;
+    }
 
-    // Weighted composite score
-    const score =
-      MATCHING_WEIGHTS.distance * D +
-      MATCHING_WEIGHTS.quantity * Q +
-      MATCHING_WEIGHTS.foodPref * F +
-      MATCHING_WEIGHTS.time * T +
-      MATCHING_WEIGHTS.pastPerformance * P;
+    // Historical data
+    const daysSince = await getDaysSinceLastDonation(ngo.id);
+    const { completionRate, avgRating } = await getNgoHistory(ngo.id);
 
-    scoredNgos.push({
-      ngo_id: ngo.id,
-      ngo_name: ngo.organization_name,
-      user_id: ngo.user_id,
-      score: Math.round(score * 1000) / 1000,
-      distance_km: Math.round(distanceKm * 100) / 100,
-      scores_breakdown: {
-        distance: Math.round(D * 1000) / 1000,
-        quantity: Math.round(Q * 1000) / 1000,
-        food_preference: Math.round(F * 1000) / 1000,
-        time_urgency: Math.round(T * 1000) / 1000,
-        past_performance: Math.round(P * 1000) / 1000,
-      },
+    // 3. ML Model prediction
+    const mlResult = predictNgoMatch({
+      distance_km: distanceKm,
+      donation_quantity: donation.quantity,
+      ngo_capacity: ngo.capacity,
+      food_category_match: categoryMatch,
+      hours_to_expiry: hoursToExpiry,
+      days_since_last_donation: daysSince,
+      ngo_rating: avgRating,
+      ngo_completion_rate: completionRate,
     });
+
+    if (mlResult.isEligible) {
+      scoredNgos.push({
+        ngo_id: ngo.id,
+        ngo_name: ngo.organization_name,
+        user_id: ngo.user_id,
+        contact_name: ngo.contact_name,
+        phone: ngo.phone,
+        email: ngo.email,
+        score: mlResult.score,
+        probability: mlResult.probability,
+        recommendation: mlResult.recommendation,
+        distance_km: Math.round(distanceKm * 100) / 100,
+        within_radius_km: NGO_MAX_RADIUS_KM,
+        scores_breakdown: mlResult.breakdown,
+      });
+    }
   }
 
-  // Sort by score descending
+  // Sort descending by ML match score
   scoredNgos.sort((a, b) => b.score - a.score);
 
   return scoredNgos;
 };
 
 /**
- * Run matching for a donation and persist scored claims.
- * Transitions donation to 'matched' status.
+ * Match eligible volunteers for a donation pickup.
+ * STRICT RULE: Volunteer MUST be within 30km of BOTH the food provider AND the NGO.
+ *
+ * @param {string} donationId - Donation ID
+ * @param {string} ngoId - Destination NGO ID
+ * @returns {Promise<Array>} Array of matched, ranked volunteers
+ */
+const matchVolunteersForPickup = async (donationId, ngoId) => {
+  // 1. Get donation (provider location)
+  const donationRes = await db.query(
+    'SELECT id, title, quantity, unit, weight_kg, latitude, longitude, expiry_time FROM food_donations WHERE id = $1',
+    [donationId]
+  );
+  if (donationRes.rows.length === 0) {
+    const err = new Error('Donation not found.');
+    err.statusCode = 404;
+    throw err;
+  }
+  const donation = donationRes.rows[0];
+
+  // 2. Get NGO (destination location)
+  const ngoRes = await db.query(
+    'SELECT id, organization_name, latitude, longitude, address FROM ngos WHERE id = $1',
+    [ngoId]
+  );
+  if (ngoRes.rows.length === 0) {
+    const err = new Error('NGO not found.');
+    err.statusCode = 404;
+    throw err;
+  }
+  const ngo = ngoRes.rows[0];
+
+  // 3. Query active volunteers with coordinates
+  const { rows: volunteers } = await db.query(
+    `SELECT v.*, u.full_name, u.phone, u.email,
+       (SELECT COUNT(*) FROM deliveries d WHERE d.volunteer_id = v.id AND d.status IN ('assigned', 'picked_up', 'in_transit')) AS active_deliveries
+     FROM volunteers v
+     JOIN users u ON u.id = v.user_id
+     WHERE u.status = 'active'
+       AND v.availability IN ('available', 'busy')
+       AND v.latitude IS NOT NULL
+       AND v.longitude IS NOT NULL`
+  );
+
+  const hoursToExpiry = donation.expiry_time
+    ? Math.max(0.5, (new Date(donation.expiry_time).getTime() - Date.now()) / (1000 * 60 * 60))
+    : 12.0;
+
+  const parcelWeight = donation.weight_kg || (donation.quantity * 0.4);
+
+  const scoredVolunteers = [];
+
+  for (const vol of volunteers) {
+    // Distance from volunteer to food provider
+    const distToProvider = haversineDistance(
+      vol.latitude, vol.longitude,
+      donation.latitude, donation.longitude
+    );
+
+    // Distance from volunteer to NGO shelter
+    const distToNgo = haversineDistance(
+      vol.latitude, vol.longitude,
+      ngo.latitude, ngo.longitude
+    );
+
+    // STRICT DUAL-RADIUS RULE:
+    // Volunteer MUST be <= 30km from BOTH Food Provider AND NGO
+    if (distToProvider > VOLUNTEER_MAX_RADIUS_KM || distToNgo > VOLUNTEER_MAX_RADIUS_KM) {
+      continue; // Exclude if outside 30km of either endpoint
+    }
+
+    // Historical volunteer performance
+    const totalDeliveries = parseInt(vol.total_deliveries || 0, 10);
+    const completionRate = totalDeliveries === 0 ? 0.95 : 0.98;
+
+    // ML Model prediction
+    const mlResult = predictVolunteerMatch({
+      dist_to_provider_km: distToProvider,
+      dist_to_ngo_km: distToNgo,
+      parcel_weight_kg: parcelWeight,
+      vehicle_type: vol.vehicle_type || 'car',
+      volunteer_rating: vol.rating || 4.5,
+      active_deliveries: parseInt(vol.active_deliveries || 0, 10),
+      volunteer_completion_rate: completionRate,
+      hours_to_expiry: hoursToExpiry,
+    });
+
+    if (mlResult.isEligible) {
+      scoredVolunteers.push({
+        volunteer_id: vol.id,
+        user_id: vol.user_id,
+        full_name: vol.full_name,
+        phone: vol.phone,
+        email: vol.email,
+        vehicle_type: vol.vehicle_type || 'car',
+        score: mlResult.score,
+        probability: mlResult.probability,
+        recommendation: mlResult.recommendation,
+        dist_to_provider_km: Math.round(distToProvider * 100) / 100,
+        dist_to_ngo_km: Math.round(distToNgo * 100) / 100,
+        total_route_km: mlResult.total_route_km,
+        eta_minutes_to_pickup: mlResult.eta_minutes_to_pickup,
+        within_radius_km: VOLUNTEER_MAX_RADIUS_KM,
+        scores_breakdown: mlResult.breakdown,
+      });
+    }
+  }
+
+  // Sort descending by volunteer match score
+  scoredVolunteers.sort((a, b) => b.score - a.score);
+
+  return scoredVolunteers;
+};
+
+/**
+ * Run smart matching for a donation, persist scored claims for eligible NGOs within 20km,
+ * and dispatch notifications to only eligible NGOs.
  */
 const matchAndNotify = async (donationId) => {
   const matches = await matchDonation(donationId);
 
   if (matches.length === 0) {
-    return { matches: [], message: 'No eligible NGOs found within range.' };
+    return { matches: [], message: `No eligible NGOs found within ${NGO_MAX_RADIUS_KM}km radius of the food provider.` };
   }
 
   const client = await db.getClient();
@@ -187,10 +297,8 @@ const matchAndNotify = async (donationId) => {
   try {
     await client.query('BEGIN');
 
-    // Insert scored claims for top NGOs (top 10)
-    const topMatches = matches.slice(0, 10);
-
-    for (const match of topMatches) {
+    // Insert scored claims for eligible NGOs within 20km
+    for (const match of matches) {
       await client.query(
         `INSERT INTO donation_claims (donation_id, ngo_id, match_score, status)
          VALUES ($1, $2, $3, 'pending')
@@ -207,7 +315,20 @@ const matchAndNotify = async (donationId) => {
 
     await client.query('COMMIT');
 
-    return { matches: topMatches, message: `Matched with ${topMatches.length} NGOs.` };
+    // Asynchronously notify eligible NGOs within 20km
+    const notificationService = require('../notifications/notification.service');
+    const { rows: donationRows } = await db.query('SELECT * FROM food_donations WHERE id = $1', [donationId]);
+    if (donationRows.length > 0) {
+      notificationService.notifyEligibleNgosOfDonation(donationRows[0], matches).catch(err => {
+        console.error('[NOTIFY] Error notifying eligible NGOs:', err.message);
+      });
+    }
+
+    return {
+      matches,
+      radius_km: NGO_MAX_RADIUS_KM,
+      message: `Successfully matched and alerted ${matches.length} eligible NGO(s) within ${NGO_MAX_RADIUS_KM}km radius.`
+    };
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -217,8 +338,11 @@ const matchAndNotify = async (donationId) => {
 };
 
 module.exports = {
-  matchDonation,
-  matchAndNotify,
   haversineDistance,
+  NGO_MAX_RADIUS_KM,
+  VOLUNTEER_MAX_RADIUS_KM,
+  matchDonation,
+  matchVolunteersForPickup,
+  matchAndNotify,
   ...require('./claim-ranking.service'),
 };
